@@ -28,10 +28,10 @@ const SHIP_VND = {            // Estimated shipping per category (VND)
 };
 
 const TIERS = [               // Price multiplier tiers
-  { max: 1_000_000, mult: 1.6 },
-  { max: 1_400_000, mult: 1.5 },
-  { max: 2_500_000, mult: 1.4 },
-  { max: Infinity,  mult: 1.3 },
+  { max:   500_000, mult: 1.6 },   // ≤500k VND  → x1.6
+  { max: 1_300_000, mult: 1.5 },   // 500k–1.3M  → x1.5
+  { max: 2_500_000, mult: 1.4 },   // 1.3M–2.5M  → x1.4
+  { max: Infinity,  mult: 1.3 },   // >2.5M      → x1.3
 ];
 
 /**
@@ -178,9 +178,16 @@ async function loadData() {
 
 /** Shared parse logic — called whether data came from data.js or fetch() */
 function _parseData(data) {
-  // Group products by brand_id
+  // Group products by brand_id & recalculate THB prices with current TIERS
   const byBrand = {};
   for (const p of data.products) {
+    const vnd = p.price?.vnd;
+    if (vnd) {
+      const tag = p.tag || p.category || '_default';
+      const recalc = calcPrice(vnd, tag);
+      p.price.thb_shipping  = recalc.thb_shipping;
+      p.price.thb_carryback = recalc.thb_carryback;
+    }
     if (!byBrand[p.brand_id]) byBrand[p.brand_id] = [];
     byBrand[p.brand_id].push(p);
   }
