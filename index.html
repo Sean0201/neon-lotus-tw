@@ -658,6 +658,15 @@
     .filter-btn.active,.filter-btn:hover { border-color:var(--accent);color:var(--accent);background:rgba(168,85,247,0.1);box-shadow:0 0 8px rgba(168,85,247,0.15); }
 
     .products-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px; }
+    @media(max-width:600px) {
+      .products-grid { grid-template-columns:repeat(2,1fr);gap:10px; }
+      .product-info { padding:10px; }
+      .product-name { font-size:0.68rem; }
+      .product-price { font-size:0.72rem; }
+      .product-sizes { gap:3px; }
+      .size-chip { font-size:0.5rem;padding:2px 5px; }
+      .gallery-thumb { width:36px;height:36px; }
+    }
 
     .product-card {
       background:var(--grey);border-radius:8px;overflow:hidden;cursor:pointer;
