@@ -328,9 +328,20 @@ function setLang(lang) {
     if (el) el.classList.add('active');
   });
 
-  // 3. Update switch button text
+  // 3. Update switch button text (desktop + mobile)
   const sw = document.getElementById('lang-switch');
   if (sw) sw.textContent = lang === 'en' ? 'TH' : 'EN';
+  const msw = document.getElementById('mobile-lang-switch');
+  if (msw) msw.textContent = lang === 'en' ? 'TH' : 'EN';
+
+  // 3b. Update mobile overlay nav button text
+  document.querySelectorAll('#mobile-overlay .mobile-nav-btn[data-en]').forEach(el => {
+    const txt = el.getAttribute('data-' + lang);
+    if (txt) {
+      const hasChevron = el.textContent.includes('▾');
+      el.textContent = txt + (hasChevron ? ' ▾' : '');
+    }
+  });
 
   // 4. Re-render brand grid (language-neutral — only uses b.name, never TH text)
   if (BRANDS.length) {
@@ -889,6 +900,65 @@ function filterByStyle(keyword) {
     });
     document.getElementById('brands-section').scrollIntoView({behavior:'smooth'});
   }, 50);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   § 16.  INIT
+   ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   § 16a. MOBILE MENU
+   ═══════════════════════════════════════════════════════════════ */
+function toggleMobileMenu() {
+  const overlay = document.getElementById('mobile-overlay');
+  const hamburger = document.getElementById('hamburger');
+  if (!overlay || !hamburger) return;
+  const isOpen = overlay.classList.contains('open');
+  if (isOpen) {
+    closeMobileMenu();
+  } else {
+    overlay.classList.add('open');
+    hamburger.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    // Populate mobile brand list if empty
+    const mbl = document.getElementById('mobile-brand-list');
+    if (mbl && !mbl.children.length && BRANDS.length) {
+      const active = BRANDS.filter(b => b.products.length > 0)
+        .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+      mbl.innerHTML = active.map(b =>
+        `<button class="mobile-brand-item" onclick="openBrand('${b.id}');closeMobileMenu()">${b.name || b.id}</button>`
+      ).join('');
+    }
+  }
+}
+
+function closeMobileMenu() {
+  const overlay = document.getElementById('mobile-overlay');
+  const hamburger = document.getElementById('hamburger');
+  if (overlay) overlay.classList.remove('open');
+  if (hamburger) hamburger.classList.remove('active');
+  document.body.style.overflow = '';
+  // Collapse sub-lists
+  const mbl = document.getElementById('mobile-brand-list');
+  const msl = document.getElementById('mobile-style-list');
+  if (mbl) mbl.style.display = 'none';
+  if (msl) msl.style.display = 'none';
+}
+
+function toggleMobileBrands() {
+  const mbl = document.getElementById('mobile-brand-list');
+  if (!mbl) return;
+  mbl.style.display = mbl.style.display === 'none' ? 'flex' : 'none';
+}
+
+function toggleMobileStyles() {
+  const msl = document.getElementById('mobile-style-list');
+  if (!msl) return;
+  msl.style.display = msl.style.display === 'none' ? 'flex' : 'none';
+}
+
+function toggleMobileLang() {
+  const next = currentLang === 'en' ? 'th' : 'en';
+  setLang(next);
 }
 
 /* ═══════════════════════════════════════════════════════════════

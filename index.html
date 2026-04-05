@@ -268,6 +268,89 @@
       color:#fff;
     }
 
+    /* ======== HAMBURGER MENU (Mobile) ======== */
+    .hamburger {
+      display: none; /* hidden on desktop */
+      flex-direction: column; justify-content: center; align-items: center;
+      width: 36px; height: 36px; cursor: pointer;
+      background: none; border: none; padding: 0;
+      z-index: 2100;
+    }
+    .hamburger span {
+      display: block; width: 22px; height: 2px;
+      background: var(--white); border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+    .hamburger span:nth-child(1) { margin-bottom: 5px; }
+    .hamburger span:nth-child(3) { margin-top: 5px; }
+    .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+    .hamburger.active span:nth-child(2) { opacity: 0; }
+    .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+    .mobile-overlay {
+      display: none; position: fixed; inset: 0; z-index: 1999;
+      background: rgba(10,10,15,0.95); backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 4px; padding: 90px 32px 40px;
+      overflow-y: auto;
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    .mobile-overlay.open { display: flex; opacity: 1; }
+
+    .mobile-overlay .mobile-nav-btn {
+      font-family: var(--font-headline); font-size: 1rem;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--lightgrey); padding: 14px 0;
+      background: none; border: none; cursor: pointer;
+      transition: color 0.2s ease;
+      width: 100%; text-align: center;
+    }
+    .mobile-overlay .mobile-nav-btn:hover,
+    .mobile-overlay .mobile-nav-btn:active { color: var(--accent); }
+
+    .mobile-overlay .mobile-lang-switch {
+      margin-top: 20px;
+      font-family: 'Space Mono', monospace; font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 0.12em; padding: 10px 32px; border-radius: 8px;
+      color: var(--accent-pink); border: 1px solid rgba(236,72,153,0.45);
+      background: transparent; cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .mobile-overlay .mobile-lang-switch:hover {
+      border-color: var(--accent-pink);
+      box-shadow: 0 0 12px rgba(236,72,153,0.35);
+      color: #fff;
+    }
+
+    /* Mobile brand list inside overlay */
+    .mobile-brand-list {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+      max-height: 35vh; overflow-y: auto; padding: 8px 0;
+      scrollbar-width: none; width: 100%;
+    }
+    .mobile-brand-list::-webkit-scrollbar { display: none; }
+    .mobile-brand-item {
+      font-size: 0.72rem; padding: 6px 14px;
+      border: 1px solid var(--glass-border); border-radius: 6px;
+      color: rgba(245,244,248,0.7); cursor: pointer;
+      transition: all 0.2s ease; background: none;
+    }
+    .mobile-brand-item:hover { background: rgba(168,85,247,0.12); color: var(--white); }
+
+    .mobile-section-label {
+      font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase;
+      background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin: 12px 0 6px; text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .nav-center { display: none !important; }
+      .nav-right #lang-switch { display: none; }
+      nav { padding: 0 16px; }
+    }
+
     /* ======== PAGES ======== */
     .page { min-height: 100vh; padding-top: 68px; }
 
@@ -791,7 +874,7 @@
       .nav-logo-img { height:30px; }
       .nav-right { gap:8px; flex-shrink:0; }
       #lang-switch { padding:4px 10px; font-size:0.62rem; }
-      .brands-grid { grid-template-columns:1fr; }
+      .brands-grid { grid-template-columns:1fr; padding:0 16px; }
       .about-inner { grid-template-columns:1fr;gap:40px; }
       .brand-info-bar { grid-template-columns:1fr;padding:28px 20px; }
       .brand-hero-content { padding:36px 20px; }
@@ -1004,8 +1087,31 @@
   <!-- RIGHT -->
   <div class="nav-right">
     <button id="lang-switch">TH</button>
+    <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
+
+<!-- MOBILE OVERLAY MENU -->
+<div class="mobile-overlay" id="mobile-overlay">
+  <button class="mobile-nav-btn" data-en="BRANDS" data-th="แบรนด์" onclick="toggleMobileBrands()">BRANDS ▾</button>
+  <div class="mobile-brand-list" id="mobile-brand-list" style="display:none"></div>
+  <button class="mobile-nav-btn" data-en="STYLES" data-th="สไตล์" onclick="toggleMobileStyles()">STYLES ▾</button>
+  <div class="mobile-brand-list" id="mobile-style-list" style="display:none">
+    <button class="mobile-brand-item" onclick="filterByStyle('Streetwear');closeMobileMenu()">Streetwear</button>
+    <button class="mobile-brand-item" onclick="filterByStyle('Avant-Garde');closeMobileMenu()">Avant-Garde</button>
+    <button class="mobile-brand-item" onclick="filterByStyle('Contemporary');closeMobileMenu()">Contemporary</button>
+    <button class="mobile-brand-item" onclick="filterByStyle('Minimalist');closeMobileMenu()">Minimalist</button>
+    <button class="mobile-brand-item" onclick="filterByStyle('Industrial');closeMobileMenu()">Industrial</button>
+    <button class="mobile-brand-item" onclick="filterByStyle('Women');closeMobileMenu()">Women's</button>
+    <button class="mobile-brand-item" onclick="filterByStyle('Accessories');closeMobileMenu()">Accessories</button>
+    <button class="mobile-brand-item" onclick="filterByStyle('');closeMobileMenu()">Show All</button>
+  </div>
+  <button class="mobile-nav-btn" data-en="ABOUT" data-th="เกี่ยวกับ" onclick="showPage('about');closeMobileMenu()">ABOUT</button>
+  <button class="mobile-nav-btn" data-en="CONTACT" data-th="ติดต่อ" onclick="showPage('contact');closeMobileMenu()">CONTACT</button>
+  <button class="mobile-lang-switch" id="mobile-lang-switch" onclick="toggleMobileLang()">TH</button>
+</div>
 
 
 <!-- ======================================================
@@ -1212,6 +1318,6 @@
 <!-- data.js embeds brands_products.json as window.BRANDS_DATA — works with file:// -->
 <script src="data.js"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
-<script src="main.js" defer></script>
+<script src="main.js?v=2" defer></script>
 </body>
 </html>
