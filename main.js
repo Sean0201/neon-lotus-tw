@@ -925,7 +925,7 @@ function toggleMobileMenu() {
       const active = BRANDS.filter(b => b.products.length > 0)
         .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
       mbl.innerHTML = active.map(b =>
-        `<button class="mobile-brand-item" onclick="openBrand('${b.id}');closeMobileMenu()">${b.name || b.id}</button>`
+        `<button class="mobile-brand-item" onclick="showPage('brand','${b.id}');closeMobileMenu()">${b.name || b.id}</button>`
       ).join('');
     }
   }
