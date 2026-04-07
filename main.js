@@ -685,8 +685,7 @@ function _buildProductCard(p) {
          ${sizes.map(s => `<span class="size-chip">${s.label}</span>`).join('')}
        </div>` : '';
 
-  const reviewBadge = p.needs_review
-    ? `<div class="needs-review-badge">NEEDS REVIEW</div>` : '';
+  const reviewBadge = '';
 
   const priceHtml = `
     <div class="product-price-wrap">
