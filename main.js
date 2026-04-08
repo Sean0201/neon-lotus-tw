@@ -16,7 +16,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /** Price formula constants — edit here to update all prices */
-const RATE = 0.0014;          // 1 VND → THB
+const RATE = 0.00125;         // 1 VND → TWD
 
 const SHIP_VND = {            // Estimated shipping per category (VND)
   Top:          100_000,
@@ -95,7 +95,7 @@ const CAT = {
    ═══════════════════════════════════════════════════════════════ */
 
 let BRANDS      = [];       // populated by loadData()
-let currentLang = 'en';     // 'en' | 'th'
+let currentLang = 'tw';     // 'tw' | 'en'
 
 /* ═══════════════════════════════════════════════════════════════
    § 2.  PRICE UTILITIES  (mirrors price_calc.js)
@@ -124,15 +124,15 @@ function psychPrice(n) {
 }
 
 /**
- * Recalculate THB prices for a product.
+ * Recalculate TWD prices for a product.
  * Useful if you edit vnd in JSON and want the page to show updated values.
  */
 function calcPrice(vnd, tag) {
   const est  = SHIP_VND[tag] ?? SHIP_VND._default;
   const mult = getMultiplier(vnd);
   return {
-    thb_shipping:  psychPrice((vnd + est) * mult * RATE),
-    thb_carryback: psychPrice(vnd * mult * RATE),
+    twd_shipping:  psychPrice((vnd + est) * mult * RATE),
+    twd_carryback: psychPrice(vnd * mult * RATE),
   };
 }
 
@@ -179,15 +179,15 @@ async function loadData() {
 
 /** Shared parse logic — called whether data came from data.js or fetch() */
 function _parseData(data) {
-  // Group products by brand_id & recalculate THB prices with current TIERS
+  // Group products by brand_id & recalculate TWD prices with current TIERS
   const byBrand = {};
   for (const p of data.products) {
     const vnd = p.price?.vnd;
     if (vnd) {
       const tag = p.tag || p.category || '_default';
       const recalc = calcPrice(vnd, tag);
-      p.price.thb_shipping  = recalc.thb_shipping;
-      p.price.thb_carryback = recalc.thb_carryback;
+      p.price.twd_shipping  = recalc.twd_shipping;
+      p.price.twd_carryback = recalc.twd_carryback;
     }
     if (!byBrand[p.brand_id]) byBrand[p.brand_id] = [];
     byBrand[p.brand_id].push(p);
@@ -201,7 +201,7 @@ function _parseData(data) {
     style:         b.style,
     color:         b.color_hex,
     desc_en:       b.description.en,
-    desc_th:       b.description.zh || b.description.th || b.description.en,
+    desc_tw:       b.description.zh || b.description.tw || b.description.th || b.description.en,
     meta_founded:  b.meta.founded,
     meta_category: b.meta.category,
     meta_location: b.meta.location,
@@ -301,8 +301,8 @@ function renderBrandPage(brandId) {
   // Info bar — description + meta
   const infoBar = document.getElementById('brand-info-bar');
   if (infoBar) {
-    const desc = currentLang === 'th'
-      ? (brand.description?.th || brand.description?.zh || brand.description?.en || '')
+    const desc = currentLang === 'tw'
+      ? (brand.description?.zh || brand.description?.tw || brand.description?.th || brand.description?.en || '')
       : (brand.description?.en || '');
     const meta = brand.meta || {};
     infoBar.innerHTML = `
@@ -325,7 +325,7 @@ function setLang(lang) {
   currentLang = lang;
   console.log('[setLang] Switching to:', lang);
 
-  // 1. Update all data-en / data-th text nodes
+  // 1. Update all data-en / data-tw text nodes
   updateTexts();
 
   // 2. Toggle about-strip & about-page lang-content blocks ONLY
@@ -338,12 +338,12 @@ function setLang(lang) {
 
   // 3. Update switch button text (desktop + mobile)
   const sw = document.getElementById('lang-switch');
-  if (sw) sw.textContent = lang === 'en' ? 'TH' : 'EN';
+  if (sw) sw.textContent = lang === 'tw' ? 'EN' : '中';
   const msw = document.getElementById('mobile-lang-switch');
-  if (msw) msw.textContent = lang === 'en' ? 'TH' : 'EN';
+  if (msw) msw.textContent = lang === 'tw' ? 'EN' : '中';
 
   // 3b. Update mobile overlay nav button text
-  document.querySelectorAll('#mobile-overlay .mobile-nav-btn[data-en]').forEach(el => {
+  document.querySelectorAll('#mobile-overlay .mobile-nav-btn[data-tw], #mobile-overlay .mobile-nav-btn[data-en]').forEach(el => {
     const txt = el.getAttribute('data-' + lang);
     if (txt) {
       const hasChevron = el.textContent.includes('▾');
@@ -370,7 +370,7 @@ function setLang(lang) {
 document.addEventListener('DOMContentLoaded', () => {
   const sw = document.getElementById('lang-switch');
   if (sw) sw.addEventListener('click', () => {
-    setLang(currentLang === 'en' ? 'th' : 'en');
+    setLang(currentLang === 'tw' ? 'en' : 'tw');
   });
 
   /* ── Dropdown hover-delay system ─────────────────────────────
@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function updateTexts() {
-  document.querySelectorAll('[data-en], [data-th]').forEach(el => {
+  document.querySelectorAll('[data-en], [data-tw]').forEach(el => {
     const txt = el.getAttribute(`data-${currentLang}`);
     if (txt) el.textContent = txt;
   });
@@ -657,8 +657,8 @@ function _buildProductCard(p) {
 
   const sizes     = p.sizes || [];
 
-  const thbShip  = p.price?.thb_shipping;
-  const thbCarry = p.price?.thb_carryback;
+  const twdShip  = p.price?.twd_shipping;
+  const twdCarry = p.price?.twd_carryback;
 
   const imgsAttr = JSON.stringify(imgUrls).replace(/"/g, '&quot;');
 
@@ -693,8 +693,8 @@ function _buildProductCard(p) {
 
   const priceHtml = `
     <div class="product-price-wrap">
-      ${thbShip  != null ? `<div class="price-row"><span class="price-main">${thbShip.toLocaleString()} THB</span><span class="price-tag-pill">${currentLang === 'th' ? 'ส่งกลับจากต่างประเทศค่ะ' : 'SHIP<span class="pill-sub">INC.</span>'}</span></div>` : ''}
-      ${thbCarry != null ? `<div class="price-row"><span class="price-carry">${thbCarry.toLocaleString()} THB</span><span class="price-tag-pill carry">${currentLang === 'th' ? 'นำกลับมาด้วยตัวเองค่ะ' : 'CARRY<span class="pill-sub">BACK</span>'}</span></div>` : ''}
+      ${twdShip  != null ? `<div class="price-row"><span class="price-main">NT$ ${twdShip.toLocaleString()}</span><span class="price-tag-pill">${currentLang === 'tw' ? '國際<span class="pill-sub">配送</span>' : 'SHIP<span class="pill-sub">INC.</span>'}</span></div>` : ''}
+      ${twdCarry != null ? `<div class="price-row"><span class="price-carry">NT$ ${twdCarry.toLocaleString()}</span><span class="price-tag-pill carry">${currentLang === 'tw' ? '親自<span class="pill-sub">運送</span>' : 'CARRY<span class="pill-sub">BACK</span>'}</span></div>` : ''}
     </div>`;
 
   return `
@@ -963,7 +963,7 @@ function toggleMobileStyles() {
 }
 
 function toggleMobileLang() {
-  const next = currentLang === 'en' ? 'th' : 'en';
+  const next = currentLang === 'tw' ? 'en' : 'tw';
   setLang(next);
 }
 
@@ -978,6 +978,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderBrandsGrid();
   renderDropdown();
   observeFadeIns();
-  updateTexts();
+  setLang('tw');        // default to Traditional Chinese
   initImgLazy();
 });
