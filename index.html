@@ -537,15 +537,15 @@
     }
     .about-desc {
       font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:300;
-      color:rgba(245,244,248,0.88); line-height:1.5; text-align:center;
+      color:#dddddd; line-height:1.8; text-align:justify; letter-spacing:0.08rem;
     }
     .about-desc.about-desc--en {
-      font-family:'Space Mono',monospace; font-size:0.85rem; font-weight:400;
-      letter-spacing:0.02em; line-height:1.7;
+      font-family:'Space Mono',monospace; font-size:0.85rem; font-weight:300;
+      letter-spacing:0.02em; line-height:1.8; color:#dddddd;
     }
     .about-desc.tw {
-      font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif; line-height:1.55;
-      color:rgba(245,244,248,0.92);
+      font-family:'Noto Sans TC','PingFang TC',sans-serif; line-height:1.8;
+      color:#dddddd; letter-spacing:0.08rem;
     }
     .about-tagline-strip {
       font-family:'Syncopate','Montserrat',sans-serif; font-size:0.72rem; font-weight:700;
@@ -562,6 +562,12 @@
     .neon-blue-bold {
       color: #60a5fa; font-weight: 700;
       -webkit-text-fill-color: #60a5fa;
+      text-shadow: 0 0 8px rgba(96,165,250,0.4), 0 0 20px rgba(96,165,250,0.15);
+    }
+    .neon-glow {
+      color: #e879f9; font-weight: 600;
+      -webkit-text-fill-color: #e879f9;
+      text-shadow: 0 0 8px rgba(232,121,249,0.4), 0 0 20px rgba(232,121,249,0.15);
     }
     .about-strip-divider {
       width:100%; height:1px; margin:48px 0;
@@ -807,15 +813,16 @@
     /* ======== ABOUT PAGE ======== */
     .about-page { padding:90px 56px;max-width:900px;margin:0 auto; }
     .about-page-title {
-      font-family:var(--font-headline);font-size:clamp(2.2rem,5vw,3.5rem);font-weight:700;
+      font-family:'Syncopate','Montserrat',sans-serif;font-size:clamp(2.2rem,5vw,3.5rem);font-weight:700;
       margin-bottom:44px;line-height:1;letter-spacing:-0.02em;text-transform:uppercase;
+      color:#ffffff;
     }
     .about-page-title em {
       background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text; font-style:italic;
     }
-    .about-page-body { font-size:0.9rem;color:rgba(245,244,248,0.82);line-height:1.6; }
-    .about-page-body.about-page-body--en { font-family:'Space Mono',monospace; font-size:0.85rem; letter-spacing:0.02em; line-height:1.7; }
+    .about-page-body { font-size:0.9rem;color:#dddddd;line-height:1.8;font-weight:300;text-align:justify; }
+    .about-page-body.about-page-body--en { font-family:'Space Mono',monospace; font-size:0.85rem; letter-spacing:0.02em; line-height:1.8;font-weight:300;color:#dddddd; }
     .about-page-body p+p { margin-bottom:20px; }
 
     /* ── About: dual-language blocks ────────────────────── */
@@ -839,15 +846,16 @@
     }
     /* TW overrides for about page */
     #page-about-tw .about-hero-title {
-      font-family: 'Noto Sans TC','Microsoft JhengHei', sans-serif; font-weight: 800;
-      font-size: 1.2rem; letter-spacing: 0.02em; text-transform: none;
-      -webkit-text-stroke: 1.5px var(--accent); -webkit-text-fill-color: transparent;
+      font-family: 'Noto Sans TC','PingFang TC', sans-serif; font-weight: 700;
+      font-size: 1.2rem; letter-spacing: 0.04em; text-transform: none;
+      color: #ffffff; -webkit-text-fill-color: #ffffff; -webkit-text-stroke: 0;
     }
     #page-about-tw .about-page-body {
-      font-family: 'Noto Sans TC','Microsoft JhengHei', sans-serif; line-height: 1.7;
+      font-family: 'Noto Sans TC','PingFang TC', sans-serif; line-height: 1.8;
+      letter-spacing: 0.08rem; font-weight: 300; color: #dddddd;
     }
     #page-about-tw .about-tagline {
-      font-family: 'Noto Sans TC','Microsoft JhengHei', sans-serif; font-weight: 700;
+      font-family: 'Noto Sans TC','PingFang TC', sans-serif; font-weight: 700;
       letter-spacing: 0.08em; text-transform: none;
     }
     .about-divider {
@@ -1281,8 +1289,8 @@
 
     <!-- ── Traditional Chinese Version ────────────── -->
     <div class="about-lang-block lang-content" id="page-about-tw">
-      <h2 class="about-hero-title" style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;">NEON LOTUS：融合<span class="neon-blue-bold">工業廢土</span>與<span class="neon-blue-bold">機能主義</span>的實驗美學。專為那些敢於打破規則的靈魂而生。</h2>
-      <div class="about-page-body" style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;">
+      <h2 class="about-hero-title">NEON LOTUS：融合<span class="neon-blue-bold">工業廢土</span>與<span class="neon-blue-bold">機能主義</span>的實驗美學。專為那些敢於打破規則的靈魂而生。</h2>
+      <div class="about-page-body">
         <p class="about-tagline" style="margin-bottom:24px;">精選風格，無界態度。</p>
         <p>越南設計正從街頭邊緣走向全球舞台。<span class="neon-keyword">NEON LOTUS</span> 致力於挖掘隱藏在河內與<span class="neon-keyword">西貢</span>巷弄中的高階街頭品牌。</p>
         <p>每一件單品都封存了當代越南青年文化的精髓——那是<span class="neon-blue-bold">工業殘骸</span>與<span class="neon-blue-bold">未來主義</span>的高衝擊交匯。</p>
