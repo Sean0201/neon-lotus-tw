@@ -202,9 +202,9 @@ function _parseData(data) {
     color:         b.color_hex,
     desc_en:       b.description.en,
     desc_tw:       b.description.zh || b.description.tw || b.description.th || b.description.en,
-    meta_founded:  b.meta.founded,
-    meta_category: b.meta.category,
-    meta_location: b.meta.location,
+    meta_founded:  (b.meta && b.meta.founded) || '',
+    meta_category: (b.meta && b.meta.category) || '',
+    meta_location: (b.meta && b.meta.location) || '',
     products:      byBrand[b.id] || [],
   }));
 }
