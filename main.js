@@ -30,8 +30,8 @@ const SHIP_VND = {            // Estimated shipping per category (VND)
 const TIERS = [               // Price multiplier tiers
   { max:   500_000, mult: 1.5 },   // ≤500k VND  → x1.5
   { max: 1_300_000, mult: 1.4 },   // 500k–1.3M  → x1.4
-  { max: 2_500_000, mult: 1.3 },   // 1.3M–2.5M  → x1.3
-  { max: Infinity,  mult: 1.2 },   // >2.5M      → x1.2
+  { max: 2_500_000, mult: 1.35 },   // 1.3M–2.5M  → x1.35
+  { max: Infinity,  mult: 1.3 },   // >2.5M      → x1.3
 ];
 
 /**
