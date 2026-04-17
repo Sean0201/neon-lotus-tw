@@ -318,8 +318,9 @@ function renderBrandPage(brandId) {
   const heroBg = document.getElementById('brand-hero-bg');
   if (heroBg) {
     const firstProd = window.CURRENT_BRAND_PRODUCTS[0];
-    const bgUrl = firstProd?.images?.gallery?.find(g => g.type === 'source')?.url
-      || firstProd?.images?.cover
+    const srcImg = firstProd?.images?.gallery?.find(g => g.type === 'source');
+    const bgUrl = (srcImg?.original_url || srcImg?.url || '')
+      || _getProductImageSrc(firstProd)
       || firstProd?.original_cover_url;
     if (bgUrl) {
       heroBg.style.cssText = `background-image:url('${bgUrl}');background-size:cover;background-position:center top;`;
@@ -688,7 +689,8 @@ function _buildProductCard(p) {
   const imgsAttr = JSON.stringify(imgUrls).replace(/"/g, '&quot;');
 
   const mainImg = coverUrl
-    ? `<img class="card-main-img lazy-img" data-src="${coverUrl}" src="" loading="lazy" alt="${p.name}">`
+    ? `<img class="card-main-img loaded" src="${coverUrl}" loading="lazy" alt="${p.name}"
+           onerror="this.parentNode.innerHTML='<div class=\\'product-img-placeholder\\'><div class=\\'placeholder-icon\\'>👕</div><div class=\\'placeholder-text\\'>NO IMAGE</div></div>'">`
     : `<div class="product-img-placeholder">
          <div class="placeholder-icon">👕</div>
          <div class="placeholder-text">NO IMAGE</div>
@@ -702,8 +704,8 @@ function _buildProductCard(p) {
   const thumbsHtml = imgUrls.length > 1
     ? `<div class="gallery-thumbs">
         ${imgUrls.slice(0, 5).map((url, i) => `
-          <img class="gallery-thumb lazy-img${i === 0 ? ' active' : ''}"
-               data-src="${url}" src="" loading="lazy" alt=""
+          <img class="gallery-thumb loaded${i === 0 ? ' active' : ''}"
+               src="${url}" loading="lazy" alt=""
                onclick="switchThumb(this,'${url}',event)">
         `).join('')}
        </div>` : '';
