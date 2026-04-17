@@ -1041,8 +1041,8 @@ function renderBanners() {
   function render() {
     const b = banners[current];
     const lang = currentLang || 'tw';
-    const title    = lang === 'tw' ? (b.title_zh || b.title_en) : (b.title_en || b.title_zh);
-    const subtitle = lang === 'tw' ? (b.subtitle_zh || b.subtitle_en) : (b.subtitle_en || b.subtitle_zh);
+    const title    = b.title || '';
+    const subtitle = b.subtitle || '';
 
     container.innerHTML = `
       <div class="hero-banner-slide" style="background-image:url('${b.image_url}')">

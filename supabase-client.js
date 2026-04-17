@@ -147,10 +147,8 @@ async function loadSupabaseData() {
   // ── Transform banners ───────────────────────────────────────
   const bannersData = banners.map(bn => ({
     id:        bn.id,
-    title_en:  bn.title_en || '',
-    title_zh:  bn.title_zh || '',
-    subtitle_en: bn.subtitle_en || '',
-    subtitle_zh: bn.subtitle_zh || '',
+    title:     bn.title || '',
+    subtitle:  bn.subtitle || '',
     image_url: bn.image_url || '',
     link_url:  bn.link_url || '',
     sort_order: bn.sort_order || 0,
