@@ -5,6 +5,9 @@
  * Fetches brands, products, product_sizes, product_gallery, banners,
  * and site_settings from Supabase and assembles window globals
  * that main.js consumes.
+ *
+ * NOTE: Supabase default limit is 1000 rows. This client uses
+ * paginated fetching to load ALL rows for large tables.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -20,9 +23,39 @@ const SUPABASE_ANON = [
 const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Cache config ──────────────────────────────────────────────
-const CACHE_KEY     = 'NEON_LOTUS_TW_DATA';
-const CACHE_TS_KEY  = 'NEON_LOTUS_TW_DATA_TS';
+const CACHE_KEY     = 'NEON_LOTUS_TW_DATA_V2';
+const CACHE_TS_KEY  = 'NEON_LOTUS_TW_DATA_V2_TS';
 const CACHE_TTL     = 5 * 60 * 1000;   // 5 minutes
+const PAGE_SIZE     = 1000;             // Supabase max rows per request
+
+/**
+ * Paginated fetch — retrieves ALL rows from a table, 1000 at a time.
+ * @param {string} table   Table name
+ * @param {object} opts    { filter, order, select }
+ * @returns {Array}        All rows
+ */
+async function fetchAll(table, opts = {}) {
+  const allRows = [];
+  let from = 0;
+
+  while (true) {
+    let query = _supabase.from(table).select(opts.select || '*');
+    if (opts.filter)  query = opts.filter(query);
+    if (opts.order)   query = query.order(opts.order);
+    query = query.range(from, from + PAGE_SIZE - 1);
+
+    const { data, error } = await query;
+    if (error) throw new Error(table + ': ' + error.message);
+
+    const rows = data || [];
+    allRows.push(...rows);
+
+    if (rows.length < PAGE_SIZE) break;   // last page
+    from += PAGE_SIZE;
+  }
+
+  return allRows;
+}
 
 /**
  * Main entry point — fetches all data from Supabase (or localStorage cache)
@@ -48,30 +81,23 @@ async function loadSupabaseData() {
     console.warn('[supabase-client] Cache read failed:', e);
   }
 
-  // ── Fetch fresh from Supabase in parallel ──────────────────
+  // ── Fetch fresh from Supabase in parallel (paginated) ──────
   console.log('[supabase-client] Fetching fresh data from Supabase…');
 
-  const [brandsRes, productsRes, sizesRes, galleryRes, bannersRes, settingsRes] = await Promise.all([
-    _supabase.from('brands').select('*'),
-    _supabase.from('products').select('*').eq('is_active', true).order('sort_order'),
-    _supabase.from('product_sizes').select('*').order('sort_order'),
-    _supabase.from('product_gallery').select('*').order('sort_order'),
-    _supabase.from('banners').select('*').eq('is_active', true).order('sort_order'),
-    _supabase.from('site_settings').select('*'),
+  const [brands, products, sizes, gallery, banners, settingsRows] = await Promise.all([
+    fetchAll('brands'),
+    fetchAll('products', {
+      filter: q => q.eq('is_active', true),
+      order: 'sort_order',
+    }),
+    fetchAll('product_sizes', { order: 'sort_order' }),
+    fetchAll('product_gallery', { order: 'sort_order' }),
+    fetchAll('banners', {
+      filter: q => q.eq('is_active', true),
+      order: 'sort_order',
+    }),
+    fetchAll('site_settings'),
   ]);
-
-  // Check for errors (banners & settings are non-critical)
-  if (brandsRes.error)   throw new Error('brands: '   + brandsRes.error.message);
-  if (productsRes.error) throw new Error('products: '  + productsRes.error.message);
-  if (sizesRes.error)    throw new Error('sizes: '     + sizesRes.error.message);
-  if (galleryRes.error)  throw new Error('gallery: '   + galleryRes.error.message);
-
-  const brands   = brandsRes.data   || [];
-  const products = productsRes.data || [];
-  const sizes    = sizesRes.data    || [];
-  const gallery  = galleryRes.data  || [];
-  const banners  = bannersRes.data  || [];
-  const settingsRows = settingsRes.data || [];
 
   // ── Parse site_settings into key-value map ────────────────
   const settings = {};
@@ -168,11 +194,14 @@ async function loadSupabaseData() {
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
     localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
   } catch (e) {
-    console.warn('[supabase-client] Cache write failed:', e);
+    console.warn('[supabase-client] Cache write failed (data too large?):', e);
+    // Clear old cache to avoid stale partial data
+    try { localStorage.removeItem(CACHE_KEY); } catch (_) {}
   }
 
   console.log('[supabase-client] Loaded ' + brandsData.length + ' brands, ' +
-    productsData.length + ' products, ' + bannersData.length + ' banners from Supabase');
+    productsData.length + ' products (' + gallery.length + ' gallery images), ' +
+    bannersData.length + ' banners from Supabase');
 
   window.BRANDS_DATA   = data;
   window.BANNERS_DATA  = bannersData;
