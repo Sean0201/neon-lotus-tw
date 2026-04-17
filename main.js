@@ -291,7 +291,7 @@ function showPage(page, brandId) {
 /* ═══════════════════════════════════════════════════════════════
    § 4.1  核心修復：顯示品牌與品項
    ═══════════════════════════════════════════════════════════════ */
-function renderBrandPage(brandId) {
+async function renderBrandPage(brandId) {
   // Use internal BRANDS array (already parsed by _parseData) — no longer depends on window.BRANDS_DATA
   const brand = BRANDS.find(b => b.id === brandId);
   if (!brand) return;
@@ -302,10 +302,26 @@ function renderBrandPage(brandId) {
   pageEl.style.setProperty('--accent',        theme.accent  || '#c084fc');
   pageEl.style.setProperty('--accent2',       theme.accent  || '#a855f7');
   pageEl.style.setProperty('--brand-info-bg', theme.infoBar || '#16141e');
-  // Derive a subtle glow / border tint for filter chips
   pageEl.style.setProperty('--border',
     `color-mix(in srgb, ${theme.accent || '#c084fc'} 18%, transparent)`
   );
+
+  // ── Lazy-load gallery & sizes for this brand ────────────────
+  //    loadBrandDetail() patches BRANDS_DATA.products in place,
+  //    so brand.products will have gallery + sizes after this call.
+  if (typeof window.loadBrandDetail === 'function') {
+    // Show a quick loading state in the product grid
+    const grid = document.getElementById('products-grid');
+    if (grid) grid.innerHTML = '<p style="text-align:center;padding:60px;color:#c084fc;font-size:1.1rem">Loading products…</p>';
+    try {
+      await window.loadBrandDetail(brandId);
+      // Re-read brand from BRANDS since _parseData built it from BRANDS_DATA
+      // but loadBrandDetail patched BRANDS_DATA.products — we need to sync
+      _syncBrandProducts(brandId);
+    } catch (err) {
+      console.error('[renderBrandPage] loadBrandDetail failed:', err);
+    }
+  }
 
   // Store current brand products for filter use
   window.CURRENT_BRAND_PRODUCTS = brand.products || [];
@@ -329,7 +345,7 @@ function renderBrandPage(brandId) {
     }
   }
 
-  // Info bar — description + meta (uses internal BRANDS fields set by _parseData)
+  // Info bar — description + meta
   const infoBar = document.getElementById('brand-info-bar');
   if (infoBar) {
     const desc = currentLang === 'tw' ? (brand.desc_tw || '') : (brand.desc_en || '');
@@ -343,6 +359,20 @@ function renderBrandPage(brandId) {
 
   renderFilters();
   renderProducts('ALL');
+}
+
+/**
+ * Sync BRANDS_DATA.products → internal BRANDS[].products
+ * after loadBrandDetail() patches gallery/sizes onto BRANDS_DATA.products.
+ */
+function _syncBrandProducts(brandId) {
+  const data = window.BRANDS_DATA;
+  if (!data) return;
+  const brand = BRANDS.find(b => b.id === brandId);
+  if (!brand) return;
+  // Replace the brand's product array with the patched versions from BRANDS_DATA
+  const patched = data.products.filter(p => p.brand_id === brandId);
+  brand.products = patched;
 }
 
 /* ═══════════════════════════════════════════════════════════════
