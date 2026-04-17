@@ -1,22 +1,22 @@
 /**
- * main.js â NEON LOTUS
- * âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
- *  â ï¸  IMPORTANT: must be served over HTTP â NOT opened via file://
+ * main.js — NEON LOTUS
+ * ─────────────────────────────────────────────────────────────────
+ *  ⚠️  IMPORTANT: must be served over HTTP — NOT opened via file://
  *     Quick start:
  *       npx serve .          (requires Node.js)
  *       python3 -m http.server 8080
  *     Then open: http://localhost:8080
- * âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+ * ─────────────────────────────────────────────────────────────────
  */
 
 'use strict';
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 0.  CONFIG & CONSTANTS
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 0.  CONFIG & CONSTANTS
+   ═══════════════════════════════════════════════════════════════ */
 
-/** Price formula constants â edit here to update all prices */
-const RATE = 0.00125;         // 1 VND â TWD
+/** Price formula constants — edit here to update all prices */
+const RATE = 0.00125;         // 1 VND → TWD
 
 const SHIP_VND = {            // Estimated shipping per category (VND)
   Top:          100_000,
@@ -28,16 +28,16 @@ const SHIP_VND = {            // Estimated shipping per category (VND)
 };
 
 const TIERS = [               // Price multiplier tiers
-  { max:   500_000, mult: 1.5 },   // â¤500k VND  â x1.5
-  { max: 1_300_000, mult: 1.4 },   // 500kâ1.3M  â x1.4
-  { max: 2_500_000, mult: 1.35 },   // 1.3Mâ2.5M  â x1.35
-  { max: Infinity,  mult: 1.3 },   // >2.5M      â x1.3
+  { max:   500_000, mult: 1.5 },   // ≤500k VND  → x1.5
+  { max: 1_300_000, mult: 1.4 },   // 500k–1.3M  → x1.4
+  { max: 2_500_000, mult: 1.35 },   // 1.3M–2.5M  → x1.35
+  { max: Infinity,  mult: 1.3 },   // >2.5M      → x1.3
 ];
 
 /**
  * Brand-specific theme overrides.
- * accent    â replaces --accent for the entire brand page (borders, labels, active states â¦)
- * infoBar   â background tint for the brand info bar section
+ * accent    → replaces --accent for the entire brand page (borders, labels, active states …)
+ * infoBar   → background tint for the brand info bar section
  */
 const BRAND_THEME = {
   blish:            { accent: '#29b6f6', infoBar: '#040810' }, // Cyberpunk / electric blue
@@ -78,44 +78,44 @@ const BRAND_THEME = {
   'latui-atelier':  { accent: '#c9a96e', infoBar: '#0e0c0a' }, // Avant-garde / warm bronze
 };
 
-/** Category display labels â used by dynamic filter buttons */
+/** Category display labels — used by dynamic filter buttons */
 const CAT_LABELS = {
-  ALL:         { tw: 'å¨é¨',   en: 'ALL' },
-  TOPS:        { tw: 'ä¸è¡£',   en: 'TOPS' },
-  TEES:        { tw: 'Tæ¤',    en: 'TEES' },
-  LONGSLEEVES: { tw: 'é·è¢',   en: 'LONG SLEEVES' },
-  SHIRTS:      { tw: 'è¥è¡«',   en: 'SHIRTS' },
+  ALL:         { tw: '全部',   en: 'ALL' },
+  TOPS:        { tw: '上衣',   en: 'TOPS' },
+  TEES:        { tw: 'T恤',    en: 'TEES' },
+  LONGSLEEVES: { tw: '長袖',   en: 'LONG SLEEVES' },
+  SHIRTS:      { tw: '襟衫',   en: 'SHIRTS' },
   POLOS:       { tw: 'POLO',   en: 'POLOS' },
-  TANKS:       { tw: 'èå¿',   en: 'TANKS' },
-  SWEATERS:    { tw: 'æ¯è¡£',   en: 'SWEATERS' },
-  JERSEYS:     { tw: 'çè¡£',   en: 'JERSEYS' },
-  OUTERWEAR:   { tw: 'å¤å¥',   en: 'OUTERWEAR' },
-  JACKETS:     { tw: 'å¤¾å',   en: 'JACKETS' },
-  HOODIES:     { tw: 'å¸½T',    en: 'HOODIES' },
-  BOTTOMS:     { tw: 'è¤²æ¬¾',   en: 'BOTTOMS' },
-  PANTS:       { tw: 'é·è¤²',   en: 'PANTS' },
-  SHORTS:      { tw: 'ç­è¤²',   en: 'SHORTS' },
-  SKIRTS:      { tw: 'è£æ¬¾',   en: 'SKIRTS' },
-  DRESSES:     { tw: 'æ´è£',   en: 'DRESSES' },
-  SETS:        { tw: 'å¥è£',   en: 'SETS' },
-  BAGS:        { tw: 'åæ¬¾',   en: 'BAGS' },
-  CAPS:        { tw: 'å¸½æ¬¾',   en: 'CAPS' },
-  ACCESSORIES: { tw: 'éä»¶',   en: 'ACCESSORIES' },
-  FOOTWEAR:    { tw: 'éæ¬¾',   en: 'FOOTWEAR' },
-  UNDERWEAR:   { tw: 'å§è',   en: 'UNDERWEAR' },
+  TANKS:       { tw: '背心',   en: 'TANKS' },
+  SWEATERS:    { tw: '毛衣',   en: 'SWEATERS' },
+  JERSEYS:     { tw: '球衣',   en: 'JERSEYS' },
+  OUTERWEAR:   { tw: '外套',   en: 'OUTERWEAR' },
+  JACKETS:     { tw: '夾克',   en: 'JACKETS' },
+  HOODIES:     { tw: '帽T',    en: 'HOODIES' },
+  BOTTOMS:     { tw: '褲款',   en: 'BOTTOMS' },
+  PANTS:       { tw: '長褲',   en: 'PANTS' },
+  SHORTS:      { tw: '短褲',   en: 'SHORTS' },
+  SKIRTS:      { tw: '裙款',   en: 'SKIRTS' },
+  DRESSES:     { tw: '洋裝',   en: 'DRESSES' },
+  SETS:        { tw: '套裝',   en: 'SETS' },
+  BAGS:        { tw: '包款',   en: 'BAGS' },
+  CAPS:        { tw: '帽款',   en: 'CAPS' },
+  ACCESSORIES: { tw: '配件',   en: 'ACCESSORIES' },
+  FOOTWEAR:    { tw: '鞋款',   en: 'FOOTWEAR' },
+  UNDERWEAR:   { tw: '內著',   en: 'UNDERWEAR' },
 };
 const CAT_ORDER = ['TOPS','TEES','LONGSLEEVES','SHIRTS','POLOS','TANKS','SWEATERS','JERSEYS','OUTERWEAR','JACKETS','HOODIES','BOTTOMS','PANTS','SHORTS','SKIRTS','DRESSES','SETS','BAGS','CAPS','ACCESSORIES','FOOTWEAR','UNDERWEAR'];
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 1.  APP STATE
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 1.  APP STATE
+   ═══════════════════════════════════════════════════════════════ */
 
 let BRANDS      = [];       // populated by loadData()
 let currentLang = 'tw';     // 'tw' | 'en'
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 2.  PRICE UTILITIES  (mirrors price_calc.js)
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 2.  PRICE UTILITIES  (mirrors price_calc.js)
+   ═══════════════════════════════════════════════════════════════ */
 
 function getMultiplier(vnd) {
   for (const { max, mult } of TIERS) if (vnd <= max) return mult;
@@ -126,17 +126,17 @@ function roundTo50(n) { return Math.round(n / 50) * 50; }
 
 /**
  * Psychological pricing: round to nearest 10, then force tail to 50 or 80.
- *   tail 00â49  â  xx50   (e.g. 2213 â 2210 â 2250)
- *   tail 50     â  unchanged
- *   tail 51â99  â  xx80   (e.g. 2265 â 2270 â 2280)
+ *   tail 00–49  →  xx50   (e.g. 2213 → 2210 → 2250)
+ *   tail 50     →  unchanged
+ *   tail 51–99  →  xx80   (e.g. 2265 → 2270 → 2280)
  */
 function psychPrice(n) {
   if (n == null) return n;
   const r    = Math.round(n / 10) * 10;   // round to nearest 10
   const tail = r % 100;
-  if (tail === 50) return r;              // already x50 â leave it
-  if (tail <= 49)  return r - tail + 50;  // 00â49 â force to x50
-  return r - tail + 80;                   // 51â99 â force to x80
+  if (tail === 50) return r;              // already x50 → leave it
+  if (tail <= 49)  return r - tail + 50;  // 00–49 → force to x50
+  return r - tail + 80;                   // 51–99 → force to x80
 }
 
 /**
@@ -152,9 +152,9 @@ function calcPrice(vnd, tag) {
   };
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 3.  DATA LOADING
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 3.  DATA LOADING
+   ═══════════════════════════════════════════════════════════════ */
 
 async function loadData() {
   _showLoadingState();
@@ -181,7 +181,7 @@ async function loadData() {
     return;
   }
 
-  // ── Fallback: fetch brands_products.json (legacy) ────────────────
+  // ── Fallback: fetch brands_products.json (legacy) ──────────
   if (location.protocol === 'file:') {
     _showFatalError(
       '⚠️ 無法載入資料',
@@ -205,7 +205,7 @@ async function loadData() {
   }
 }
 
-/** Shared parse logic â called whether data came from data.js or fetch() */
+/** Shared parse logic — called whether data came from data.js or fetch() */
 function _parseData(data) {
   // Group products by brand_id & recalculate TWD prices with current TIERS
   const byBrand = {};
@@ -221,13 +221,15 @@ function _parseData(data) {
     byBrand[p.brand_id].push(p);
   }
 
-  // Map JSON brands â internal BRANDS array
+  // Map JSON brands → internal BRANDS array
   BRANDS = data.brands.map(b => ({
     id:            b.id,
     name:          b.name,
     origin:        b.style || '',
     style:         b.style,
     color:         b.color_hex,
+    logo_url:      b.logo_url || '',
+    cover_url:     b.cover_url || '',
     desc_en:       b.description.en,
     desc_tw:       b.description.zh || b.description.tw || b.description.th || b.description.en,
     meta_founded:  (b.meta && b.meta.founded) || '',
@@ -237,7 +239,7 @@ function _parseData(data) {
   }));
 }
 
-/* ââ Loading / error helpers ââââââââââââââââââââââââââââââââââ */
+/* ── Loading / error helpers ────────────────────────────────── */
 function _showLoadingState() {
   const grid = document.getElementById('brands-grid');
   if (!grid) return;
@@ -252,7 +254,7 @@ function _showLoadingState() {
 }
 
 function _hideLoadingState() {
-  // renderBrandsGrid() will overwrite the grid â nothing extra needed
+  // renderBrandsGrid() will overwrite the grid — nothing extra needed
 }
 
 function _showFatalError(title, subtitle, bullets = []) {
@@ -270,9 +272,9 @@ function _showFatalError(title, subtitle, bullets = []) {
     </div>`;
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 4.  PAGE NAVIGATION
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 4.  PAGE NAVIGATION
+   ═══════════════════════════════════════════════════════════════ */
 
 function showPage(page, brandId) {
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
@@ -286,15 +288,15 @@ function showPage(page, brandId) {
   updateTexts();
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 4.1  æ ¸å¿ä¿®å¾©ï¼é¡¯ç¤ºåçèåé 
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 4.1  核心修復：顯示品牌與品項
+   ═══════════════════════════════════════════════════════════════ */
 function renderBrandPage(brandId) {
   // Use internal BRANDS array (already parsed by _parseData) — no longer depends on window.BRANDS_DATA
   const brand = BRANDS.find(b => b.id === brandId);
   if (!brand) return;
 
-  // ââ Apply brand-specific colour theme ââââââââââââââââââââââââ
+  // ── Apply brand-specific colour theme ────────────────────────
   const theme  = BRAND_THEME[brandId] || {};
   const pageEl = document.getElementById('page-brand');
   pageEl.style.setProperty('--accent',        theme.accent  || '#c084fc');
@@ -312,7 +314,7 @@ function renderBrandPage(brandId) {
   const nameEl = document.getElementById('brand-hero-name');
   if (nameEl) nameEl.innerText = brand.name;
 
-  // Hero background â use first product image
+  // Hero background — use first product image
   const heroBg = document.getElementById('brand-hero-bg');
   if (heroBg) {
     const firstProd = window.CURRENT_BRAND_PRODUCTS[0];
@@ -326,15 +328,15 @@ function renderBrandPage(brandId) {
     }
   }
 
-  // Info bar â description + meta
+  // Info bar — description + meta (uses internal BRANDS fields set by _parseData)
   const infoBar = document.getElementById('brand-info-bar');
   if (infoBar) {
     const desc = currentLang === 'tw' ? (brand.desc_tw || '') : (brand.desc_en || '');
     infoBar.innerHTML = `
       <div class="brand-desc-full">${desc}</div>
       ${brand.meta_category ? `<div class="brand-meta-item"><div class="brand-meta-label">CATEGORY</div><div class="brand-meta-value">${brand.meta_category}</div></div>` : ''}
-      ${brand.style   ? `<div class="brand-meta-item"><div class="brand-meta-label">STYLE</div><div class="brand-meta-value">${brand.style}</div></div>`       : ''}
-      ${brand.meta_location  ? `<div class="brand-meta-item"><div class="brand-meta-label">ORIGIN</div><div class="brand-meta-value">${brand.meta_location}</div></div>`        : ''}
+      ${brand.style          ? `<div class="brand-meta-item"><div class="brand-meta-label">STYLE</div><div class="brand-meta-value">${brand.style}</div></div>`          : ''}
+      ${brand.meta_location  ? `<div class="brand-meta-item"><div class="brand-meta-label">ORIGIN</div><div class="brand-meta-value">${brand.meta_location}</div></div>` : ''}
     `;
   }
 
@@ -342,9 +344,9 @@ function renderBrandPage(brandId) {
   renderProducts('ALL');
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 5.  LANGUAGE
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 5.  LANGUAGE
+   ═══════════════════════════════════════════════════════════════ */
 
 function setLang(lang) {
   currentLang = lang;
@@ -354,7 +356,7 @@ function setLang(lang) {
   updateTexts();
 
   // 2. Toggle about-strip & about-page lang-content blocks ONLY
-  //    (scoped to .lang-content class â never touches brand cards)
+  //    (scoped to .lang-content class — never touches brand cards)
   document.querySelectorAll('.lang-content').forEach(el => el.classList.remove('active'));
   [`about-${lang}`, `page-about-${lang}`].forEach(id => {
     const el = document.getElementById(id);
@@ -363,20 +365,20 @@ function setLang(lang) {
 
   // 3. Update switch button text (desktop + mobile)
   const sw = document.getElementById('lang-switch');
-  if (sw) sw.textContent = lang === 'tw' ? 'EN' : 'ä¸­';
+  if (sw) sw.textContent = lang === 'tw' ? 'EN' : '中';
   const msw = document.getElementById('mobile-lang-switch');
-  if (msw) msw.textContent = lang === 'tw' ? 'EN' : 'ä¸­';
+  if (msw) msw.textContent = lang === 'tw' ? 'EN' : '中';
 
   // 3b. Update mobile overlay nav button text
   document.querySelectorAll('#mobile-overlay .mobile-nav-btn[data-tw], #mobile-overlay .mobile-nav-btn[data-en]').forEach(el => {
     const txt = el.getAttribute('data-' + lang);
     if (txt) {
-      const hasChevron = el.textContent.includes('â¾');
-      el.textContent = txt + (hasChevron ? ' â¾' : '');
+      const hasChevron = el.textContent.includes('▾');
+      el.textContent = txt + (hasChevron ? ' ▾' : '');
     }
   });
 
-  // 4. Re-render brand grid (language-neutral â only uses b.name, never TH text)
+  // 4. Re-render brand grid (language-neutral — only uses b.name, never TH text)
   if (BRANDS.length) {
     console.log('[setLang] Re-rendering brands grid for:', lang);
     renderBrandsGrid();
@@ -390,19 +392,23 @@ function setLang(lang) {
     renderFilters();
     renderProducts('ALL');
   }
+
+  // 6. Re-apply dynamic SEO & banners for current language
+  applySeoMeta();
+  renderBanners();
 }
 
-/* ââ Lang-switch button click âââââââââââââââââââââââââââ */
+/* ── Lang-switch button click ─────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
   const sw = document.getElementById('lang-switch');
   if (sw) sw.addEventListener('click', () => {
     setLang(currentLang === 'tw' ? 'en' : 'tw');
   });
 
-  /* ââ Dropdown hover-delay system âââââââââââââââââââââââââââââ
+  /* ── Dropdown hover-delay system ─────────────────────────────
      Uses JS to add/remove .dropdown-open class with a 300ms
      leave-delay, preventing accidental menu closure.
-     ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+     ──────────────────────────────────────────────────────────── */
   const navItems = document.querySelectorAll('.nav-item');
   const HOVER_DELAY = 300; // ms delay before hiding
 
@@ -471,9 +477,9 @@ function updateTexts() {
   });
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 6.  RENDER â HOME: BRANDS GRID
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 6.  RENDER — HOME: BRANDS GRID
+   ═══════════════════════════════════════════════════════════════ */
 
 function renderBrandsGrid() {
   const grid = document.getElementById('brands-grid');
@@ -488,56 +494,54 @@ function renderBrandsGrid() {
   console.log('[renderBrandsGrid] Active brands (with products):', activeBrands.length);
 
   grid.innerHTML = activeBrands.map(b => {
-    // Brand name: always use b.name (English brand name) â never language-dependent
+    // Brand name: always use b.name (English brand name) — never language-dependent
     const displayName = b.name || b.id || 'UNKNOWN';
     const safeName    = displayName.replace(/'/g, "\\'");
 
-    // Image paths: purely based on brand ID â never affected by currentLang
-    const brandCover = `images/brands/${b.id}-cover.jpg`;
-    const brandLogo  = `images/brands/${b.id}-logo.png`;
-    const cdnCover   = _getBrandCoverSrc(b);
+    // Image: use DB cover_url → CDN product image → neon gradient fallback
+    const coverSrc   = b.cover_url || _getBrandCoverSrc(b) || '';
+    const logoSrc    = b.logo_url || '';
     const itemCount  = b.products.length;
     const cityLabel  = b.meta_location || b.origin || '';
     const cardId     = `bc-${b.id}`;
 
-    return `
-      <div class="brand-card fade-in" id="${cardId}" onclick="showPage('brand','${b.id}')">
-        <div class="brand-card-img"
-             style="background-image:url('${brandCover}')">
-        </div>
-        <img src="${brandCover}" alt="" style="display:none"
-             onerror="(function(){
-               var card=document.getElementById('${cardId}');
-               if(!card)return;
-               var bg=card.querySelector('.brand-card-img');
-               var cdn='${(cdnCover || '').replace(/'/g, "\\'")}';
-               if(cdn){bg.style.backgroundImage='url(\\''+cdn+'\\')'}
-               else{bg.style.backgroundImage='none';bg.style.background='${FALLBACK_BG}'}
-             })()">
-        <img class="brand-card-logo" src="${brandLogo}" alt="${displayName}"
+    // Background style: CDN image or neon gradient
+    const bgStyle = coverSrc
+      ? `background-image:url('${coverSrc}')`
+      : `background:${FALLBACK_BG}`;
+
+    // Logo: show <img> if URL exists, otherwise text fallback
+    const logoHtml = logoSrc
+      ? `<img class="brand-card-logo" src="${logoSrc}" alt="${displayName}"
              onerror="this.style.display='none';
                       if(!this.parentNode.querySelector('.brand-card-logo-text')){
                         var t=document.createElement('div');
                         t.className='brand-card-logo-text';
                         t.textContent='${safeName}';
                         this.parentNode.appendChild(t);
-                      }">
+                      }">`
+      : `<div class="brand-card-logo-text">${displayName}</div>`;
+
+    return `
+      <div class="brand-card fade-in" id="${cardId}" onclick="showPage('brand','${b.id}')">
+        <div class="brand-card-img" style="${bgStyle}"></div>
+        ${logoHtml}
         <div class="brand-card-overlay"></div>
         <div class="brand-card-info">
           <div class="brand-card-origin">${cityLabel}</div>
           <div class="brand-card-name">${displayName}</div>
           <div class="brand-card-count">${itemCount} ITEMS</div>
         </div>
-        <div class="brand-card-arrow">â</div>
+        <div class="brand-card-arrow">↗</div>
       </div>`;
   }).join('');
 }
 
 /** Find best displayable cover image from product data (CDN URLs).
- *  Priority: detail gallery (CDN) â source gallery (CDN) â original_cover_url â cover (CDN) */
+ *  Priority: detail gallery (CDN) → source gallery (CDN) → original_cover_url → cover (CDN) */
 function _getBrandCoverSrc(brand) {
   const _cdnUrl = (g) => (g.original_url || g.url || '').startsWith('http') ? (g.original_url || g.url) : null;
-  // Pass 1: CDN 'detail' image (model/lifestyle â usually darker)
+  // Pass 1: CDN 'detail' image (model/lifestyle — usually darker)
   for (const p of brand.products) {
     const gallery = p.images?.gallery || [];
     const detail = gallery.find(g => g.type === 'detail' && _cdnUrl(g));
@@ -571,9 +575,9 @@ function _getProductImageSrc(product) {
   return null;
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 7.  RENDER â NAV: BRANDS DROPDOWN  (A â Z)
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 7.  RENDER — NAV: BRANDS DROPDOWN  (A → Z)
+   ═══════════════════════════════════════════════════════════════ */
 
 function renderDropdown() {
   const container = document.getElementById('dropdown-letters');
@@ -598,9 +602,9 @@ function renderDropdown() {
     </div>`).join('');
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 8.  RENDER FILTERS (å°é½ç)
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 8.  RENDER FILTERS (對齊版)
+   ═══════════════════════════════════════════════════════════════ */
 function renderFilters() {
   const container = document.getElementById('products-filter');
   if (!container) return;
@@ -619,7 +623,7 @@ function renderFilters() {
     return m ? (currentLang === 'tw' ? m.tw : m.en) : cat;
   };
   let html = '<button class="filter-btn active" data-cat="ALL"><span>' +
-    (currentLang === 'tw' ? 'å¨é¨' : 'ALL') +
+    (currentLang === 'tw' ? '全部' : 'ALL') +
     '</span><span class="filter-count">' + products.length + '</span></button>';
   sorted.forEach(cat => {
     html += '<button class="filter-btn" data-cat="' + cat + '"><span>' +
@@ -635,9 +639,9 @@ function renderFilters() {
   });
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 9.  FILTER PRODUCTS
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 9.  FILTER PRODUCTS
+   ═══════════════════════════════════════════════════════════════ */
 
 function filterProducts(brandId, tag, btn) {
   const b = BRANDS.find(x => x.id === brandId);
@@ -659,14 +663,14 @@ function filterProducts(brandId, tag, btn) {
   setTimeout(() => grid.classList.remove('animating'), 700);
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 10a. BUILD A SINGLE PRODUCT CARD
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 10a. BUILD A SINGLE PRODUCT CARD
+   ═══════════════════════════════════════════════════════════════ */
 function _buildProductCard(p) {
   const gallery  = p.images?.gallery || [];
 
   // === Image resolution: prefer CDN links, skip local paths on server ===
-  // Priority: gallery[].original_url (CDN) â gallery[].url (if CDN) â original_cover_url
+  // Priority: gallery[].original_url (CDN) → gallery[].url (if CDN) → original_cover_url
   const cdnGalleryUrls = gallery
     .map(g => g.original_url || g.url || '')
     .filter(u => u.startsWith('http'));
@@ -686,14 +690,14 @@ function _buildProductCard(p) {
   const mainImg = coverUrl
     ? `<img class="card-main-img lazy-img" data-src="${coverUrl}" src="" loading="lazy" alt="${p.name}">`
     : `<div class="product-img-placeholder">
-         <div class="placeholder-icon">ð</div>
+         <div class="placeholder-icon">👕</div>
          <div class="placeholder-text">NO IMAGE</div>
        </div>`;
 
   const soldOverlay = '';
 
   const countBadge = imgUrls.length > 1
-    ? `<div class="photo-count-badge">ð· ${imgUrls.length}</div>` : '';
+    ? `<div class="photo-count-badge">📷 ${imgUrls.length}</div>` : '';
 
   const thumbsHtml = imgUrls.length > 1
     ? `<div class="gallery-thumbs">
@@ -714,8 +718,8 @@ function _buildProductCard(p) {
 
   const priceHtml = `
     <div class="product-price-wrap">
-      ${twdShip  != null ? `<div class="price-row"><span class="price-main">NT$ ${twdShip.toLocaleString()}</span><span class="price-tag-pill">${currentLang === 'tw' ? 'åé<span class="pill-sub">éé</span>' : 'SHIP<span class="pill-sub">INC.</span>'}</span></div>` : ''}
-      ${twdCarry != null ? `<div class="price-row"><span class="price-carry">NT$ ${twdCarry.toLocaleString()}</span><span class="price-tag-pill carry">${currentLang === 'tw' ? 'è¦ªèª<span class="pill-sub">éé</span>' : 'CARRY<span class="pill-sub">BACK</span>'}</span></div>` : ''}
+      ${twdShip  != null ? `<div class="price-row"><span class="price-main">NT$ ${twdShip.toLocaleString()}</span><span class="price-tag-pill">${currentLang === 'tw' ? '國際<span class="pill-sub">配送</span>' : 'SHIP<span class="pill-sub">INC.</span>'}</span></div>` : ''}
+      ${twdCarry != null ? `<div class="price-row"><span class="price-carry">NT$ ${twdCarry.toLocaleString()}</span><span class="price-tag-pill carry">${currentLang === 'tw' ? '親自<span class="pill-sub">運送</span>' : 'CARRY<span class="pill-sub">BACK</span>'}</span></div>` : ''}
     </div>`;
 
   return `
@@ -735,9 +739,9 @@ function _buildProductCard(p) {
     </div>`;
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 10.  RENDER â PRODUCT CARDS (ä¿®æ­£éæ¿¾ç)
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 10.  RENDER — PRODUCT CARDS (修正過濾版)
+   ═══════════════════════════════════════════════════════════════ */
 function renderProducts(cat) {
   cat = cat || 'ALL';
   const grid = document.getElementById('products-grid');
@@ -755,9 +759,9 @@ function renderProducts(cat) {
   if (typeof initImgLazy === 'function') initImgLazy();
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 11.  GALLERY THUMBNAIL SWITCHER
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 11.  GALLERY THUMBNAIL SWITCHER
+   ═══════════════════════════════════════════════════════════════ */
 
 function switchThumb(thumbEl, url, evt) {
   if (evt) evt.stopPropagation();
@@ -789,9 +793,9 @@ function switchThumb(thumbEl, url, evt) {
     .forEach(t => t.classList.toggle('active', t === thumbEl));
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 12.  LAZY IMAGE LOADING  (IntersectionObserver)
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 12.  LAZY IMAGE LOADING  (IntersectionObserver)
+   ═══════════════════════════════════════════════════════════════ */
 (function () {
   let _obs = null;
 
@@ -824,9 +828,9 @@ function switchThumb(thumbEl, url, evt) {
   };
 })();
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 13.  LIGHTBOX
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 13.  LIGHTBOX
+   ═══════════════════════════════════════════════════════════════ */
 (function () {
   let imgs = [], idx = 0;
 
@@ -890,9 +894,9 @@ function switchThumb(thumbEl, url, evt) {
   });
 })();
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 14.  FADE-IN OBSERVER  (scroll animations)
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 14.  FADE-IN OBSERVER  (scroll animations)
+   ═══════════════════════════════════════════════════════════════ */
 function observeFadeIns() {
   const obs = new IntersectionObserver(entries => {
     entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
@@ -900,9 +904,9 @@ function observeFadeIns() {
   document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 15b.  STYLE FILTER  (navbar dropdown)
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 15b.  STYLE FILTER  (navbar dropdown)
+   ═══════════════════════════════════════════════════════════════ */
 function filterByStyle(keyword) {
   showPage('home');
   setTimeout(() => {
@@ -925,12 +929,12 @@ function filterByStyle(keyword) {
   }, 50);
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 16.  INIT
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 16a. MOBILE MENU
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 16.  INIT
+   ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   § 16a. MOBILE MENU
+   ═══════════════════════════════════════════════════════════════ */
 function toggleMobileMenu() {
   const overlay = document.getElementById('mobile-overlay');
   const hamburger = document.getElementById('hamburger');
@@ -984,9 +988,82 @@ function toggleMobileLang() {
   setLang(next);
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   Â§ 16.  INIT
-   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════════════════════════
+   § 15a.  DYNAMIC BANNERS (from CMS)
+   ═══════════════════════════════════════════════════════════════ */
+
+function renderBanners() {
+  const banners = window.BANNERS_DATA || [];
+  if (!banners.length) return;   // no banners — keep static hero
+
+  const container = document.getElementById('hero-banners');
+  if (!container) return;
+
+  // Show banner container, hide static hero content
+  container.style.display = 'block';
+  const staticHero = document.querySelector('.hero-content');
+  if (staticHero) staticHero.style.display = 'none';
+
+  let current = 0;
+
+  function render() {
+    const b = banners[current];
+    const lang = currentLang || 'tw';
+    const title    = lang === 'tw' ? (b.title_zh || b.title_en) : (b.title_en || b.title_zh);
+    const subtitle = lang === 'tw' ? (b.subtitle_zh || b.subtitle_en) : (b.subtitle_en || b.subtitle_zh);
+
+    container.innerHTML = `
+      <div class="hero-banner-slide" style="background-image:url('${b.image_url}')">
+        <div class="hero-banner-overlay"></div>
+        <div class="hero-banner-text">
+          ${title ? `<h2 class="hero-banner-title">${title}</h2>` : ''}
+          ${subtitle ? `<p class="hero-banner-subtitle">${subtitle}</p>` : ''}
+          ${b.link_url ? `<a class="btn-primary" href="${b.link_url}">SHOP NOW</a>` : ''}
+        </div>
+      </div>
+      ${banners.length > 1 ? `<div class="hero-banner-dots">
+        ${banners.map((_, i) => `<span class="hero-dot${i === current ? ' active' : ''}" onclick="window._bannerGo(${i})"></span>`).join('')}
+      </div>` : ''}`;
+  }
+
+  window._bannerGo = function(i) { current = i; render(); };
+
+  // Auto-rotate every 5 seconds
+  if (banners.length > 1) {
+    setInterval(() => { current = (current + 1) % banners.length; render(); }, 5000);
+  }
+
+  render();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   § 15b.  DYNAMIC SEO META (from CMS site_settings)
+   ═══════════════════════════════════════════════════════════════ */
+
+function applySeoMeta() {
+  const settings = window.SITE_SETTINGS || {};
+  const seo = settings.seo_homepage;
+  if (!seo) return;
+
+  const lang = currentLang || 'tw';
+  const title = lang === 'tw' ? (seo.title_zh || seo.title_en) : (seo.title_en || seo.title_zh);
+  const desc  = lang === 'tw' ? (seo.description_zh || seo.description_en) : (seo.description_en || seo.description_zh);
+
+  if (title) document.title = title;
+
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc && desc) metaDesc.setAttribute('content', desc);
+
+  // Update Open Graph tags
+  const ogTitle = document.querySelector('meta[property="og:title"]');
+  const ogDesc  = document.querySelector('meta[property="og:description"]');
+  if (ogTitle && title) ogTitle.setAttribute('content', title);
+  if (ogDesc && desc)   ogDesc.setAttribute('content', desc);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   § 16.  INIT
+   ═══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
 
@@ -994,6 +1071,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderBrandsGrid();
   renderDropdown();
+  renderBanners();
+  applySeoMeta();
   observeFadeIns();
   setLang('tw');        // default to Traditional Chinese
   initImgLazy();
