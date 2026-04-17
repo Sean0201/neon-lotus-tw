@@ -1409,7 +1409,7 @@
         const SUPABASE_URL = 'https://epemuyojkprepknuzuzc.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZW11eW9qa3ByZXBrbnV6dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDMwMTAsImV4cCI6MjA5MTM3OTAxMH0.nTv7W1_ndzzAQGNgVzSKSkruvsnEgt6N7PbnRK31l0M';
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // ============================================================================
         // STATE
@@ -1430,7 +1430,7 @@
         // ============================================================================
         async function initAuth() {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session } } = await sb.auth.getSession();
                 if (session) {
                     currentUser = session.user;
                     showAppPage();
@@ -1452,7 +1452,7 @@
             errorDiv.textContent = '';
 
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await sb.auth.signInWithPassword({
                     email,
                     password
                 });
@@ -1468,7 +1468,7 @@
         });
 
         document.getElementById('logoutBtn').addEventListener('click', async () => {
-            await supabase.auth.signOut();
+            await sb.auth.signOut();
             currentUser = null;
             showLoginPage();
         });
@@ -1537,17 +1537,17 @@
         async function loadDashboard() {
             try {
                 const [brandsData, productsData] = await Promise.all([
-                    supabase.from('brands').select('id'),
-                    supabase.from('products').select('*').order('updated_at', { ascending: false }).limit(10)
+                    sb.from('brands').select('id'),
+                    sb.from('products').select('*').order('updated_at', { ascending: false }).limit(10)
                 ]);
 
                 const [activeProducts, soldOutProducts] = await Promise.all([
-                    supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true),
-                    supabase.from('products').select('id', { count: 'exact', head: true }).eq('sold_out', true)
+                    sb.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true),
+                    sb.from('products').select('id', { count: 'exact', head: true }).eq('sold_out', true)
                 ]);
 
                 document.getElementById('totalBrands').textContent = brandsData.data?.length || 0;
-                document.getElementById('totalProducts').textContent = (await supabase.from('products').select('id', { count: 'exact', head: true })).count || 0;
+                document.getElementById('totalProducts').textContent = (await sb.from('products').select('id', { count: 'exact', head: true })).count || 0;
                 document.getElementById('activeProducts').textContent = activeProducts.count || 0;
                 document.getElementById('soldOutProducts').textContent = soldOutProducts.count || 0;
 
@@ -1555,7 +1555,7 @@
                 tbody.innerHTML = '';
                 if (productsData.data) {
                     for (const product of productsData.data) {
-                        const brand = await supabase.from('brands').select('name').eq('id', product.brand_id).single();
+                        const brand = await sb.from('brands').select('name').eq('id', product.brand_id).single();
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>${product.name}</td>
@@ -1576,7 +1576,7 @@
         // ============================================================================
         async function loadBrands() {
             try {
-                const { data, error } = await supabase.from('brands').select('*').order('sort_order', { ascending: true });
+                const { data, error } = await sb.from('brands').select('*').order('sort_order', { ascending: true });
                 if (error) throw error;
                 allBrands = data || [];
                 renderBrandsTable();
@@ -1611,7 +1611,7 @@
                 `;
                 tbody.appendChild(tr);
 
-                supabase.from('products').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).then(({ count }) => {
+                sb.from('products').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).then(({ count }) => {
                     const countEl = document.getElementById(`brand-count-${brand.id}`);
                     if (countEl) countEl.textContent = count || 0;
                 });
@@ -1672,12 +1672,12 @@
 
             try {
                 if (editingBrandId) {
-                    const { error } = await supabase.from('brands').update(data).eq('id', editingBrandId);
+                    const { error } = await sb.from('brands').update(data).eq('id', editingBrandId);
                     if (error) throw error;
                     showToast('Brand updated', 'success');
                 } else {
                     data.id = document.getElementById('brandId').value;
-                    const { error } = await supabase.from('brands').insert([data]);
+                    const { error } = await sb.from('brands').insert([data]);
                     if (error) throw error;
                     showToast('Brand created', 'success');
                 }
@@ -1691,7 +1691,7 @@
         async function deleteBrand(id) {
             if (!confirm('Are you sure you want to delete this brand?')) return;
             try {
-                const { error } = await supabase.from('brands').delete().eq('id', id);
+                const { error } = await sb.from('brands').delete().eq('id', id);
                 if (error) throw error;
                 showToast('Brand deleted', 'success');
                 loadBrands();
@@ -1713,7 +1713,7 @@
         // ============================================================================
         async function loadProducts() {
             try {
-                const { data, error } = await supabase.from('products').select('*').order('sort_order', { ascending: true });
+                const { data, error } = await sb.from('products').select('*').order('sort_order', { ascending: true });
                 if (error) throw error;
                 allProducts = data || [];
 
@@ -1824,28 +1824,28 @@
             try {
                 if (action === 'activate') {
                     for (const id of selectedProductIds) {
-                        await supabase.from('products').update({ is_active: true }).eq('id', id);
+                        await sb.from('products').update({ is_active: true }).eq('id', id);
                     }
                     showToast(`${selectedProductIds.size} products activated`, 'success');
                 } else if (action === 'deactivate') {
                     for (const id of selectedProductIds) {
-                        await supabase.from('products').update({ is_active: false }).eq('id', id);
+                        await sb.from('products').update({ is_active: false }).eq('id', id);
                     }
                     showToast(`${selectedProductIds.size} products deactivated`, 'success');
                 } else if (action === 'sold-out') {
                     for (const id of selectedProductIds) {
-                        await supabase.from('products').update({ sold_out: true }).eq('id', id);
+                        await sb.from('products').update({ sold_out: true }).eq('id', id);
                     }
                     showToast(`${selectedProductIds.size} products marked as sold out`, 'success');
                 } else if (action === 'clear-sold') {
                     for (const id of selectedProductIds) {
-                        await supabase.from('products').update({ sold_out: false }).eq('id', id);
+                        await sb.from('products').update({ sold_out: false }).eq('id', id);
                     }
                     showToast(`${selectedProductIds.size} products cleared from sold out`, 'success');
                 } else if (action === 'delete') {
                     if (!confirm(`Delete ${selectedProductIds.size} products?`)) return;
                     for (const id of selectedProductIds) {
-                        await supabase.from('products').delete().eq('id', id);
+                        await sb.from('products').delete().eq('id', id);
                     }
                     showToast(`${selectedProductIds.size} products deleted`, 'success');
                 }
@@ -1858,7 +1858,7 @@
 
         async function updateProductSoldOut(id, value) {
             try {
-                await supabase.from('products').update({ sold_out: value }).eq('id', id);
+                await sb.from('products').update({ sold_out: value }).eq('id', id);
             } catch (error) {
                 showToast(error.message, 'error');
             }
@@ -1866,7 +1866,7 @@
 
         async function updateProductActive(id, value) {
             try {
-                await supabase.from('products').update({ is_active: value }).eq('id', id);
+                await sb.from('products').update({ is_active: value }).eq('id', id);
             } catch (error) {
                 showToast(error.message, 'error');
             }
@@ -1968,7 +1968,7 @@
             document.getElementById('productSortOrder').value = product.sort_order || 0;
 
             clearProductSizes();
-            const { data: sizes } = await supabase.from('product_sizes').select('*').eq('product_id', id).order('sort_order', { ascending: true });
+            const { data: sizes } = await sb.from('product_sizes').select('*').eq('product_id', id).order('sort_order', { ascending: true });
             if (sizes) {
                 sizes.forEach(size => {
                     const sizesList = document.getElementById('sizesList');
@@ -1987,7 +1987,7 @@
             }
 
             clearProductGallery();
-            const { data: gallery } = await supabase.from('product_gallery').select('*').eq('product_id', id).order('sort_order', { ascending: true });
+            const { data: gallery } = await sb.from('product_gallery').select('*').eq('product_id', id).order('sort_order', { ascending: true });
             if (gallery) {
                 gallery.forEach(item => {
                     const galleryList = document.getElementById('galleryList');
@@ -2020,10 +2020,10 @@
             try {
                 const filename = `${Date.now()}-${file.name}`;
                 const path = `products/${editingProductId || 'temp'}/${filename}`;
-                const { data, error } = await supabase.storage.from('product-images').upload(path, file);
+                const { data, error } = await sb.storage.from('product-images').upload(path, file);
                 if (error) throw error;
 
-                const { data: publicUrl } = supabase.storage.from('product-images').getPublicUrl(path);
+                const { data: publicUrl } = sb.storage.from('product-images').getPublicUrl(path);
                 document.getElementById('productCoverUrl').value = publicUrl.publicUrl;
                 document.getElementById('productCoverPreview').src = publicUrl.publicUrl;
                 document.getElementById('productCoverPreview').style.display = 'block';
@@ -2056,10 +2056,10 @@
 
             try {
                 if (editingProductId) {
-                    const { error } = await supabase.from('products').update(data).eq('id', editingProductId);
+                    const { error } = await sb.from('products').update(data).eq('id', editingProductId);
                     if (error) throw error;
 
-                    await supabase.from('product_sizes').delete().eq('product_id', editingProductId);
+                    await sb.from('product_sizes').delete().eq('product_id', editingProductId);
                     const sizes = [];
                     document.querySelectorAll('#sizesList .list-item').forEach((item, idx) => {
                         const label = item.querySelector('input[type="text"]').value;
@@ -2069,10 +2069,10 @@
                         }
                     });
                     if (sizes.length > 0) {
-                        await supabase.from('product_sizes').insert(sizes);
+                        await sb.from('product_sizes').insert(sizes);
                     }
 
-                    await supabase.from('product_gallery').delete().eq('product_id', editingProductId);
+                    await sb.from('product_gallery').delete().eq('product_id', editingProductId);
                     const gallery = [];
                     document.querySelectorAll('#galleryList .list-item').forEach((item, idx) => {
                         const url = item.querySelector('input[type="text"]').value;
@@ -2082,7 +2082,7 @@
                         }
                     });
                     if (gallery.length > 0) {
-                        await supabase.from('product_gallery').insert(gallery);
+                        await sb.from('product_gallery').insert(gallery);
                     }
 
                     showToast('Product updated', 'success');
@@ -2090,7 +2090,7 @@
                     data.id = document.getElementById('productId').value;
                     data.created_at = new Date().toISOString();
 
-                    const { error } = await supabase.from('products').insert([data]);
+                    const { error } = await sb.from('products').insert([data]);
                     if (error) throw error;
 
                     const sizes = [];
@@ -2102,7 +2102,7 @@
                         }
                     });
                     if (sizes.length > 0) {
-                        await supabase.from('product_sizes').insert(sizes);
+                        await sb.from('product_sizes').insert(sizes);
                     }
 
                     const gallery = [];
@@ -2114,7 +2114,7 @@
                         }
                     });
                     if (gallery.length > 0) {
-                        await supabase.from('product_gallery').insert(gallery);
+                        await sb.from('product_gallery').insert(gallery);
                     }
 
                     showToast('Product created', 'success');
@@ -2129,9 +2129,9 @@
         async function deleteProduct(id) {
             if (!confirm('Are you sure you want to delete this product?')) return;
             try {
-                await supabase.from('product_sizes').delete().eq('product_id', id);
-                await supabase.from('product_gallery').delete().eq('product_id', id);
-                const { error } = await supabase.from('products').delete().eq('id', id);
+                await sb.from('product_sizes').delete().eq('product_id', id);
+                await sb.from('product_gallery').delete().eq('product_id', id);
+                const { error } = await sb.from('products').delete().eq('id', id);
                 if (error) throw error;
                 showToast('Product deleted', 'success');
                 loadProducts();
@@ -2145,7 +2145,7 @@
         // ============================================================================
         async function loadBanners() {
             try {
-                const { data, error } = await supabase.from('banners').select('*').order('sort_order', { ascending: true });
+                const { data, error } = await sb.from('banners').select('*').order('sort_order', { ascending: true });
                 if (error) throw error;
                 allBanners = data || [];
                 renderBannersTable();
@@ -2229,10 +2229,10 @@
             try {
                 const filename = `${Date.now()}-${file.name}`;
                 const path = `banners/${editingBannerId || 'temp'}/${filename}`;
-                const { data, error } = await supabase.storage.from('product-images').upload(path, file);
+                const { data, error } = await sb.storage.from('product-images').upload(path, file);
                 if (error) throw error;
 
-                const { data: publicUrl } = supabase.storage.from('product-images').getPublicUrl(path);
+                const { data: publicUrl } = sb.storage.from('product-images').getPublicUrl(path);
                 document.getElementById('bannerImageUrl').value = publicUrl.publicUrl;
                 document.getElementById('bannerImagePreview').src = publicUrl.publicUrl;
                 document.getElementById('bannerImagePreview').style.display = 'block';
@@ -2256,12 +2256,12 @@
 
             try {
                 if (editingBannerId) {
-                    const { error } = await supabase.from('banners').update(data).eq('id', editingBannerId);
+                    const { error } = await sb.from('banners').update(data).eq('id', editingBannerId);
                     if (error) throw error;
                     showToast('Banner updated', 'success');
                 } else {
                     data.created_at = new Date().toISOString();
-                    const { error } = await supabase.from('banners').insert([data]);
+                    const { error } = await sb.from('banners').insert([data]);
                     if (error) throw error;
                     showToast('Banner created', 'success');
                 }
@@ -2274,7 +2274,7 @@
 
         async function updateBannerActive(id, value) {
             try {
-                await supabase.from('banners').update({ is_active: value }).eq('id', id);
+                await sb.from('banners').update({ is_active: value }).eq('id', id);
             } catch (error) {
                 showToast(error.message, 'error');
             }
@@ -2283,7 +2283,7 @@
         async function deleteBanner(id) {
             if (!confirm('Are you sure you want to delete this banner?')) return;
             try {
-                const { error } = await supabase.from('banners').delete().eq('id', id);
+                const { error } = await sb.from('banners').delete().eq('id', id);
                 if (error) throw error;
                 showToast('Banner deleted', 'success');
                 loadBanners();
@@ -2297,7 +2297,7 @@
         // ============================================================================
         async function loadSettings() {
             try {
-                const { data: seoData } = await supabase.from('site_settings').select('value').eq('key', 'seo_homepage').single();
+                const { data: seoData } = await sb.from('site_settings').select('value').eq('key', 'seo_homepage').single();
                 if (seoData?.value) {
                     document.getElementById('seoTitleEn').value = seoData.value.title_en || '';
                     document.getElementById('seoTitleZh').value = seoData.value.title_zh || '';
@@ -2305,14 +2305,14 @@
                     document.getElementById('seoDescZh').value = seoData.value.description_zh || '';
                 }
 
-                const { data: heroData } = await supabase.from('site_settings').select('value').eq('key', 'homepage_hero').single();
+                const { data: heroData } = await sb.from('site_settings').select('value').eq('key', 'homepage_hero').single();
                 if (heroData?.value) {
                     document.getElementById('heroTitle').value = heroData.value.title || '';
                     document.getElementById('heroSubtitleEn').value = heroData.value.subtitle_en || '';
                     document.getElementById('heroSubtitleZh').value = heroData.value.subtitle_zh || '';
                 }
 
-                const { data: imageData } = await supabase.from('site_settings').select('value').eq('key', 'og_image_favicon').single();
+                const { data: imageData } = await sb.from('site_settings').select('value').eq('key', 'og_image_favicon').single();
                 if (imageData?.value) {
                     document.getElementById('ogImageUrl').value = imageData.value.og_image_url || '';
                     document.getElementById('faviconUrl').value = imageData.value.favicon_url || '';
@@ -2331,7 +2331,7 @@
             };
 
             try {
-                const { error } = await supabase.from('site_settings').upsert({
+                const { error } = await sb.from('site_settings').upsert({
                     key: 'seo_homepage',
                     value,
                     updated_at: new Date().toISOString()
@@ -2351,7 +2351,7 @@
             };
 
             try {
-                const { error } = await supabase.from('site_settings').upsert({
+                const { error } = await sb.from('site_settings').upsert({
                     key: 'homepage_hero',
                     value,
                     updated_at: new Date().toISOString()
@@ -2370,7 +2370,7 @@
             };
 
             try {
-                const { error } = await supabase.from('site_settings').upsert({
+                const { error } = await sb.from('site_settings').upsert({
                     key: 'og_image_favicon',
                     value,
                     updated_at: new Date().toISOString()
@@ -2429,7 +2429,7 @@
 
                 try {
                     for (const update of updates) {
-                        await supabase.from(entityType).update({ sort_order: update.sort_order }).eq('id', update.id);
+                        await sb.from(entityType).update({ sort_order: update.sort_order }).eq('id', update.id);
                     }
                     showToast('Order updated', 'success');
                 } catch (error) {
