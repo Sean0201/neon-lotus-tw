@@ -873,6 +873,10 @@
                         <span class="nav-icon">🖼️</span>
                         <span>Banners</span>
                     </div>
+                    <div class="nav-item" data-page="orders">
+                        <span class="nav-icon">🛒</span>
+                        <span>Orders</span>
+                    </div>
                     <div class="nav-item" data-page="settings">
                         <span class="nav-icon">⚙️</span>
                         <span>SEO & Settings</span>
@@ -911,6 +915,14 @@
                             <div class="stat-card">
                                 <h3>Sold Out</h3>
                                 <div class="value" id="soldOutProducts">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Total Orders</h3>
+                                <div class="value" id="totalOrders">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Pending Orders</h3>
+                                <div class="value" id="pendingOrders" style="color:#ffa726;">0</div>
                             </div>
                         </div>
 
@@ -1032,6 +1044,53 @@
                                 <tbody id="bannersTableBody" draggable="true">
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Orders Page -->
+                    <div id="orders" class="page">
+                        <div class="table-container">
+                            <div class="table-header">
+                                <h2>Orders</h2>
+                                <div style="display:flex;gap:8px;align-items:center;">
+                                    <select id="orderStatusFilter" style="padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+                                        <option value="all">All Status</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="confirmed">Confirmed</option>
+                                        <option value="shipped">Shipped</option>
+                                        <option value="delivered">Delivered</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                    <button class="btn-secondary" onclick="loadOrders()">Refresh</button>
+                                </div>
+                            </div>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Date</th>
+                                        <th>Customer</th>
+                                        <th>Items</th>
+                                        <th>Total</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ordersTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Order Detail Modal -->
+                    <div id="orderDetailModal" class="modal-overlay" style="display:none;">
+                        <div class="modal" style="max-width:700px;">
+                            <div class="modal-header">
+                                <h2 id="orderDetailTitle">Order Detail</h2>
+                                <button class="modal-close" onclick="closeOrderDetail()">×</button>
+                            </div>
+                            <div class="modal-body" id="orderDetailBody" style="padding:1.5rem;">
+                            </div>
                         </div>
                     </div>
 
@@ -1517,6 +1576,7 @@
             else if (page === 'brands') loadBrands();
             else if (page === 'products') loadProducts();
             else if (page === 'banners') loadBanners();
+            else if (page === 'orders') loadOrders();
             else if (page === 'settings') loadSettings();
         }
 
@@ -1526,6 +1586,7 @@
                 'brands': 'Brands Management',
                 'products': 'Products Management',
                 'banners': 'Banners Management',
+                'orders': 'Orders Management',
                 'settings': 'SEO & Settings'
             };
             document.getElementById('pageTitle').textContent = titles[page] || page;
@@ -1546,10 +1607,17 @@
                     sb.from('products').select('id', { count: 'exact', head: true }).eq('sold_out', true)
                 ]);
 
+                const [totalOrdersRes, pendingOrdersRes] = await Promise.all([
+                    sb.from('orders').select('id', { count: 'exact', head: true }),
+                    sb.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+                ]);
+
                 document.getElementById('totalBrands').textContent = brandsData.data?.length || 0;
                 document.getElementById('totalProducts').textContent = (await sb.from('products').select('id', { count: 'exact', head: true })).count || 0;
                 document.getElementById('activeProducts').textContent = activeProducts.count || 0;
                 document.getElementById('soldOutProducts').textContent = soldOutProducts.count || 0;
+                document.getElementById('totalOrders').textContent = totalOrdersRes.count || 0;
+                document.getElementById('pendingOrders').textContent = pendingOrdersRes.count || 0;
 
                 const tbody = document.getElementById('recentTableBody');
                 tbody.innerHTML = '';
@@ -2291,6 +2359,158 @@
                 showToast(error.message, 'error');
             }
         }
+
+        // ============================================================================
+        // ORDERS MANAGEMENT
+        // ============================================================================
+        const ORDER_STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+        const STATUS_COLORS = {
+            pending:   '#ffa726',
+            confirmed: '#42a5f5',
+            shipped:   '#ab47bc',
+            delivered: '#66bb6a',
+            cancelled: '#ef5350',
+        };
+
+        async function loadOrders() {
+            const tbody = document.getElementById('ordersTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;">Loading orders...</td></tr>';
+
+            try {
+                const statusFilter = document.getElementById('orderStatusFilter').value;
+                let query = sb.from('orders').select('*').order('created_at', { ascending: false });
+                if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+                const { data: orders, error } = await query;
+                if (error) throw error;
+
+                if (!orders || orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-secondary);">No orders found</td></tr>';
+                    return;
+                }
+
+                // Fetch item counts per order
+                const orderIds = orders.map(o => o.id);
+                const { data: items } = await sb.from('order_items').select('order_id, quantity').in('order_id', orderIds);
+                const itemCounts = {};
+                (items || []).forEach(i => {
+                    itemCounts[i.order_id] = (itemCounts[i.order_id] || 0) + i.quantity;
+                });
+
+                tbody.innerHTML = orders.map(o => {
+                    const date = new Date(o.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                    const statusColor = STATUS_COLORS[o.status] || '#999';
+                    const count = itemCounts[o.id] || 0;
+                    return `<tr>
+                        <td><strong>${o.order_number || '—'}</strong></td>
+                        <td style="font-size:12px;">${date}</td>
+                        <td>${o.customer_name || '—'}<br><span style="font-size:11px;color:var(--text-secondary);">${o.customer_phone || ''}</span></td>
+                        <td>${count} item${count !== 1 ? 's' : ''}</td>
+                        <td><strong>NT$ ${(o.total || 0).toLocaleString()}</strong></td>
+                        <td><span style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;">${o.status}</span></td>
+                        <td>
+                            <button class="btn-secondary" style="font-size:11px;padding:4px 8px;" onclick="viewOrderDetail('${o.id}')">View</button>
+                            <select style="font-size:11px;padding:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text);" onchange="updateOrderStatus('${o.id}', this.value)">
+                                ${ORDER_STATUSES.map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}
+                            </select>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch (err) {
+                console.error('Failed to load orders:', err);
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef5350;">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function updateOrderStatus(orderId, newStatus) {
+            try {
+                const { error } = await sb.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId);
+                if (error) throw error;
+                showToast('Order status updated to: ' + newStatus);
+                loadOrders();
+            } catch (err) {
+                console.error('Failed to update order status:', err);
+                showToast('Error updating status: ' + err.message, 'error');
+            }
+        }
+
+        async function viewOrderDetail(orderId) {
+            const modal = document.getElementById('orderDetailModal');
+            const body = document.getElementById('orderDetailBody');
+            body.innerHTML = '<p style="text-align:center;padding:40px;">Loading...</p>';
+            modal.style.display = 'flex';
+
+            try {
+                const [orderRes, itemsRes] = await Promise.all([
+                    sb.from('orders').select('*').eq('id', orderId).single(),
+                    sb.from('order_items').select('*').eq('order_id', orderId),
+                ]);
+                if (orderRes.error) throw orderRes.error;
+
+                const o = orderRes.data;
+                const items = itemsRes.data || [];
+                const date = new Date(o.created_at).toLocaleString('zh-TW');
+                const statusColor = STATUS_COLORS[o.status] || '#999';
+
+                document.getElementById('orderDetailTitle').textContent = 'Order ' + (o.order_number || o.id);
+
+                body.innerHTML = `
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+                        <div>
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Customer</div>
+                            <div style="font-weight:600;">${o.customer_name}</div>
+                            <div style="font-size:13px;color:var(--text-secondary);">${o.customer_phone || ''}</div>
+                            <div style="font-size:13px;color:var(--text-secondary);">${o.customer_email || ''}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Delivery</div>
+                            <div style="font-size:13px;">${o.customer_address || '—'}</div>
+                            <div style="font-size:13px;margin-top:4px;">Method: <strong>${o.shipping_method || '—'}</strong></div>
+                        </div>
+                        <div>
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Status</div>
+                            <span style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;">${o.status}</span>
+                        </div>
+                        <div>
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Date</div>
+                            <div style="font-size:13px;">${date}</div>
+                        </div>
+                    </div>
+                    ${o.note ? `<div style="margin-bottom:16px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Note</div><div style="font-size:13px;">${o.note}</div></div>` : ''}
+                    <h3 style="margin-bottom:12px;">Items (${items.length})</h3>
+                    <table class="data-table" style="margin-bottom:16px;">
+                        <thead><tr><th>Image</th><th>Product</th><th>Size</th><th>Qty</th><th>Price</th></tr></thead>
+                        <tbody>
+                            ${items.map(item => `
+                                <tr>
+                                    <td>${item.image_url ? `<img src="${item.image_url}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">` : '—'}</td>
+                                    <td>${item.product_name || '—'}</td>
+                                    <td>${item.size || '—'}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>NT$ ${((item.unit_price || 0) * item.quantity).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div style="text-align:right;font-size:18px;font-weight:700;color:var(--primary);">
+                        Total: NT$ ${(o.total || 0).toLocaleString()}
+                    </div>
+                `;
+            } catch (err) {
+                body.innerHTML = `<p style="color:#ef5350;">Error loading order: ${err.message}</p>`;
+            }
+        }
+
+        function closeOrderDetail() {
+            document.getElementById('orderDetailModal').style.display = 'none';
+        }
+
+        // Close order modal on overlay click
+        document.getElementById('orderDetailModal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeOrderDetail();
+        });
+
+        // Order status filter change
+        document.getElementById('orderStatusFilter')?.addEventListener('change', () => loadOrders());
 
         // ============================================================================
         // SETTINGS

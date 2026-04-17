@@ -767,6 +767,7 @@ function _buildProductCard(p) {
         ${priceHtml}
         ${sizesHtml}
         <span class="product-tag">${p.category || p.tag || ''}</span>
+        ${typeof window.renderAddToCartButton === 'function' ? window.renderAddToCartButton(p) : ''}
       </div>
     </div>`;
 }
@@ -787,6 +788,10 @@ function renderProducts(cat) {
     grid.innerHTML = '<p style="text-align:center; padding:50px;">No items found.</p>';
   } else {
     grid.innerHTML = filtered.map(p => _buildProductCard(p)).join('');
+    // Attach add-to-cart handlers for all rendered products
+    if (typeof window.attachAddToCartHandler === 'function') {
+      filtered.forEach(p => window.attachAddToCartHandler(p));
+    }
   }
   if (typeof initImgLazy === 'function') initImgLazy();
 }
@@ -1108,4 +1113,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   observeFadeIns();
   setLang('tw');        // default to Traditional Chinese
   initImgLazy();
+
+  // ── Cart icon in nav ──────────────────────────────────────────
+  if (typeof window.renderCartIcon === 'function') {
+    const cartSlot = document.getElementById('nav-cart-icon');
+    if (cartSlot) {
+      cartSlot.innerHTML = window.renderCartIcon();
+      cartSlot.style.cursor = 'pointer';
+      cartSlot.addEventListener('click', () => {
+        if (window.CartSystem) window.CartSystem.openCart();
+      });
+    }
+  }
 });
