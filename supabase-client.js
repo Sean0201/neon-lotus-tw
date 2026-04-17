@@ -2,9 +2,9 @@
  * supabase-client.js — NEON LOTUS TW
  * ─────────────────────────────────────────────────────────────────
  * Replaces build-time data.js with real-time Supabase JS SDK calls.
- * Fetches brands, products, product_sizes, product_gallery from
- * Supabase and assembles window.BRANDS_DATA in the same format
- * that main.js _parseData() expects.
+ * Fetches brands, products, product_sizes, product_gallery, banners,
+ * and site_settings from Supabase and assembles window globals
+ * that main.js consumes.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -26,7 +26,7 @@ const CACHE_TTL     = 5 * 60 * 1000;   // 5 minutes
 
 /**
  * Main entry point — fetches all data from Supabase (or localStorage cache)
- * and sets window.BRANDS_DATA so main.js can consume it immediately.
+ * and sets window.BRANDS_DATA, window.BANNERS_DATA, window.SITE_SETTINGS.
  */
 async function loadSupabaseData() {
   // ── Try localStorage cache first ──────────────────────────
@@ -38,7 +38,9 @@ async function loadSupabaseData() {
       if (data && data.brands && data.products) {
         console.log('[supabase-client] Using cached data (' +
           data.brands.length + ' brands, ' + data.products.length + ' products)');
-        window.BRANDS_DATA = data;
+        window.BRANDS_DATA    = data;
+        window.BANNERS_DATA   = data.banners   || [];
+        window.SITE_SETTINGS  = data.settings   || {};
         return;
       }
     }
@@ -49,14 +51,16 @@ async function loadSupabaseData() {
   // ── Fetch fresh from Supabase in parallel ──────────────────
   console.log('[supabase-client] Fetching fresh data from Supabase…');
 
-  const [brandsRes, productsRes, sizesRes, galleryRes] = await Promise.all([
+  const [brandsRes, productsRes, sizesRes, galleryRes, bannersRes, settingsRes] = await Promise.all([
     _supabase.from('brands').select('*'),
     _supabase.from('products').select('*').eq('is_active', true).order('sort_order'),
     _supabase.from('product_sizes').select('*').order('sort_order'),
     _supabase.from('product_gallery').select('*').order('sort_order'),
+    _supabase.from('banners').select('*').eq('is_active', true).order('sort_order'),
+    _supabase.from('site_settings').select('*'),
   ]);
 
-  // Check for errors
+  // Check for errors (banners & settings are non-critical)
   if (brandsRes.error)   throw new Error('brands: '   + brandsRes.error.message);
   if (productsRes.error) throw new Error('products: '  + productsRes.error.message);
   if (sizesRes.error)    throw new Error('sizes: '     + sizesRes.error.message);
@@ -66,6 +70,14 @@ async function loadSupabaseData() {
   const products = productsRes.data || [];
   const sizes    = sizesRes.data    || [];
   const gallery  = galleryRes.data  || [];
+  const banners  = bannersRes.data  || [];
+  const settingsRows = settingsRes.data || [];
+
+  // ── Parse site_settings into key-value map ────────────────
+  const settings = {};
+  for (const row of settingsRows) {
+    settings[row.key] = row.value;
+  }
 
   // ── Index sizes & gallery by product_id ────────────────────
   const sizesByProduct   = {};
@@ -90,6 +102,8 @@ async function loadSupabaseData() {
     name:        b.name,
     style:       b.style || '',
     color_hex:   b.color_hex || '#0a0a1a',
+    logo_url:    b.logo_url || '',
+    cover_url:   b.cover_url || '',
     description: {
       en: b.description_en || '',
       th: b.description_th || '',
@@ -130,7 +144,24 @@ async function loadSupabaseData() {
     };
   });
 
-  const data = { brands: brandsData, products: productsData };
+  // ── Transform banners ────────────────────────────────────────
+  const bannersData = banners.map(bn => ({
+    id:        bn.id,
+    title_en:  bn.title_en || '',
+    title_zh:  bn.title_zh || '',
+    subtitle_en: bn.subtitle_en || '',
+    subtitle_zh: bn.subtitle_zh || '',
+    image_url: bn.image_url || '',
+    link_url:  bn.link_url || '',
+    sort_order: bn.sort_order || 0,
+  }));
+
+  const data = {
+    brands:   brandsData,
+    products: productsData,
+    banners:  bannersData,
+    settings: settings,
+  };
 
   // ── Write to localStorage cache ────────────────────────────
   try {
@@ -141,9 +172,11 @@ async function loadSupabaseData() {
   }
 
   console.log('[supabase-client] Loaded ' + brandsData.length + ' brands, ' +
-    productsData.length + ' products from Supabase');
+    productsData.length + ' products, ' + bannersData.length + ' banners from Supabase');
 
-  window.BRANDS_DATA = data;
+  window.BRANDS_DATA   = data;
+  window.BANNERS_DATA  = bannersData;
+  window.SITE_SETTINGS = settings;
 }
 
 // ── Execute immediately — main.js will check window.BRANDS_DATA ──
