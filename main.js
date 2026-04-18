@@ -1289,15 +1289,13 @@ function initTryOnRoom() {
       if (brand) brand.products.forEach(p => products.push({ ...p, brandName: brand.name }));
     }
 
-    // Filter to only products with images
+    // Filter to only products with any image (cover or gallery)
     products = products.filter(p => {
-      const img = p.images?.gallery?.[0];
-      return img && (img.url || img.original_url);
+      return _getProductImageSrc(p);
     });
 
     clothesGrid.innerHTML = products.map(p => {
-      const img = p.images?.gallery?.[0];
-      const imgUrl = img?.url || img?.original_url || '';
+      const imgUrl = _getProductImageSrc(p) || '';
       const name = p.name || 'Product';
       const price = p.price?.twd_shipping ? `NT$ ${p.price.twd_shipping.toLocaleString()}` : '';
       return `
@@ -1337,9 +1335,8 @@ function initTryOnRoom() {
     error.style.display = 'none';
     addCartBtn.style.display = 'none';
 
-    // Get clothing image URL
-    const clothImg = product.images?.gallery?.[0];
-    const clothUrl = clothImg?.original_url || clothImg?.url || '';
+    // Get clothing image URL (use gallery if available, fallback to cover)
+    const clothUrl = _getProductImageSrc(product) || '';
 
     try {
       const res = await fetch('/api/tryon', {
