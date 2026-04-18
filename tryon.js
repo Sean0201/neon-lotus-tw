@@ -1,27 +1,37 @@
 /**
- * /api/tryon.js — Vercel Serverless Function
- * Proxies virtual try-on requests to Google Gemini 2.5 Flash (Nano Banana 2)
- * Keeps API key server-side for security.
+ * /api/tryon.js — Vercel Edge Function
+ * Proxies virtual try-on requests to Google Gemini 2.5 Flash Image (Nano Banana)
+ * Uses Edge Runtime for 30s timeout (vs 10s on Hobby Serverless).
  */
 
-export const config = { maxDuration: 60 };
+export const config = { runtime: 'edge' };
 
-export default async function handler(req, res) {
+export default async function handler(request) {
   // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  }
+
+  if (request.method !== 'POST') {
+    return json(405, { error: 'Method not allowed' });
+  }
 
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
+  if (!GEMINI_KEY) return json(500, { error: 'GEMINI_API_KEY not configured' });
 
   try {
-    const { selfieBase64, selfieType, clothingUrl, clothingBase64, clothingType, productName } = req.body;
+    const body = await request.json();
+    const { selfieBase64, selfieType, clothingUrl, clothingBase64, clothingType, productName } = body;
 
-    if (!selfieBase64) return res.status(400).json({ error: 'Missing selfie image' });
-    if (!clothingBase64 && !clothingUrl) return res.status(400).json({ error: 'Missing clothing image' });
+    if (!selfieBase64) return json(400, { error: 'Missing selfie image' });
+    if (!clothingBase64 && !clothingUrl) return json(400, { error: 'Missing clothing image' });
 
     // Build image parts
     const parts = [];
@@ -60,9 +70,12 @@ CRITICAL RULES:
     } else if (clothingUrl) {
       // Fetch clothing image and convert to base64
       const imgRes = await fetch(clothingUrl);
-      if (!imgRes.ok) return res.status(400).json({ error: 'Failed to fetch clothing image' });
+      if (!imgRes.ok) return json(400, { error: 'Failed to fetch clothing image' });
       const imgBuf = await imgRes.arrayBuffer();
-      const imgBase64 = Buffer.from(imgBuf).toString('base64');
+      const bytes = new Uint8Array(imgBuf);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const imgBase64 = btoa(binary);
       const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
       parts.push({
         inlineData: {
@@ -90,8 +103,7 @@ CRITICAL RULES:
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
-      console.error('Gemini API error:', errText);
-      return res.status(geminiRes.status).json({ error: 'Gemini API error', details: errText });
+      return json(geminiRes.status, { error: 'Gemini API error', details: errText.substring(0, 500) });
     }
 
     const geminiData = await geminiRes.json();
@@ -102,7 +114,7 @@ CRITICAL RULES:
       const resParts = candidate.content?.parts || [];
       for (const part of resParts) {
         if (part.inlineData) {
-          return res.status(200).json({
+          return json(200, {
             success: true,
             image: part.inlineData.data,
             mimeType: part.inlineData.mimeType || 'image/png'
@@ -111,13 +123,23 @@ CRITICAL RULES:
       }
     }
 
-    return res.status(500).json({
+    return json(500, {
       error: 'No image generated',
       raw: JSON.stringify(geminiData).substring(0, 500)
     });
 
   } catch (err) {
-    console.error('Try-on error:', err);
-    return res.status(500).json({ error: err.message });
+    return json(500, { error: err.message || 'Unknown server error' });
   }
+}
+
+/** Helper: return JSON response with CORS headers */
+function json(status, data) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
+  });
 }

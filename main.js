@@ -1350,7 +1350,9 @@ function initTryOnRoom() {
         })
       });
 
-      const data = await res.json();
+      const rawText = await res.text();
+      let data;
+      try { data = JSON.parse(rawText); } catch { throw new Error('伺服器回應逾時，請稍後再試'); }
 
       loading.style.display = 'none';
 
