@@ -565,12 +565,20 @@
 
       /* Checkout Page */
       .neon-checkout-page {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        z-index: 10000;
         background: ${colors.black};
         color: ${colors.white};
         padding-bottom: 40px;
       }
 
       .neon-checkout-header {
+        position: relative;
         padding: 40px 20px;
         text-align: center;
         border-bottom: 1px solid ${colors.border};
@@ -779,9 +787,15 @@
 
       /* Confirmation Page */
       .neon-confirmation-page {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        z-index: 10001;
         background: ${colors.black};
         color: ${colors.white};
-        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1003,8 +1017,8 @@
         <span class="neon-cart-subtotal-value">NT$ ${total.toLocaleString()}</span>
       </div>
       <div class="neon-cart-actions">
-        <button class="neon-cart-btn neon-cart-btn-checkout">前往結帳</button>
-        <button class="neon-cart-btn neon-cart-btn-continue">繼續購物</button>
+        <button type="button" class="neon-cart-btn neon-cart-btn-checkout">前往結帳</button>
+        <button type="button" class="neon-cart-btn neon-cart-btn-continue">繼續購物</button>
       </div>
     `;
 
@@ -1070,7 +1084,7 @@
         `;
         product.sizes.forEach((sz) => {
           const disabled = !sz.available ? 'disabled' : '';
-          html += `<button class="neon-size-btn" data-size="${sz.label}" ${disabled}>${sz.label}</button>`;
+          html += `<button type="button" class="neon-size-btn" data-size="${sz.label}" ${disabled}>${sz.label}</button>`;
         });
         html += `
             </div>
@@ -1083,13 +1097,13 @@
         <div class="neon-modal-section">
           <label class="neon-modal-label">配送方式</label>
           <div class="neon-shipping-group" id="neon-shipping-group">
-            <button class="neon-shipping-btn active" data-shipping="shipping">國際配送</button>
-            <button class="neon-shipping-btn" data-shipping="carryback">親自運送</button>
+            <button type="button" class="neon-shipping-btn active" data-shipping="shipping">國際配送</button>
+            <button type="button" class="neon-shipping-btn" data-shipping="carryback">親自運送</button>
           </div>
         </div>
         <div class="neon-modal-actions">
-          <button class="neon-modal-btn neon-modal-btn-confirm">確認</button>
-          <button class="neon-modal-btn neon-modal-btn-cancel">取消</button>
+          <button type="button" class="neon-modal-btn neon-modal-btn-confirm">確認</button>
+          <button type="button" class="neon-modal-btn neon-modal-btn-cancel">取消</button>
         </div>
       `;
 
@@ -1175,6 +1189,7 @@
 
     const html = `
       <div class="neon-checkout-header">
+        <button type="button" id="checkout-back" style="position:absolute;left:20px;top:50%;transform:translateY(-50%);background:none;border:1px solid ${colors.border};color:${colors.white};padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;">← 返回</button>
         <h1 class="neon-checkout-title">結帳</h1>
       </div>
       <div class="neon-checkout-container">
@@ -1204,8 +1219,8 @@
             <div class="neon-checkout-form-group">
               <label class="neon-checkout-form-label">配送方式 *</label>
               <div class="neon-shipping-toggle">
-                <button class="neon-shipping-option active" data-shipping="shipping">國際配送</button>
-                <button class="neon-shipping-option" data-shipping="carryback">親自運送</button>
+                <button type="button" class="neon-shipping-option active" data-shipping="shipping">國際配送</button>
+                <button type="button" class="neon-shipping-option" data-shipping="carryback">親自運送</button>
               </div>
             </div>
 
@@ -1231,7 +1246,7 @@
                 <span class="neon-checkout-summary-total-value">NT$ ${total.toLocaleString()}</span>
               </div>
             </div>
-            <button class="neon-checkout-btn" id="checkout-submit">確認訂單</button>
+            <button type="button" class="neon-checkout-btn" id="checkout-submit">確認訂單</button>
           </div>
         </div>
       </div>
@@ -1239,6 +1254,16 @@
 
     pageDiv.innerHTML = html;
     document.body.appendChild(pageDiv);
+    document.body.style.overflow = 'hidden';
+
+    // Scroll checkout page to top
+    pageDiv.scrollTop = 0;
+
+    // Back button handler
+    pageDiv.querySelector('#checkout-back').addEventListener('click', () => {
+      pageDiv.remove();
+      document.body.style.overflow = '';
+    });
 
     // Handle shipping option toggle
     let selectedShipping = 'shipping';
@@ -1370,7 +1395,7 @@
           <a href="${LINE_URL}" target="_blank" class="neon-confirmation-btn neon-confirmation-btn-line">
             透過 LINE 聯繫我們
           </a>
-          <button class="neon-confirmation-btn neon-confirmation-btn-home">回到首頁</button>
+          <button type="button" class="neon-confirmation-btn neon-confirmation-btn-home">回到首頁</button>
         </div>
       </div>
     `;
@@ -1380,7 +1405,7 @@
 
     pageDiv.querySelector('.neon-confirmation-btn-home').addEventListener('click', () => {
       pageDiv.remove();
-      // Navigate to home or refresh
+      document.body.style.overflow = '';
       window.location.href = '/';
     });
   }
@@ -1431,7 +1456,7 @@
 
   function renderAddToCartButton(product) {
     const html = `
-      <button class="neon-add-to-cart-btn" data-product-id="${product.id}">
+      <button type="button" class="neon-add-to-cart-btn" data-product-id="${product.id}">
         加入購物車
       </button>
     `;
