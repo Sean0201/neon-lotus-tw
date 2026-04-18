@@ -1364,11 +1364,13 @@ function initTryOnRoom() {
         result.style.display = 'block';
         addCartBtn.style.display = 'inline-flex';
       } else {
+        const detail = data.details ? `\n${data.details}` : '';
         throw new Error(data.error || 'AI 無法生成試穿圖片，請換一張照片再試');
       }
     } catch (err) {
       loading.style.display = 'none';
       error.style.display = 'block';
+      console.error('Try-on error:', err);
       document.getElementById('tryon-error-msg').textContent =
         '⚠️ ' + (err.message || '發生錯誤，請稍後再試');
     }
@@ -1385,7 +1387,7 @@ function initTryOnRoom() {
         id: currentProduct.id,
         name: currentProduct.name,
         price: currentProduct.price?.twd_shipping || 0,
-        image: currentProduct.images?.gallery?.[0]?.url || '',
+        image: _getProductImageSrc(currentProduct) || '',
         size: defaultSize,
         brand: currentProduct.brandName || ''
       });
