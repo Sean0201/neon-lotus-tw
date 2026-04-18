@@ -276,7 +276,7 @@ function _showFatalError(title, subtitle, bullets = []) {
    § 4.  PAGE NAVIGATION
    ═══════════════════════════════════════════════════════════════ */
 
-function showPage(page, brandId) {
+function showPage(page, brandId, skipPush) {
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   const target = document.getElementById(`page-${page}`);
   if (target) target.classList.remove('hidden');
@@ -286,7 +286,29 @@ function showPage(page, brandId) {
   if (page === 'brand' && brandId) renderBrandPage(brandId);
   if (page === 'home') setTimeout(observeFadeIns, 80);
   updateTexts();
+
+  // ── Browser history support (back/forward buttons) ──────────
+  if (!skipPush) {
+    const hash = brandId ? `#${page}/${brandId}` : `#${page}`;
+    history.pushState({ page, brandId: brandId || null }, '', hash);
+  }
 }
+
+// ── Listen for browser back/forward buttons ───────────────────
+window.addEventListener('popstate', (e) => {
+  if (e.state && e.state.page) {
+    showPage(e.state.page, e.state.brandId || null, true);
+  } else {
+    // Parse hash as fallback
+    const hash = location.hash.replace('#', '');
+    if (hash) {
+      const [pg, bid] = hash.split('/');
+      showPage(pg || 'home', bid || null, true);
+    } else {
+      showPage('home', null, true);
+    }
+  }
+});
 
 /* ═══════════════════════════════════════════════════════════════
    § 4.1  核心修復：顯示品牌與品項
@@ -1150,4 +1172,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
   }
+
+  // ── Restore page from URL hash (supports direct links & refresh) ──
+  const initHash = location.hash.replace('#', '');
+  if (initHash && initHash !== 'home') {
+    const [pg, bid] = initHash.split('/');
+    showPage(pg || 'home', bid || null, true);
+  }
+  // Set initial history state
+  history.replaceState(
+    { page: initHash ? initHash.split('/')[0] : 'home', brandId: initHash ? initHash.split('/')[1] || null : null },
+    '', location.hash || '#home'
+  );
 });
