@@ -1432,8 +1432,16 @@
                     </div>
                     <div class="form-row full">
                         <div class="form-group full">
-                            <label for="bannerLink">Link URL</label>
-                            <input type="url" id="bannerLink">
+                            <label for="bannerBrandId">連結品牌 (點擊 Banner 進入該品牌頁)</label>
+                            <select id="bannerBrandId" style="width:100%;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;">
+                                <option value="">— 不連結 —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label for="bannerLink">或自訂連結 URL (留空則使用上方品牌)</label>
+                            <input type="url" id="bannerLink" placeholder="https://...">
                         </div>
                     </div>
                     <div class="form-row">
@@ -2257,12 +2265,28 @@
             setupDragDrop('bannersTableBody', 'banners');
         }
 
-        document.getElementById('addBannerBtn').addEventListener('click', () => {
+        async function populateBannerBrandSelect(selectedId) {
+            const sel = document.getElementById('bannerBrandId');
+            sel.innerHTML = '<option value="">— 不連結 —</option>';
+            try {
+                const { data: brands } = await sb.from('brands').select('id, name').order('name');
+                (brands || []).forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = b.name;
+                    if (b.id === selectedId) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            } catch (e) { console.error('Failed to load brands for selector:', e); }
+        }
+
+        document.getElementById('addBannerBtn').addEventListener('click', async () => {
             editingBannerId = null;
             document.getElementById('bannerModalTitle').textContent = 'Add Banner';
             document.getElementById('bannerForm').reset();
             document.getElementById('bannerActive').checked = true;
             document.getElementById('bannerImagePreview').style.display = 'none';
+            await populateBannerBrandSelect('');
             document.getElementById('bannerModal').classList.add('active');
         });
 
@@ -2282,6 +2306,7 @@
             } else {
                 document.getElementById('bannerImagePreview').style.display = 'none';
             }
+            await populateBannerBrandSelect(banner.brand_id || '');
             document.getElementById('bannerModal').classList.add('active');
         }
 
@@ -2316,6 +2341,7 @@
                 title: document.getElementById('bannerTitle').value,
                 subtitle: document.getElementById('bannerSubtitle').value,
                 image_url: document.getElementById('bannerImageUrl').value,
+                brand_id: document.getElementById('bannerBrandId').value || null,
                 link_url: document.getElementById('bannerLink').value,
                 is_active: document.getElementById('bannerActive').checked,
                 sort_order: parseInt(document.getElementById('bannerSortOrder').value) || 0,

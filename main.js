@@ -1049,18 +1049,43 @@ function renderBanners() {
     const title    = b.title || '';
     const subtitle = b.subtitle || '';
 
+    // Determine click target: brand_id → brand page, link_url → external link
+    const hasBrand = !!b.brand_id;
+    const hasLink  = !!b.link_url;
+    const clickable = hasBrand || hasLink;
+    const cursorStyle = clickable ? 'cursor:pointer;' : '';
+    const btnLabel = lang === 'tw' ? '立即選購' : 'SHOP NOW';
+    const showBtn = clickable;
+
     container.innerHTML = `
-      <div class="hero-banner-slide" style="background-image:url('${b.image_url}')">
+      <div class="hero-banner-slide" style="background-image:url('${b.image_url}');${cursorStyle}"
+           ${clickable ? `data-brand-id="${b.brand_id || ''}" data-link-url="${b.link_url || ''}"` : ''}>
         <div class="hero-banner-overlay"></div>
         <div class="hero-banner-text">
           ${title ? `<h2 class="hero-banner-title">${title}</h2>` : ''}
           ${subtitle ? `<p class="hero-banner-subtitle">${subtitle}</p>` : ''}
-          ${b.link_url ? `<a class="btn-primary" href="${b.link_url}">SHOP NOW</a>` : ''}
+          ${showBtn ? `<button type="button" class="btn-primary hero-banner-cta">${btnLabel}</button>` : ''}
         </div>
       </div>
       ${banners.length > 1 ? `<div class="hero-banner-dots">
         ${banners.map((_, i) => `<span class="hero-dot${i === current ? ' active' : ''}" onclick="window._bannerGo(${i})"></span>`).join('')}
       </div>` : ''}`;
+
+    // Attach click handler for the whole slide area
+    const slide = container.querySelector('.hero-banner-slide');
+    if (slide && clickable) {
+      slide.addEventListener('click', (e) => {
+        // Don't trigger on dot clicks
+        if (e.target.closest('.hero-banner-dots')) return;
+        const brandId = slide.dataset.brandId;
+        const linkUrl = slide.dataset.linkUrl;
+        if (linkUrl) {
+          window.open(linkUrl, '_blank');
+        } else if (brandId) {
+          showPage('brand', brandId);
+        }
+      });
+    }
   }
 
   window._bannerGo = function(i) { current = i; render(); };
