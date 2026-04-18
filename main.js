@@ -1184,4 +1184,214 @@ document.addEventListener('DOMContentLoaded', async () => {
     { page: initHash ? initHash.split('/')[0] : 'home', brandId: initHash ? initHash.split('/')[1] || null : null },
     '', location.hash || '#home'
   );
+
+  // ── Init Virtual Fitting Room ──────────────────────────────────
+  initTryOnRoom();
 });
+
+/* ═══════════════════════════════════════════════════════════════
+   § 17.  VIRTUAL FITTING ROOM (Nano Banana 2 / Gemini)
+   ═══════════════════════════════════════════════════════════════ */
+function initTryOnRoom() {
+  let selfieBase64 = null;
+  let selfieType = 'image/jpeg';
+  let currentProduct = null;
+
+  const uploadArea  = document.getElementById('tryon-upload-area');
+  const fileInput   = document.getElementById('tryon-selfie-input');
+  const preview     = document.getElementById('tryon-selfie-preview');
+  const placeholder = document.getElementById('tryon-placeholder');
+  const changeBtn   = document.getElementById('tryon-change-photo');
+  const nextBtn     = document.getElementById('tryon-next-btn');
+  const backBtn     = document.getElementById('tryon-back-btn');
+  const selfieSmall = document.getElementById('tryon-selfie-small');
+  const brandSelect = document.getElementById('tryon-brand-select');
+  const clothesGrid = document.getElementById('tryon-clothes-grid');
+  const tryAnother  = document.getElementById('tryon-try-another');
+  const addCartBtn  = document.getElementById('tryon-add-cart');
+
+  if (!uploadArea) return; // page not loaded
+
+  // ── Step navigation ─────────────────────────────────────────
+  function goStep(n) {
+    document.querySelectorAll('.tryon-step').forEach(s => s.classList.remove('active'));
+    const step = document.getElementById(`tryon-step${n}`);
+    if (step) step.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Step 1: Upload selfie ───────────────────────────────────
+  uploadArea.addEventListener('click', () => fileInput.click());
+  uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+  uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleSelfie(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) handleSelfie(e.target.files[0]); });
+
+  function handleSelfie(file) {
+    selfieType = file.type || 'image/jpeg';
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      selfieBase64 = dataUrl.split(',')[1]; // strip data:...;base64,
+      preview.src = dataUrl;
+      preview.style.display = 'block';
+      placeholder.style.display = 'none';
+      changeBtn.style.display = 'inline-flex';
+      nextBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  changeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (!selfieBase64) return;
+    selfieSmall.src = preview.src;
+    populateBrandFilter();
+    renderClothes('all');
+    goStep(2);
+  });
+
+  backBtn.addEventListener('click', () => goStep(1));
+
+  // ── Step 2: Browse & select clothes ─────────────────────────
+  function populateBrandFilter() {
+    const sel = brandSelect;
+    sel.innerHTML = '<option value="all">所有品牌</option>';
+    BRANDS.filter(b => b.products.length > 0).forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      opt.textContent = b.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  brandSelect.addEventListener('change', () => renderClothes(brandSelect.value));
+
+  function renderClothes(brandFilter) {
+    let products = [];
+    const activeBrands = BRANDS.filter(b => b.products.length > 0);
+
+    if (brandFilter === 'all') {
+      activeBrands.forEach(b => {
+        b.products.slice(0, 8).forEach(p => products.push({ ...p, brandName: b.name }));
+      });
+    } else {
+      const brand = activeBrands.find(b => b.id === brandFilter);
+      if (brand) brand.products.forEach(p => products.push({ ...p, brandName: brand.name }));
+    }
+
+    // Filter to only products with images
+    products = products.filter(p => {
+      const img = p.images?.gallery?.[0];
+      return img && (img.url || img.original_url);
+    });
+
+    clothesGrid.innerHTML = products.map(p => {
+      const img = p.images?.gallery?.[0];
+      const imgUrl = img?.url || img?.original_url || '';
+      const name = p.name || 'Product';
+      const price = p.price?.twd_shipping ? `NT$ ${p.price.twd_shipping.toLocaleString()}` : '';
+      return `
+        <div class="tryon-cloth-card" data-product-id="${p.id}">
+          <img src="${imgUrl}" alt="${name}" loading="lazy" />
+          <div class="tryon-cloth-trybtn" data-en="TRY ON" data-tw="試穿">試穿</div>
+          <div class="tryon-cloth-info">
+            <h4>${name}</h4>
+            <span>${price}</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Attach click handlers
+    clothesGrid.querySelectorAll('.tryon-cloth-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const pid = card.dataset.productId;
+        const prod = products.find(p => p.id === pid);
+        if (prod) startTryOn(prod);
+      });
+    });
+
+    updateTexts();
+  }
+
+  // ── Step 3: Try on with AI ──────────────────────────────────
+  async function startTryOn(product) {
+    currentProduct = product;
+    goStep(3);
+
+    const loading = document.getElementById('tryon-loading');
+    const result  = document.getElementById('tryon-result');
+    const error   = document.getElementById('tryon-error');
+
+    loading.style.display = 'block';
+    result.style.display = 'none';
+    error.style.display = 'none';
+    addCartBtn.style.display = 'none';
+
+    // Get clothing image URL
+    const clothImg = product.images?.gallery?.[0];
+    const clothUrl = clothImg?.original_url || clothImg?.url || '';
+
+    try {
+      const res = await fetch('/api/tryon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          selfieBase64,
+          selfieType,
+          clothingUrl: clothUrl,
+          productName: product.name || 'clothing'
+        })
+      });
+
+      const data = await res.json();
+
+      loading.style.display = 'none';
+
+      if (data.success && data.image) {
+        // Show result
+        document.getElementById('tryon-result-before').src = preview.src;
+        document.getElementById('tryon-result-after').src = `data:${data.mimeType};base64,${data.image}`;
+        document.getElementById('tryon-result-name').textContent = product.name || '';
+        document.getElementById('tryon-result-price').textContent =
+          product.price?.twd_shipping ? `NT$ ${product.price.twd_shipping.toLocaleString()}` : '';
+        result.style.display = 'block';
+        addCartBtn.style.display = 'inline-flex';
+      } else {
+        throw new Error(data.error || 'AI 無法生成試穿圖片，請換一張照片再試');
+      }
+    } catch (err) {
+      loading.style.display = 'none';
+      error.style.display = 'block';
+      document.getElementById('tryon-error-msg').textContent =
+        '⚠️ ' + (err.message || '發生錯誤，請稍後再試');
+    }
+  }
+
+  tryAnother.addEventListener('click', () => goStep(2));
+
+  addCartBtn.addEventListener('click', () => {
+    if (currentProduct && window.CartSystem) {
+      // Find the size options
+      const sizes = currentProduct.sizes || [];
+      const defaultSize = sizes[0]?.label || 'ONE SIZE';
+      window.CartSystem.addItem({
+        id: currentProduct.id,
+        name: currentProduct.name,
+        price: currentProduct.price?.twd_shipping || 0,
+        image: currentProduct.images?.gallery?.[0]?.url || '',
+        size: defaultSize,
+        brand: currentProduct.brandName || ''
+      });
+    }
+  });
+}

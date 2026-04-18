@@ -928,6 +928,107 @@
     .fade-in { opacity:0;transform:translateY(22px);transition:all 0.7s ease; }
     .fade-in.visible { opacity:1;transform:translateY(0); }
 
+    /* ======== VIRTUAL FITTING ROOM ======== */
+    .tryon-container { max-width:1100px; margin:0 auto; padding:80px 24px 60px; }
+    .tryon-step { display:none; }
+    .tryon-step.active { display:block; }
+    .tryon-header { text-align:center; margin-bottom:36px; }
+    .tryon-title { font-family:var(--font-headline); font-size:clamp(1.6rem,4vw,2.4rem); font-weight:700; letter-spacing:0.04em; margin:12px 0; }
+    .tryon-desc { color:var(--lightgrey); font-size:0.92rem; line-height:1.7; max-width:500px; margin:0 auto; }
+
+    .tryon-upload-area {
+      max-width:420px; margin:0 auto; aspect-ratio:3/4;
+      border:2px dashed rgba(168,85,247,0.3); border-radius:16px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; position:relative; overflow:hidden;
+      transition:border-color 0.3s, background 0.3s;
+      background:rgba(168,85,247,0.03);
+    }
+    .tryon-upload-area:hover, .tryon-upload-area.dragover {
+      border-color:var(--accent); background:rgba(168,85,247,0.08);
+    }
+    .tryon-upload-placeholder { text-align:center; color:var(--lightgrey); padding:24px; }
+    .tryon-upload-placeholder svg { margin-bottom:16px; opacity:0.5; }
+    .tryon-upload-placeholder p { font-size:1rem; margin-bottom:6px; }
+    .tryon-upload-placeholder span { font-size:0.78rem; opacity:0.5; }
+    .tryon-selfie-preview { width:100%; height:100%; object-fit:cover; border-radius:14px; }
+
+    .tryon-actions { display:flex; justify-content:center; gap:12px; margin-top:28px; }
+    .tryon-btn-primary {
+      padding:14px 32px; border:none; border-radius:8px; font-size:0.88rem; font-weight:600;
+      background:linear-gradient(135deg, #a855f7, #6366f1); color:#fff; cursor:pointer;
+      letter-spacing:0.06em; transition:all 0.3s;
+    }
+    .tryon-btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(168,85,247,0.4); }
+    .tryon-btn-primary:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
+    .tryon-btn-secondary {
+      padding:14px 24px; border:1px solid rgba(168,85,247,0.3); border-radius:8px;
+      font-size:0.88rem; font-weight:500; background:transparent; color:var(--accent);
+      cursor:pointer; transition:all 0.3s;
+    }
+    .tryon-btn-secondary:hover { background:rgba(168,85,247,0.1); }
+    .tryon-btn-sm { padding:8px 16px; font-size:0.78rem; }
+
+    .tryon-brand-filter { margin-top:12px; }
+    .tryon-brand-filter select {
+      padding:8px 16px; border:1px solid rgba(168,85,247,0.3); border-radius:6px;
+      background:var(--bg); color:var(--text); font-size:0.85rem;
+    }
+
+    .tryon-split { display:grid; grid-template-columns:200px 1fr; gap:24px; align-items:start; }
+    .tryon-selfie-col { position:sticky; top:80px; text-align:center; }
+    .tryon-selfie-col img { width:100%; border-radius:12px; border:2px solid rgba(168,85,247,0.2); }
+
+    .tryon-clothes-grid {
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:16px;
+    }
+    .tryon-cloth-card {
+      background:rgba(255,255,255,0.03); border:1px solid rgba(168,85,247,0.12);
+      border-radius:12px; overflow:hidden; cursor:pointer; transition:all 0.3s;
+      position:relative;
+    }
+    .tryon-cloth-card:hover { border-color:var(--accent); transform:translateY(-3px); box-shadow:0 8px 24px rgba(168,85,247,0.15); }
+    .tryon-cloth-card img { width:100%; aspect-ratio:3/4; object-fit:cover; }
+    .tryon-cloth-info { padding:10px 12px; }
+    .tryon-cloth-info h4 { font-size:0.78rem; font-weight:600; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tryon-cloth-info span { font-size:0.72rem; color:var(--accent); font-weight:500; }
+    .tryon-cloth-trybtn {
+      position:absolute; top:8px; right:8px; padding:6px 12px;
+      background:rgba(0,0,0,0.7); backdrop-filter:blur(8px);
+      border:1px solid rgba(168,85,247,0.4); border-radius:20px;
+      color:#fff; font-size:0.68rem; font-weight:600; letter-spacing:0.05em;
+      opacity:0; transition:opacity 0.3s;
+    }
+    .tryon-cloth-card:hover .tryon-cloth-trybtn { opacity:1; }
+
+    .tryon-result-area { max-width:800px; margin:0 auto; }
+    .tryon-result-loading { text-align:center; padding:80px 24px; }
+    .tryon-spinner {
+      width:48px; height:48px; border:3px solid rgba(168,85,247,0.2);
+      border-top-color:var(--accent); border-radius:50%;
+      animation:tryon-spin 0.8s linear infinite; margin:0 auto 20px;
+    }
+    @keyframes tryon-spin { to { transform:rotate(360deg); } }
+    .tryon-result-loading p { color:var(--lightgrey); font-size:0.92rem; }
+
+    .tryon-compare { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .tryon-compare-item { text-align:center; }
+    .tryon-compare-item span { display:block; font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--lightgrey); margin-bottom:8px; }
+    .tryon-compare-item img { width:100%; border-radius:12px; border:1px solid rgba(168,85,247,0.2); }
+    .tryon-result-info { text-align:center; margin-top:20px; }
+    .tryon-result-info h3 { font-size:1.1rem; font-weight:600; margin-bottom:4px; }
+    .tryon-result-info p { color:var(--accent); font-size:1rem; font-weight:600; }
+    .tryon-result-error { text-align:center; padding:60px 24px; color:#ef5350; }
+
+    @media(max-width:768px) {
+      .tryon-split { grid-template-columns:1fr; }
+      .tryon-selfie-col { position:static; display:flex; align-items:center; gap:12px; }
+      .tryon-selfie-col img { width:80px; height:100px; object-fit:cover; }
+      .tryon-clothes-grid { grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); }
+      .tryon-compare { grid-template-columns:1fr 1fr; gap:8px; }
+      .tryon-upload-area { max-width:320px; }
+    }
+
     /* ======== RESPONSIVE ======== */
     @media(max-width:900px) {
       .nav-center {
@@ -1151,6 +1252,9 @@
     <button class="nav-btn" onclick="showPage('contact')">
       <span data-en="CONTACT" data-tw="聯繫我們">聯繫我們</span>
     </button>
+    <button class="nav-btn" onclick="showPage('tryon')" style="background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(99,102,241,0.15));border-color:rgba(168,85,247,0.35)">
+      <span data-en="TRY ON" data-tw="試衣間">✨ 試衣間</span>
+    </button>
   </div>
 
   <!-- RIGHT -->
@@ -1181,6 +1285,7 @@
   </div>
   <button class="mobile-nav-btn" data-en="ABOUT" data-tw="品牌故事" onclick="showPage('about');closeMobileMenu()">品牌故事</button>
   <button class="mobile-nav-btn" data-en="CONTACT" data-tw="聯繫我們" onclick="showPage('contact');closeMobileMenu()">聯繫我們</button>
+  <button class="mobile-nav-btn" data-en="✨ TRY ON" data-tw="✨ 試衣間" onclick="showPage('tryon');closeMobileMenu()" style="background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(99,102,241,0.2));color:#c084fc">✨ 試衣間</button>
   <button class="mobile-lang-switch" id="mobile-lang-switch" onclick="toggleMobileLang()">EN</button>
 </div>
 
@@ -1372,6 +1477,90 @@
   </div>
 </div>
 
+
+<!-- ═══════════════ VIRTUAL FITTING ROOM ═══════════════ -->
+<div id="page-tryon" class="page hidden">
+  <div class="tryon-container">
+    <!-- Step 1: Upload Selfie -->
+    <div id="tryon-step1" class="tryon-step active">
+      <div class="tryon-header">
+        <p class="section-eyebrow" data-en="VIRTUAL FITTING ROOM" data-tw="線上試衣間">線上試衣間</p>
+        <h1 class="tryon-title" data-en="Upload Your Photo" data-tw="上傳你的照片">上傳你的照片</h1>
+        <p class="tryon-desc" data-en="Take a full-body photo or upload one, then browse our collection to try on clothes virtually with AI." data-tw="拍一張全身照或上傳照片，然後瀏覽我們的系列，用 AI 虛擬試穿衣服。">拍一張全身照或上傳照片，然後瀏覽我們的系列，用 AI 虛擬試穿衣服。</p>
+      </div>
+      <div class="tryon-upload-area" id="tryon-upload-area">
+        <div class="tryon-upload-placeholder" id="tryon-placeholder">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p data-en="Tap to upload or drag & drop" data-tw="點擊上傳或拖放照片">點擊上傳或拖放照片</p>
+          <span data-en="Full-body photo works best" data-tw="全身照效果最佳">全身照效果最佳</span>
+        </div>
+        <img id="tryon-selfie-preview" class="tryon-selfie-preview" style="display:none" alt="Your photo" />
+        <input type="file" id="tryon-selfie-input" accept="image/*" style="display:none" />
+      </div>
+      <div class="tryon-actions">
+        <button id="tryon-change-photo" class="tryon-btn-secondary" style="display:none" data-en="Change Photo" data-tw="更換照片">更換照片</button>
+        <button id="tryon-next-btn" class="tryon-btn-primary" disabled data-en="Choose Clothes →" data-tw="選擇衣服 →">選擇衣服 →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Browse & Try On -->
+    <div id="tryon-step2" class="tryon-step">
+      <div class="tryon-header">
+        <h2 class="tryon-title" data-en="Choose Clothes to Try On" data-tw="選擇想試穿的衣服">選擇想試穿的衣服</h2>
+        <div class="tryon-brand-filter">
+          <select id="tryon-brand-select">
+            <option value="all" data-en="All Brands" data-tw="所有品牌">所有品牌</option>
+          </select>
+        </div>
+      </div>
+      <div class="tryon-split">
+        <div class="tryon-selfie-col">
+          <img id="tryon-selfie-small" alt="Your photo" />
+          <button id="tryon-back-btn" class="tryon-btn-secondary tryon-btn-sm" data-en="← Change Photo" data-tw="← 更換照片">← 更換照片</button>
+        </div>
+        <div class="tryon-clothes-grid" id="tryon-clothes-grid">
+          <!-- Products rendered here by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Result -->
+    <div id="tryon-step3" class="tryon-step">
+      <div class="tryon-header">
+        <h2 class="tryon-title" data-en="Your Try-On Result" data-tw="試穿結果">試穿結果</h2>
+      </div>
+      <div class="tryon-result-area">
+        <div class="tryon-result-loading" id="tryon-loading" style="display:none">
+          <div class="tryon-spinner"></div>
+          <p data-en="AI is dressing you up... Please wait ~15 seconds" data-tw="AI 正在幫你換裝... 請稍候約 15 秒">AI 正在幫你換裝... 請稍候約 15 秒</p>
+        </div>
+        <div class="tryon-result-content" id="tryon-result" style="display:none">
+          <div class="tryon-compare">
+            <div class="tryon-compare-item">
+              <span data-en="Before" data-tw="原圖">原圖</span>
+              <img id="tryon-result-before" alt="Before" />
+            </div>
+            <div class="tryon-compare-item">
+              <span data-en="After" data-tw="試穿效果">試穿效果</span>
+              <img id="tryon-result-after" alt="Try-on result" />
+            </div>
+          </div>
+          <div class="tryon-result-info">
+            <h3 id="tryon-result-name"></h3>
+            <p id="tryon-result-price"></p>
+          </div>
+        </div>
+        <div class="tryon-result-error" id="tryon-error" style="display:none">
+          <p id="tryon-error-msg"></p>
+        </div>
+      </div>
+      <div class="tryon-actions">
+        <button id="tryon-try-another" class="tryon-btn-secondary" data-en="← Try Another" data-tw="← 試穿其他">← 試穿其他</button>
+        <button id="tryon-add-cart" class="tryon-btn-primary" style="display:none" data-en="🛒 Add to Cart" data-tw="🛒 加入購物車">🛒 加入購物車</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════ LIGHTBOX ═══════════════ -->
 <div id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
