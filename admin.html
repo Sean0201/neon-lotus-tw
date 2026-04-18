@@ -2349,14 +2349,25 @@
             };
 
             try {
+                let saveResult;
                 if (editingBannerId) {
-                    const { error } = await sb.from('banners').update(data).eq('id', editingBannerId);
-                    if (error) throw error;
+                    saveResult = await sb.from('banners').update(data).eq('id', editingBannerId);
+                    // If brand_id column doesn't exist yet, retry without it
+                    if (saveResult.error && saveResult.error.code === 'PGRST204' && saveResult.error.message.includes('brand_id')) {
+                        delete data.brand_id;
+                        saveResult = await sb.from('banners').update(data).eq('id', editingBannerId);
+                    }
+                    if (saveResult.error) throw saveResult.error;
                     showToast('Banner updated', 'success');
                 } else {
                     data.created_at = new Date().toISOString();
-                    const { error } = await sb.from('banners').insert([data]);
-                    if (error) throw error;
+                    saveResult = await sb.from('banners').insert([data]);
+                    // If brand_id column doesn't exist yet, retry without it
+                    if (saveResult.error && saveResult.error.code === 'PGRST204' && saveResult.error.message.includes('brand_id')) {
+                        delete data.brand_id;
+                        saveResult = await sb.from('banners').insert([data]);
+                    }
+                    if (saveResult.error) throw saveResult.error;
                     showToast('Banner created', 'success');
                 }
                 closeBannerModal();
