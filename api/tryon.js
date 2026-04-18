@@ -1,1 +1,145 @@
+/**
+ * /api/tryon.js — Vercel Edge Function
+ * Proxies virtual try-on requests to Google Gemini 2.5 Flash Image (Nano Banana)
+ * Uses Edge Runtime for 30s timeout (vs 10s on Hobby Serverless).
+ */
 
+export const config = { runtime: 'edge' };
+
+export default async function handler(request) {
+  // CORS
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  }
+
+  if (request.method !== 'POST') {
+    return json(405, { error: 'Method not allowed' });
+  }
+
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_KEY) return json(500, { error: 'GEMINI_API_KEY not configured' });
+
+  try {
+    const body = await request.json();
+    const { selfieBase64, selfieType, clothingUrl, clothingBase64, clothingType, productName } = body;
+
+    if (!selfieBase64) return json(400, { error: 'Missing selfie image' });
+    if (!clothingBase64 && !clothingUrl) return json(400, { error: 'Missing clothing image' });
+
+    // Build image parts
+    const parts = [];
+
+    // Prompt
+    parts.push({
+      text: `You are a virtual fitting room assistant. The user wants to try on "${productName || 'this clothing item'}".
+
+TASK: Generate ONE photorealistic image showing the person in the first image wearing the clothing item shown in the second image.
+
+CRITICAL RULES:
+- Preserve the person's face, hairstyle, skin tone, body shape, pose, and proportions EXACTLY
+- Replace ONLY the relevant clothing with the garment from the second image
+- Maintain the original photo's lighting, camera angle, and background
+- The clothing must look naturally fitted — correct draping, folds, shadows
+- Output a single high-quality photorealistic image
+- Do NOT add text, watermarks, or borders`
+    });
+
+    // Selfie image
+    parts.push({
+      inlineData: {
+        mimeType: selfieType || 'image/jpeg',
+        data: selfieBase64
+      }
+    });
+
+    // Clothing image
+    if (clothingBase64) {
+      parts.push({
+        inlineData: {
+          mimeType: clothingType || 'image/jpeg',
+          data: clothingBase64
+        }
+      });
+    } else if (clothingUrl) {
+      // Fetch clothing image and convert to base64
+      const imgRes = await fetch(clothingUrl);
+      if (!imgRes.ok) return json(400, { error: 'Failed to fetch clothing image' });
+      const imgBuf = await imgRes.arrayBuffer();
+      const bytes = new Uint8Array(imgBuf);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const imgBase64 = btoa(binary);
+      const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+      parts.push({
+        inlineData: {
+          mimeType: contentType,
+          data: imgBase64
+        }
+      });
+    }
+
+    // Call Gemini API (Nano Banana — gemini-2.5-flash-image)
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts }],
+          generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE'],
+            temperature: 0.4
+          }
+        })
+      }
+    );
+
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      return json(geminiRes.status, { error: 'Gemini API error', details: errText.substring(0, 500) });
+    }
+
+    const geminiData = await geminiRes.json();
+
+    // Extract image from response
+    const candidates = geminiData.candidates || [];
+    for (const candidate of candidates) {
+      const resParts = candidate.content?.parts || [];
+      for (const part of resParts) {
+        if (part.inlineData) {
+          return json(200, {
+            success: true,
+            image: part.inlineData.data,
+            mimeType: part.inlineData.mimeType || 'image/png'
+          });
+        }
+      }
+    }
+
+    return json(500, {
+      error: 'No image generated',
+      raw: JSON.stringify(geminiData).substring(0, 500)
+    });
+
+  } catch (err) {
+    return json(500, { error: err.message || 'Unknown server error' });
+  }
+}
+
+/** Helper: return JSON response with CORS headers */
+function json(status, data) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
+  });
+}
