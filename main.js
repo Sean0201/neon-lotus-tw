@@ -1232,18 +1232,31 @@ function initTryOnRoom() {
   fileInput.addEventListener('change', e => { if (e.target.files[0]) handleSelfie(e.target.files[0]); });
 
   function handleSelfie(file) {
-    selfieType = file.type || 'image/jpeg';
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      selfieBase64 = dataUrl.split(',')[1]; // strip data:...;base64,
+    // Compress selfie to max 1024px & JPEG 0.8 to stay under Vercel body limits
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1024;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else       { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      selfieType = 'image/jpeg';
+      selfieBase64 = dataUrl.split(',')[1];
       preview.src = dataUrl;
       preview.style.display = 'block';
       placeholder.style.display = 'none';
       changeBtn.style.display = 'inline-flex';
       nextBtn.disabled = false;
     };
-    reader.readAsDataURL(file);
+    img.src = url;
   }
 
   changeBtn.addEventListener('click', (e) => {
@@ -1350,9 +1363,15 @@ function initTryOnRoom() {
         })
       });
 
+      if (!res.ok && res.status === 413) throw new Error('照片太大，請使用較小的圖片');
+      if (!res.ok && res.status >= 500) throw new Error(`伺服器錯誤 (${res.status})，請稍後再試`);
+
       const rawText = await res.text();
       let data;
-      try { data = JSON.parse(rawText); } catch { throw new Error('伺服器回應逾時，請稍後再試'); }
+      try { data = JSON.parse(rawText); } catch {
+        console.error('Non-JSON response:', res.status, rawText.substring(0, 200));
+        throw new Error(`伺服器回應異常 (HTTP ${res.status})，請稍後再試`);
+      }
 
       loading.style.display = 'none';
 
@@ -1366,8 +1385,8 @@ function initTryOnRoom() {
         result.style.display = 'block';
         addCartBtn.style.display = 'inline-flex';
       } else {
-        const detail = data.details ? `\n${data.details}` : '';
-        throw new Error(data.error || 'AI 無法生成試穿圖片，請換一張照片再試');
+        const detail = data.details ? ` — ${data.details.substring(0, 100)}` : '';
+        throw new Error((data.error || 'AI 無法生成試穿圖片') + detail);
       }
     } catch (err) {
       loading.style.display = 'none';
