@@ -1526,16 +1526,11 @@ function initTryOnRoom() {
       if (r.product && window.CartSystem) {
         var sizes = r.product.sizes || [];
         var defaultSize = sizes[0] ? sizes[0].label : 'ONE SIZE';
-        window.CartSystem.addItem({
-          id: r.product.id,
-          name: r.product.name,
-          price: r.product.price ? r.product.price.twd_shipping || 0 : 0,
-          image: window._getProductImageSrc ? window._getProductImageSrc(r.product) : '',
-          size: defaultSize,
-          brand: r.product.brandName || ''
-        });
+        window.CartSystem.addToCart(r.product, defaultSize, 'shipping');
       }
     });
+    // Open cart drawer after adding
+    if (window.CartSystem.openCart) window.CartSystem.openCart();
   });
 }
 
