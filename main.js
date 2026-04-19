@@ -1363,14 +1363,16 @@ function initTryOnRoom() {
         })
       });
 
-      if (!res.ok && res.status === 413) throw new Error('照片太大，請使用較小的圖片');
-      if (!res.ok && res.status >= 500) throw new Error(`伺服器錯誤 (${res.status})，請稍後再試`);
+      // Friendly branded error messages
+      if (!res.ok && res.status === 413) throw new Error('CUSTOM:照片檔案太大了，請換一張較小的照片再試試看！');
+      if (!res.ok && res.status === 429) throw new Error('CUSTOM:目前試衣間排隊人數較多，請稍後再試喔！✨');
+      if (!res.ok && res.status >= 500) throw new Error('CUSTOM:試衣間暫時維護中，請稍候片刻再回來！🔧');
 
       const rawText = await res.text();
       let data;
       try { data = JSON.parse(rawText); } catch {
         console.error('Non-JSON response:', res.status, rawText.substring(0, 200));
-        throw new Error(`伺服器回應異常 (HTTP ${res.status})，請稍後再試`);
+        throw new Error('CUSTOM:系統忙碌中，請稍後再試一次！');
       }
 
       loading.style.display = 'none';
@@ -1385,15 +1387,27 @@ function initTryOnRoom() {
         result.style.display = 'block';
         addCartBtn.style.display = 'inline-flex';
       } else {
-        const detail = data.details ? ` — ${data.details.substring(0, 100)}` : '';
-        throw new Error((data.error || 'AI 無法生成試穿圖片') + detail);
+        // Map API errors to friendly messages
+        const errMsg = data.error || '';
+        const details = data.details || '';
+        if (details.includes('429') || details.includes('quota') || details.includes('RESOURCE_EXHAUSTED')) {
+          throw new Error('CUSTOM:目前試衣間排隊人數較多，請稍後再試喔！✨');
+        } else if (details.includes('safety') || details.includes('blocked')) {
+          throw new Error('CUSTOM:這張照片無法處理，請換一張清晰的正面照再試試看！📸');
+        } else if (errMsg.includes('Failed to fetch clothing')) {
+          throw new Error('CUSTOM:商品圖片暫時無法載入，請試試其他款式！');
+        } else {
+          throw new Error('CUSTOM:AI 造型師正在休息中，請稍後再試！💤');
+        }
       }
     } catch (err) {
       loading.style.display = 'none';
       error.style.display = 'block';
       console.error('Try-on error:', err);
-      document.getElementById('tryon-error-msg').textContent =
-        '⚠️ ' + (err.message || '發生錯誤，請稍後再試');
+      // Strip CUSTOM: prefix for branded messages, keep raw for unexpected errors
+      const msg = err.message || '';
+      const display = msg.startsWith('CUSTOM:') ? msg.slice(7) : '系統忙碌中，請稍後再試一次！';
+      document.getElementById('tryon-error-msg').textContent = display;
     }
   }
 
