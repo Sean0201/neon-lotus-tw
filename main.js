@@ -1192,10 +1192,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 /* ═══════════════════════════════════════════════════════════════
    § 17.  VIRTUAL FITTING ROOM (Nano Banana 2 / Gemini)
    ═══════════════════════════════════════════════════════════════ */
+/**
+ * initTryOnRoom() â Upgraded for Outfit Builder
+ * Replaces the original function in main.js
+ * Supports layered try-on: top â bottom â bag â hat
+ */
 function initTryOnRoom() {
+  const OB = window.OutfitBuilder;
+  if (!OB) { console.warn('[TryOn] OutfitBuilder not loaded'); return; }
+
   let selfieBase64 = null;
   let selfieType = 'image/jpeg';
-  let currentProduct = null;
+  let currentCategoryTab = 'top';
 
   const uploadArea  = document.getElementById('tryon-upload-area');
   const fileInput   = document.getElementById('tryon-selfie-input');
@@ -1209,45 +1217,45 @@ function initTryOnRoom() {
   const clothesGrid = document.getElementById('tryon-clothes-grid');
   const tryAnother  = document.getElementById('tryon-try-another');
   const addCartBtn  = document.getElementById('tryon-add-cart');
+  const outfitTryBtn = document.getElementById('outfit-tryon-btn');
 
-  if (!uploadArea) return; // page not loaded
+  if (!uploadArea) return;
 
-  // ── Step navigation ─────────────────────────────────────────
+  /* ââ Step navigation ââââââââââââââââââââââââââââââââââââââââ */
   function goStep(n) {
-    document.querySelectorAll('.tryon-step').forEach(s => s.classList.remove('active'));
-    const step = document.getElementById(`tryon-step${n}`);
+    document.querySelectorAll('.tryon-step').forEach(function(s) { s.classList.remove('active'); });
+    var step = document.getElementById('tryon-step' + n);
     if (step) step.classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // ── Step 1: Upload selfie ───────────────────────────────────
-  uploadArea.addEventListener('click', () => fileInput.click());
-  uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-  uploadArea.addEventListener('drop', e => {
+  /* ââ Step 1: Upload selfie (mostly unchanged) ââââââââââââââ */
+  uploadArea.addEventListener('click', function() { fileInput.click(); });
+  uploadArea.addEventListener('dragover', function(e) { e.preventDefault(); uploadArea.classList.add('dragover'); });
+  uploadArea.addEventListener('dragleave', function() { uploadArea.classList.remove('dragover'); });
+  uploadArea.addEventListener('drop', function(e) {
     e.preventDefault();
     uploadArea.classList.remove('dragover');
     if (e.dataTransfer.files[0]) handleSelfie(e.dataTransfer.files[0]);
   });
-  fileInput.addEventListener('change', e => { if (e.target.files[0]) handleSelfie(e.target.files[0]); });
+  fileInput.addEventListener('change', function(e) { if (e.target.files[0]) handleSelfie(e.target.files[0]); });
 
   function handleSelfie(file) {
-    // Compress selfie to max 1024px & JPEG 0.8 to stay under Vercel body limits
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function() {
       URL.revokeObjectURL(url);
-      const MAX = 1024;
-      let w = img.width, h = img.height;
+      var MAX = 1024;
+      var w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
         else       { w = Math.round(w * MAX / h); h = MAX; }
       }
-      const canvas = document.createElement('canvas');
+      var canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
+      var ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.8);
       selfieType = 'image/jpeg';
       selfieBase64 = dataUrl.split(',')[1];
       preview.src = dataUrl;
@@ -1255,177 +1263,274 @@ function initTryOnRoom() {
       placeholder.style.display = 'none';
       changeBtn.style.display = 'inline-flex';
       nextBtn.disabled = false;
+      // Sync with OutfitBuilder
+      OB.setSelfie(selfieBase64, selfieType, dataUrl);
     };
     img.src = url;
   }
 
-  changeBtn.addEventListener('click', (e) => {
+  changeBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     fileInput.value = '';
     fileInput.click();
   });
 
-  nextBtn.addEventListener('click', () => {
+  nextBtn.addEventListener('click', function() {
     if (!selfieBase64) return;
     selfieSmall.src = preview.src;
     populateBrandFilter();
-    renderClothes('all');
+    renderClothes('all', currentCategoryTab);
+    OB.renderOutfitPanel();
     goStep(2);
   });
 
-  backBtn.addEventListener('click', () => goStep(1));
+  backBtn.addEventListener('click', function() { goStep(1); });
 
-  // ── Step 2: Browse & select clothes ─────────────────────────
+  /* ââ Step 2: Category tabs âââââââââââââââââââââââââââââââââ */
+  var catTabs = document.getElementById('outfit-cat-tabs');
+  if (catTabs) {
+    catTabs.addEventListener('click', function(e) {
+      var tab = e.target.closest('.outfit-cat-tab');
+      if (!tab) return;
+      catTabs.querySelectorAll('.outfit-cat-tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      currentCategoryTab = tab.dataset.cat;
+      renderClothes(brandSelect.value, currentCategoryTab);
+    });
+  }
+
+  /* ââ Step 2: Brand filter ââââââââââââââââââââââââââââââââââ */
   function populateBrandFilter() {
-    const sel = brandSelect;
-    sel.innerHTML = '<option value="all">所有品牌</option>';
-    BRANDS.filter(b => b.products.length > 0).forEach(b => {
-      const opt = document.createElement('option');
+    var sel = brandSelect;
+    sel.innerHTML = '<option value="all">ææåç</option>';
+    BRANDS.filter(function(b) { return b.products.length > 0; }).forEach(function(b) {
+      var opt = document.createElement('option');
       opt.value = b.id;
       opt.textContent = b.name;
       sel.appendChild(opt);
     });
   }
 
-  brandSelect.addEventListener('change', () => renderClothes(brandSelect.value));
+  brandSelect.addEventListener('change', function() {
+    renderClothes(brandSelect.value, currentCategoryTab);
+  });
 
-  function renderClothes(brandFilter) {
-    let products = [];
-    const activeBrands = BRANDS.filter(b => b.products.length > 0);
+  /* ââ Step 2: Render clothes grid (category-filtered) âââââââ */
+  function renderClothes(brandFilter, category) {
+    var products = [];
+    var activeBrands = BRANDS.filter(function(b) { return b.products.length > 0; });
 
     if (brandFilter === 'all') {
-      activeBrands.forEach(b => {
-        b.products.slice(0, 8).forEach(p => products.push({ ...p, brandName: b.name }));
+      activeBrands.forEach(function(b) {
+        b.products.forEach(function(p) { products.push(Object.assign({}, p, { brandName: b.name })); });
       });
     } else {
-      const brand = activeBrands.find(b => b.id === brandFilter);
-      if (brand) brand.products.forEach(p => products.push({ ...p, brandName: brand.name }));
+      var brand = activeBrands.find(function(b) { return b.id === brandFilter; });
+      if (brand) brand.products.forEach(function(p) { products.push(Object.assign({}, p, { brandName: brand.name })); });
     }
 
-    // Filter to only products with any image (cover or gallery)
-    products = products.filter(p => {
-      return _getProductImageSrc(p);
-    });
+    // Filter by category
+    products = OB.filterProductsByCategory(products, category);
 
-    clothesGrid.innerHTML = products.map(p => {
-      const imgUrl = _getProductImageSrc(p) || '';
-      const name = p.name || 'Product';
-      const price = p.price?.twd_shipping ? `NT$ ${p.price.twd_shipping.toLocaleString()}` : '';
-      return `
-        <div class="tryon-cloth-card" data-product-id="${p.id}">
-          <img src="${imgUrl}" alt="${name}" loading="lazy" />
-          <div class="tryon-cloth-trybtn" data-en="TRY ON" data-tw="試穿">試穿</div>
-          <div class="tryon-cloth-info">
-            <h4>${name}</h4>
-            <span>${price}</span>
-          </div>
-        </div>`;
+    // Filter to only products with images
+    products = products.filter(function(p) { return _getProductImageSrc(p); });
+
+    // Limit display
+    products = products.slice(0, 60);
+
+    if (products.length === 0) {
+      var lang = window.__currentLang || 'tw';
+      var catLabel = OB.CATEGORY_LABELS[category];
+      var emptyText = lang === 'en'
+        ? 'No ' + catLabel.en.toLowerCase() + ' products found for this brand'
+        : 'æ­¤åçæ²æ' + catLabel.tw + 'åå';
+      clothesGrid.innerHTML = '<div style="text-align:center;padding:40px;color:#6b5f7a;font-size:0.85rem">' + emptyText + '</div>';
+      return;
+    }
+
+    clothesGrid.innerHTML = products.map(function(p) {
+      var imgUrl = _getProductImageSrc(p) || '';
+      var name = p.name || 'Product';
+      var price = p.price && p.price.twd_shipping ? 'NT$ ' + p.price.twd_shipping.toLocaleString() : '';
+      // Check if this item is already selected in outfit
+      var isSelected = false;
+      var outfitItem = OB.getOutfit()[category];
+      if (outfitItem && outfitItem.product.id === p.id) isSelected = true;
+
+      return '<div class="tryon-cloth-card' + (isSelected ? ' tryon-cloth-selected' : '') + '" data-product-id="' + p.id + '">'
+        + '<img src="' + imgUrl + '" alt="' + name + '" loading="lazy" />'
+        + '<div class="tryon-cloth-trybtn" data-en="' + (isSelected ? 'SELECTED' : 'SELECT') + '" data-tw="' + (isSelected ? 'å·²é¸æ' : 'é¸æ') + '">' + (isSelected ? 'â å·²é¸æ' : 'é¸æ') + '</div>'
+        + '<div class="tryon-cloth-info">'
+        + '<h4>' + name + '</h4>'
+        + '<span>' + price + '</span>'
+        + '</div>'
+        + '</div>';
     }).join('');
 
-    // Attach click handlers
-    clothesGrid.querySelectorAll('.tryon-cloth-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const pid = card.dataset.productId;
-        const prod = products.find(p => p.id === pid);
-        if (prod) startTryOn(prod);
+    // Attach click handlers â add to outfit instead of immediate try-on
+    clothesGrid.querySelectorAll('.tryon-cloth-card').forEach(function(card) {
+      card.addEventListener('click', function() {
+        var pid = card.dataset.productId;
+        var prod = products.find(function(p) { return p.id === pid; });
+        if (prod) {
+          var cat = OB.resolveCategory(prod);
+          if (cat) {
+            // Toggle: if same item already selected, deselect
+            var current = OB.getOutfit()[cat];
+            if (current && current.product.id === pid) {
+              OB.removeItem(cat);
+            } else {
+              OB.setItem(cat, prod);
+            }
+            // Re-render grid to update selected states
+            renderClothes(brandSelect.value, currentCategoryTab);
+          }
+        }
       });
     });
 
     updateTexts();
   }
 
-  // ── Step 3: Try on with AI ──────────────────────────────────
-  async function startTryOn(product) {
-    currentProduct = product;
+  /* ââ Step 2: Start Try On button âââââââââââââââââââââââââââ */
+  if (outfitTryBtn) {
+    outfitTryBtn.addEventListener('click', function() {
+      if (OB.getItemCount() === 0) return;
+      startLayeredTryOn();
+    });
+  }
+
+  /* ââ Step 3: Layered try-on execution ââââââââââââââââââââââ */
+  function startLayeredTryOn() {
     goStep(3);
 
-    const loading = document.getElementById('tryon-loading');
-    const result  = document.getElementById('tryon-result');
-    const error   = document.getElementById('tryon-error');
+    var loading    = document.getElementById('tryon-loading');
+    var loadingMsg = document.getElementById('tryon-loading-msg');
+    var result     = document.getElementById('tryon-result');
+    var error      = document.getElementById('tryon-error');
+    var progressEl = document.getElementById('tryon-layer-progress');
+    var layersEl   = document.getElementById('tryon-result-layers');
 
     loading.style.display = 'block';
     result.style.display = 'none';
     error.style.display = 'none';
     addCartBtn.style.display = 'none';
+    progressEl.style.display = 'flex';
 
-    // Get clothing image URL (use gallery if available, fallback to cover)
-    const clothUrl = _getProductImageSrc(product) || '';
+    // Build progress chips
+    var layers = OB.getSelectedLayers();
+    progressEl.innerHTML = layers.map(function(cat) {
+      var label = OB.CATEGORY_LABELS[cat];
+      return '<span class="tryon-layer-chip" data-layer="' + cat + '">'
+        + label.icon + ' ' + label.tw
+        + '</span>';
+    }).join('');
 
-    try {
-      const res = await fetch('/api/tryon', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          selfieBase64,
-          selfieType,
-          clothingUrl: clothUrl,
-          productName: product.name || 'clothing'
-        })
-      });
+    // Execute layered try-on
+    OB.executeTryOn(
+      // onProgress
+      function(stepIndex, totalSteps, stepLabel, cat) {
+        var lang = window.__currentLang || 'tw';
+        var msg = lang === 'en'
+          ? 'Processing ' + stepLabel + '...'
+          : 'æ­£å¨è©¦ç©¿' + stepLabel + '...';
+        loadingMsg.textContent = msg;
 
-      // Friendly branded error messages
-      if (!res.ok && res.status === 413) throw new Error('CUSTOM:照片檔案太大了，請換一張較小的照片再試試看！');
-      if (!res.ok && res.status === 429) throw new Error('CUSTOM:目前試衣間排隊人數較多，請稍後再試喔！✨');
-      if (!res.ok && res.status >= 500) throw new Error('CUSTOM:試衣間暫時維護中，請稍候片刻再回來！🔧');
+        // Update progress chips
+        progressEl.querySelectorAll('.tryon-layer-chip').forEach(function(chip, idx) {
+          chip.classList.remove('processing', 'done');
+          if (idx < stepIndex) chip.classList.add('done');
+          else if (idx === stepIndex) chip.classList.add('processing');
+        });
+      },
+      // onComplete
+      function(results, originalSrc) {
+        loading.style.display = 'none';
 
-      const rawText = await res.text();
-      let data;
-      try { data = JSON.parse(rawText); } catch {
-        console.error('Non-JSON response:', res.status, rawText.substring(0, 200));
-        throw new Error('CUSTOM:系統忙碌中，請稍後再試一次！');
-      }
+        // Mark all chips done
+        progressEl.querySelectorAll('.tryon-layer-chip').forEach(function(chip) {
+          chip.classList.remove('processing');
+          chip.classList.add('done');
+        });
 
-      loading.style.display = 'none';
+        if (results.length === 0) return;
 
-      if (data.success && data.image) {
-        // Show result
-        document.getElementById('tryon-result-before').src = preview.src;
-        document.getElementById('tryon-result-after').src = `data:${data.mimeType};base64,${data.image}`;
-        document.getElementById('tryon-result-name').textContent = product.name || '';
-        document.getElementById('tryon-result-price').textContent =
-          product.price?.twd_shipping ? `NT$ ${product.price.twd_shipping.toLocaleString()}` : '';
+        // Show final result
+        var finalResult = results[results.length - 1];
+        document.getElementById('tryon-result-before').src = originalSrc;
+        document.getElementById('tryon-result-after').src = 'data:' + finalResult.mimeType + ';base64,' + finalResult.image;
+
+        // Build outfit summary
+        var names = results.map(function(r) { return r.product.name || ''; }).join(' + ');
+        var totalPrice = 0;
+        results.forEach(function(r) {
+          if (r.product.price && r.product.price.twd_shipping) {
+            totalPrice += r.product.price.twd_shipping;
+          }
+        });
+        document.getElementById('tryon-result-name').textContent = names;
+        document.getElementById('tryon-result-price').textContent = totalPrice > 0
+          ? 'æ´å¥ NT$ ' + totalPrice.toLocaleString()
+          : '';
+
+        // Render per-layer thumbnails (clickable to view intermediate results)
+        layersEl.innerHTML = results.map(function(r, i) {
+          var src = 'data:' + r.mimeType + ';base64,' + r.image;
+          var label = OB.CATEGORY_LABELS[r.category];
+          return '<img class="tryon-result-layer-thumb' + (i === results.length - 1 ? ' active' : '') + '"'
+            + ' src="' + src + '"'
+            + ' alt="' + label.tw + '"'
+            + ' title="' + label.icon + ' ' + label.tw + ': ' + (r.product.name || '') + '"'
+            + ' data-layer-idx="' + i + '" />';
+        }).join('');
+
+        // Click thumbnail to switch the "After" image
+        layersEl.querySelectorAll('.tryon-result-layer-thumb').forEach(function(thumb) {
+          thumb.addEventListener('click', function() {
+            var idx = parseInt(thumb.dataset.layerIdx);
+            var r = results[idx];
+            document.getElementById('tryon-result-after').src = 'data:' + r.mimeType + ';base64,' + r.image;
+            layersEl.querySelectorAll('.tryon-result-layer-thumb').forEach(function(t) { t.classList.remove('active'); });
+            thumb.classList.add('active');
+          });
+        });
+
         result.style.display = 'block';
         addCartBtn.style.display = 'inline-flex';
-      } else {
-        // Map API errors to friendly messages
-        const errMsg = data.error || '';
-        const details = data.details || '';
-        if (details.includes('429') || details.includes('quota') || details.includes('RESOURCE_EXHAUSTED')) {
-          throw new Error('CUSTOM:目前試衣間排隊人數較多，請稍後再試喔！✨');
-        } else if (details.includes('safety') || details.includes('blocked')) {
-          throw new Error('CUSTOM:這張照片無法處理，請換一張清晰的正面照再試試看！📸');
-        } else if (errMsg.includes('Failed to fetch clothing')) {
-          throw new Error('CUSTOM:商品圖片暫時無法載入，請試試其他款式！');
-        } else {
-          throw new Error('CUSTOM:AI 造型師正在休息中，請稍後再試！💤');
-        }
+
+        // Store results for add-to-cart
+        window.__lastTryOnResults = results;
+      },
+      // onError
+      function(errMsg) {
+        loading.style.display = 'none';
+        error.style.display = 'block';
+        document.getElementById('tryon-error-msg').textContent = errMsg;
       }
-    } catch (err) {
-      loading.style.display = 'none';
-      error.style.display = 'block';
-      console.error('Try-on error:', err);
-      // Strip CUSTOM: prefix for branded messages, keep raw for unexpected errors
-      const msg = err.message || '';
-      const display = msg.startsWith('CUSTOM:') ? msg.slice(7) : '系統忙碌中，請稍後再試一次！';
-      document.getElementById('tryon-error-msg').textContent = display;
-    }
+    );
   }
 
-  tryAnother.addEventListener('click', () => goStep(2));
+  /* ââ Step 3: Navigation ââââââââââââââââââââââââââââââââââââ */
+  tryAnother.addEventListener('click', function() { goStep(2); });
 
-  addCartBtn.addEventListener('click', () => {
-    if (currentProduct && window.CartSystem) {
-      // Find the size options
-      const sizes = currentProduct.sizes || [];
-      const defaultSize = sizes[0]?.label || 'ONE SIZE';
-      window.CartSystem.addItem({
-        id: currentProduct.id,
-        name: currentProduct.name,
-        price: currentProduct.price?.twd_shipping || 0,
-        image: _getProductImageSrc(currentProduct) || '',
-        size: defaultSize,
-        brand: currentProduct.brandName || ''
-      });
-    }
+  /* ââ Step 3: Add all items to cart âââââââââââââââââââââââââ */
+  addCartBtn.addEventListener('click', function() {
+    var results = window.__lastTryOnResults || [];
+    if (results.length === 0) return;
+    results.forEach(function(r) {
+      if (r.product && window.CartSystem) {
+        var sizes = r.product.sizes || [];
+        var defaultSize = sizes[0] ? sizes[0].label : 'ONE SIZE';
+        window.CartSystem.addItem({
+          id: r.product.id,
+          name: r.product.name,
+          price: r.product.price ? r.product.price.twd_shipping || 0 : 0,
+          image: window._getProductImageSrc ? window._getProductImageSrc(r.product) : '',
+          size: defaultSize,
+          brand: r.product.brandName || ''
+        });
+      }
+    });
   });
 }
+
