@@ -1736,24 +1736,24 @@
     </div>
 
     <!-- Step 2: Browse & Try On -->
-    <!-- âââ STEP 2: Outfit Builder âââ -->
+        <!-- ═══ STEP 2: Outfit Builder ═══ -->
     <div id="tryon-step2" class="tryon-step">
       <div class="tryon-header">
-        <h2 class="tryon-title" data-en="Build Your Outfit" data-tw="æ­éä½ çç©¿æ­">æ­éä½ çç©¿æ­</h2>
-        <p class="tryon-desc" data-en="Pick items from each category to create your look" data-tw="å¾ååé¡é¸æååçµåä½ çé å">å¾ååé¡é¸æååçµåä½ çé å</p>
+        <h2 class="tryon-title" data-en="Build Your Outfit" data-tw="搭配你的穿搭">搭配你的穿搭</h2>
+        <p class="tryon-desc" data-en="Pick items from each category to create your look" data-tw="從各分類選擇商品組合你的造型">從各分類選擇商品組合你的造型</p>
         <div class="tryon-brand-filter">
           <select id="tryon-brand-select">
-            <option value="all" data-en="All Brands" data-tw="ææåç">ææåç</option>
+            <option value="all" data-en="All Brands" data-tw="所有品牌">所有品牌</option>
           </select>
         </div>
       </div>
 
       <!-- Category Tabs -->
       <div class="outfit-cat-tabs" id="outfit-cat-tabs">
-        <button class="outfit-cat-tab active" data-cat="top">ð <span data-en="Top" data-tw="ä¸è¡£">ä¸è¡£</span></button>
-        <button class="outfit-cat-tab" data-cat="bottom">ð <span data-en="Bottom" data-tw="è¤²å­">è¤²å­</span></button>
-        <button class="outfit-cat-tab" data-cat="bag">ð <span data-en="Bag" data-tw="èå">èå</span></button>
-        <button class="outfit-cat-tab" data-cat="hat">ð§¢ <span data-en="Hat" data-tw="å¸½å­">å¸½å­</span></button>
+        <button class="outfit-cat-tab active" data-cat="top">👕 <span data-en="Top" data-tw="上衣">上衣</span></button>
+        <button class="outfit-cat-tab" data-cat="bottom">👖 <span data-en="Bottom" data-tw="褲子">褲子</span></button>
+        <button class="outfit-cat-tab" data-cat="bag">🎒 <span data-en="Bag" data-tw="背包">背包</span></button>
+        <button class="outfit-cat-tab" data-cat="hat">🧢 <span data-en="Hat" data-tw="帽子">帽子</span></button>
       </div>
 
       <!-- Main layout: grid + sidebar -->
@@ -1769,54 +1769,55 @@
         <div class="tryon-outfit-sidebar">
           <div class="tryon-selfie-col" style="margin-bottom:14px">
             <img id="tryon-selfie-small" alt="Your photo" style="width:100%;border-radius:10px;border:1px solid rgba(168,85,247,0.2)" />
-            <button id="tryon-back-btn" class="tryon-btn-secondary tryon-btn-sm" style="margin-top:8px;width:100%" data-en="â Change photo" data-tw="â æ´æç§ç">â æ´æç§ç</button>
+            <button id="tryon-back-btn" class="tryon-btn-secondary tryon-btn-sm" style="margin-top:8px;width:100%" data-en="← Change photo" data-tw="← 更換照片">← 更換照片</button>
           </div>
 
           <div id="outfit-panel">
             <!-- Rendered by OutfitBuilder.renderOutfitPanel() -->
           </div>
 
-          <button id="outfit-tryon-btn" disabled data-en="Select items first" data-tw="è«åé¸æåå">è«åé¸æåå</button>
+          <button id="outfit-tryon-btn" disabled data-en="Select items first" data-tw="請先選擇商品">請先選擇商品</button>
         </div>
       </div>
     </div>
 
 
+
     <!-- Step 3: Result -->
-    <!-- âââ STEP 3: Layered Try-On Result âââ -->
+        <!-- ═══ STEP 3: Layered Try-On Result ═══ -->
     <div id="tryon-step3" class="tryon-step">
       <div class="tryon-header">
-        <h2 class="tryon-title" data-en="Your Try-On Result" data-tw="è©¦ç©¿çµæ">è©¦ç©¿çµæ</h2>
+        <h2 class="tryon-title" data-en="Your Try-On Result" data-tw="試穿結果">試穿結果</h2>
       </div>
 
       <!-- Layer progress chips -->
       <div class="tryon-layer-progress" id="tryon-layer-progress" style="display:none">
-        <!-- Rendered by JS: e.g. "ð ä¸è¡£ â" "ð è¤²å­ â³" "ð èå" -->
+        <!-- Rendered by JS -->
       </div>
 
       <div class="tryon-result-area">
         <!-- Loading spinner -->
         <div class="tryon-result-loading" id="tryon-loading" style="display:none">
           <div class="tryon-spinner"></div>
-          <p id="tryon-loading-msg" data-en="AI is styling your outfit... ~15s per item" data-tw="AI æ­£å¨å¹«ä½ æè£... æ¯ä»¶ç´ 15 ç§">AI æ­£å¨å¹«ä½ æè£... æ¯ä»¶ç´ 15 ç§</p>
+          <p id="tryon-loading-msg" data-en="AI is styling your outfit... ~15s per item" data-tw="AI 正在幫你換裝... 每件約 15 秒">AI 正在幫你換裝... 每件約 15 秒</p>
         </div>
 
         <!-- Result: before/after comparison -->
         <div class="tryon-result-content" id="tryon-result" style="display:none">
           <div class="tryon-compare">
             <div class="tryon-compare-item">
-              <span data-en="Before" data-tw="åå">åå</span>
+              <span data-en="Before" data-tw="原圖">原圖</span>
               <img id="tryon-result-before" alt="Before" />
             </div>
             <div class="tryon-compare-item">
-              <span data-en="After" data-tw="å®æ´ç©¿æ­">å®æ´ç©¿æ­</span>
+              <span data-en="After" data-tw="完整穿搭">完整穿搭</span>
               <img id="tryon-result-after" alt="Try-on result" />
             </div>
           </div>
 
           <!-- Per-layer result thumbnails -->
           <div class="tryon-result-layers" id="tryon-result-layers">
-            <!-- Rendered by JS: clickable thumbnails for each layer -->
+            <!-- Rendered by JS -->
           </div>
 
           <div class="tryon-result-info">
@@ -1832,10 +1833,11 @@
       </div>
 
       <div class="tryon-actions">
-        <button id="tryon-try-another" class="tryon-btn-secondary" data-en="â Modify outfit" data-tw="â ä¿®æ¹ç©¿æ­">â ä¿®æ¹ç©¿æ­</button>
-        <button id="tryon-add-cart" class="tryon-btn-primary" style="display:none" data-en="ð Add All to Cart" data-tw="ð å¨é¨å å¥è³¼ç©è»">ð å¨é¨å å¥è³¼ç©è»</button>
+        <button id="tryon-try-another" class="tryon-btn-secondary" data-en="← Modify outfit" data-tw="← 修改穿搭">← 修改穿搭</button>
+        <button id="tryon-add-cart" class="tryon-btn-primary" style="display:none" data-en="🛒 Add All to Cart" data-tw="🛒 全部加入購物車">🛒 全部加入購物車</button>
       </div>
     </div>
+
 
   </div>
 </div>
