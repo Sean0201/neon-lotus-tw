@@ -1,10 +1,91 @@
 /**
- * /api/tryon.js — Vercel Edge Function
- * Proxies virtual try-on requests to Google Gemini 2.5 Flash Image (Nano Banana)
- * Uses Edge Runtime for 30s timeout (vs 10s on Hobby Serverless).
+ * /api/tryon.js â Vercel Edge Function
+ * Proxies virtual try-on requests to Google Gemini 2.5 Flash Image
+ * Supports: tops, bottoms, bags, hats â with layered outfit composition
  */
 
 export const config = { runtime: 'edge' };
+
+/* ââ Category-specific prompt builders âââââââââââââââââââââââ */
+function getPrompt(category, productName) {
+  const pname = productName || 'this item';
+
+  const prompts = {
+    top: [
+      'You are a virtual fitting room assistant. The user wants to try on "' + pname + '".',
+      '',
+      'TASK: Generate ONE photorealistic image showing the person in the first image wearing the TOP/UPPER-BODY clothing shown in the second image.',
+      '',
+      'CRITICAL RULES:',
+      '- Preserve the person\'s face, hairstyle, skin tone, body shape, pose, and proportions EXACTLY',
+      '- Replace ONLY the upper-body clothing (shirt/jacket/hoodie) with the garment from the second image',
+      '- Keep the person\'s EXISTING pants/bottoms, shoes, and accessories unchanged',
+      '- Maintain the original photo\'s lighting, camera angle, and background',
+      '- The clothing must look naturally fitted â correct draping, folds, shadows',
+      '- Output a single high-quality photorealistic image',
+      '- Do NOT add text, watermarks, or borders'
+    ].join('\n'),
+
+    bottom: [
+      'You are a virtual fitting room assistant. The user wants to try on "' + pname + '".',
+      '',
+      'TASK: Generate ONE photorealistic image showing the person in the first image wearing the PANTS/BOTTOMS shown in the second image.',
+      '',
+      'CRITICAL RULES:',
+      '- Preserve the person\'s face, hairstyle, skin tone, body shape, pose, and proportions EXACTLY',
+      '- Replace ONLY the lower-body clothing (pants/shorts/skirt) with the item from the second image',
+      '- Keep the person\'s EXISTING top/upper-body clothing, shoes, and accessories COMPLETELY unchanged',
+      '- Maintain the original photo\'s lighting, camera angle, and background',
+      '- The clothing must look naturally fitted â correct draping, folds, shadows',
+      '- Output a single high-quality photorealistic image',
+      '- Do NOT add text, watermarks, or borders'
+    ].join('\n'),
+
+    bag: [
+      'You are a virtual fitting room assistant. The user wants to try on "' + pname + '".',
+      '',
+      'TASK: Generate ONE photorealistic image showing the person in the first image carrying/wearing the BAG shown in the second image.',
+      '',
+      'CRITICAL RULES:',
+      '- Preserve the person\'s face, hairstyle, skin tone, body shape, pose, and ALL clothing EXACTLY',
+      '- ADD the bag from the second image naturally â on the shoulder, crossbody, or hand depending on bag style',
+      '- Do NOT change any existing clothing or accessories',
+      '- Maintain the original photo\'s lighting, camera angle, and background',
+      '- The bag must look naturally placed with correct shadows and proportions',
+      '- Output a single high-quality photorealistic image',
+      '- Do NOT add text, watermarks, or borders'
+    ].join('\n'),
+
+    hat: [
+      'You are a virtual fitting room assistant. The user wants to try on "' + pname + '".',
+      '',
+      'TASK: Generate ONE photorealistic image showing the person in the first image wearing the HAT/CAP shown in the second image.',
+      '',
+      'CRITICAL RULES:',
+      '- Preserve the person\'s face, hairstyle (visible parts), skin tone, body shape, pose, and ALL clothing EXACTLY',
+      '- ADD the hat/cap from the second image naturally on the person\'s head',
+      '- The hat must match the person\'s head angle and size proportionally',
+      '- Do NOT change any existing clothing, accessories, or hairstyle below the hat',
+      '- Maintain the original photo\'s lighting, camera angle, and background',
+      '- Output a single high-quality photorealistic image',
+      '- Do NOT add text, watermarks, or borders'
+    ].join('\n')
+  };
+
+  return prompts[category] || [
+    'You are a virtual fitting room assistant. The user wants to try on "' + pname + '".',
+    '',
+    'TASK: Generate ONE photorealistic image showing the person in the first image wearing the clothing item shown in the second image.',
+    '',
+    'CRITICAL RULES:',
+    '- Preserve the person\'s face, hairstyle, skin tone, body shape, pose, and proportions EXACTLY',
+    '- Replace ONLY the relevant clothing with the garment from the second image',
+    '- Maintain the original photo\'s lighting, camera angle, and background',
+    '- The clothing must look naturally fitted â correct draping, folds, shadows',
+    '- Output a single high-quality photorealistic image',
+    '- Do NOT add text, watermarks, or borders'
+  ].join('\n');
+}
 
 export default async function handler(request) {
   // CORS
@@ -28,30 +109,23 @@ export default async function handler(request) {
 
   try {
     const body = await request.json();
-    const { selfieBase64, selfieType, clothingUrl, clothingBase64, clothingType, productName } = body;
+    const {
+      selfieBase64, selfieType,
+      clothingUrl, clothingBase64, clothingType,
+      productName, category
+    } = body;
 
     if (!selfieBase64) return json(400, { error: 'Missing selfie image' });
     if (!clothingBase64 && !clothingUrl) return json(400, { error: 'Missing clothing image' });
 
+    // Build prompt based on category
+    const promptText = getPrompt(category, productName);
+
     // Build image parts
     const parts = [];
+    parts.push({ text: promptText });
 
-    // Prompt
-    parts.push({
-      text: `You are a virtual fitting room assistant. The user wants to try on "${productName || 'this clothing item'}".
-
-TASK: Generate ONE photorealistic image showing the person in the first image wearing the clothing item shown in the second image.
-
-CRITICAL RULES:
-- Preserve the person's face, hairstyle, skin tone, body shape, pose, and proportions EXACTLY
-- Replace ONLY the relevant clothing with the garment from the second image
-- Maintain the original photo's lighting, camera angle, and background
-- The clothing must look naturally fitted — correct draping, folds, shadows
-- Output a single high-quality photorealistic image
-- Do NOT add text, watermarks, or borders`
-    });
-
-    // Selfie image
+    // Selfie image (or previous result for layered composition)
     parts.push({
       inlineData: {
         mimeType: selfieType || 'image/jpeg',
@@ -68,7 +142,6 @@ CRITICAL RULES:
         }
       });
     } else if (clothingUrl) {
-      // Fetch clothing image and convert to base64
       const imgRes = await fetch(clothingUrl);
       if (!imgRes.ok) return json(400, { error: 'Failed to fetch clothing image' });
       const imgBuf = await imgRes.arrayBuffer();
@@ -85,9 +158,9 @@ CRITICAL RULES:
       });
     }
 
-    // Call Gemini API (Nano Banana — gemini-2.5-flash-image)
+    // Call Gemini API
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_KEY}`,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + GEMINI_KEY,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,7 +206,6 @@ CRITICAL RULES:
   }
 }
 
-/** Helper: return JSON response with CORS headers */
 function json(status, data) {
   return new Response(JSON.stringify(data), {
     status,
