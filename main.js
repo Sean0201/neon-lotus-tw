@@ -1197,6 +1197,11 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Replaces the original function in main.js
  * Supports layered try-on: top â bottom â bag â hat
  */
+/**
+ * initTryOnRoom() — Upgraded for Outfit Builder
+ * Replaces the original function in main.js
+ * Supports layered try-on: top → bottom → bag → hat
+ */
 function initTryOnRoom() {
   const OB = window.OutfitBuilder;
   if (!OB) { console.warn('[TryOn] OutfitBuilder not loaded'); return; }
@@ -1221,7 +1226,7 @@ function initTryOnRoom() {
 
   if (!uploadArea) return;
 
-  /* ââ Step navigation ââââââââââââââââââââââââââââââââââââââââ */
+  /* ── Step navigation ──────────────────────────────────────── */
   function goStep(n) {
     document.querySelectorAll('.tryon-step').forEach(function(s) { s.classList.remove('active'); });
     var step = document.getElementById('tryon-step' + n);
@@ -1229,7 +1234,7 @@ function initTryOnRoom() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  /* ââ Step 1: Upload selfie (mostly unchanged) ââââââââââââââ */
+  /* ── Step 1: Upload selfie (mostly unchanged) ────────────── */
   uploadArea.addEventListener('click', function() { fileInput.click(); });
   uploadArea.addEventListener('dragover', function(e) { e.preventDefault(); uploadArea.classList.add('dragover'); });
   uploadArea.addEventListener('dragleave', function() { uploadArea.classList.remove('dragover'); });
@@ -1286,7 +1291,7 @@ function initTryOnRoom() {
 
   backBtn.addEventListener('click', function() { goStep(1); });
 
-  /* ââ Step 2: Category tabs âââââââââââââââââââââââââââââââââ */
+  /* ── Step 2: Category tabs ───────────────────────────────── */
   var catTabs = document.getElementById('outfit-cat-tabs');
   if (catTabs) {
     catTabs.addEventListener('click', function(e) {
@@ -1299,10 +1304,10 @@ function initTryOnRoom() {
     });
   }
 
-  /* ââ Step 2: Brand filter ââââââââââââââââââââââââââââââââââ */
+  /* ── Step 2: Brand filter ────────────────────────────────── */
   function populateBrandFilter() {
     var sel = brandSelect;
-    sel.innerHTML = '<option value="all">ææåç</option>';
+    sel.innerHTML = '<option value="all">所有品牌</option>';
     BRANDS.filter(function(b) { return b.products.length > 0; }).forEach(function(b) {
       var opt = document.createElement('option');
       opt.value = b.id;
@@ -1315,7 +1320,7 @@ function initTryOnRoom() {
     renderClothes(brandSelect.value, currentCategoryTab);
   });
 
-  /* ââ Step 2: Render clothes grid (category-filtered) âââââââ */
+  /* ── Step 2: Render clothes grid (category-filtered) ─────── */
   function renderClothes(brandFilter, category) {
     var products = [];
     var activeBrands = BRANDS.filter(function(b) { return b.products.length > 0; });
@@ -1343,7 +1348,7 @@ function initTryOnRoom() {
       var catLabel = OB.CATEGORY_LABELS[category];
       var emptyText = lang === 'en'
         ? 'No ' + catLabel.en.toLowerCase() + ' products found for this brand'
-        : 'æ­¤åçæ²æ' + catLabel.tw + 'åå';
+        : '此品牌沒有' + catLabel.tw + '商品';
       clothesGrid.innerHTML = '<div style="text-align:center;padding:40px;color:#6b5f7a;font-size:0.85rem">' + emptyText + '</div>';
       return;
     }
@@ -1359,7 +1364,7 @@ function initTryOnRoom() {
 
       return '<div class="tryon-cloth-card' + (isSelected ? ' tryon-cloth-selected' : '') + '" data-product-id="' + p.id + '">'
         + '<img src="' + imgUrl + '" alt="' + name + '" loading="lazy" />'
-        + '<div class="tryon-cloth-trybtn" data-en="' + (isSelected ? 'SELECTED' : 'SELECT') + '" data-tw="' + (isSelected ? 'å·²é¸æ' : 'é¸æ') + '">' + (isSelected ? 'â å·²é¸æ' : 'é¸æ') + '</div>'
+        + '<div class="tryon-cloth-trybtn" data-en="' + (isSelected ? 'SELECTED' : 'SELECT') + '" data-tw="' + (isSelected ? '已選擇' : '選擇') + '">' + (isSelected ? '✓ 已選擇' : '選擇') + '</div>'
         + '<div class="tryon-cloth-info">'
         + '<h4>' + name + '</h4>'
         + '<span>' + price + '</span>'
@@ -1367,7 +1372,7 @@ function initTryOnRoom() {
         + '</div>';
     }).join('');
 
-    // Attach click handlers â add to outfit instead of immediate try-on
+    // Attach click handlers — add to outfit instead of immediate try-on
     clothesGrid.querySelectorAll('.tryon-cloth-card').forEach(function(card) {
       card.addEventListener('click', function() {
         var pid = card.dataset.productId;
@@ -1392,7 +1397,7 @@ function initTryOnRoom() {
     updateTexts();
   }
 
-  /* ââ Step 2: Start Try On button âââââââââââââââââââââââââââ */
+  /* ── Step 2: Start Try On button ─────────────────────────── */
   if (outfitTryBtn) {
     outfitTryBtn.addEventListener('click', function() {
       if (OB.getItemCount() === 0) return;
@@ -1400,7 +1405,7 @@ function initTryOnRoom() {
     });
   }
 
-  /* ââ Step 3: Layered try-on execution ââââââââââââââââââââââ */
+  /* ── Step 3: Layered try-on execution ────────────────────── */
   function startLayeredTryOn() {
     goStep(3);
 
@@ -1433,7 +1438,7 @@ function initTryOnRoom() {
         var lang = window.__currentLang || 'tw';
         var msg = lang === 'en'
           ? 'Processing ' + stepLabel + '...'
-          : 'æ­£å¨è©¦ç©¿' + stepLabel + '...';
+          : '正在試穿' + stepLabel + '...';
         loadingMsg.textContent = msg;
 
         // Update progress chips
@@ -1470,7 +1475,7 @@ function initTryOnRoom() {
         });
         document.getElementById('tryon-result-name').textContent = names;
         document.getElementById('tryon-result-price').textContent = totalPrice > 0
-          ? 'æ´å¥ NT$ ' + totalPrice.toLocaleString()
+          ? '整套 NT$ ' + totalPrice.toLocaleString()
           : '';
 
         // Render per-layer thumbnails (clickable to view intermediate results)
@@ -1510,10 +1515,10 @@ function initTryOnRoom() {
     );
   }
 
-  /* ââ Step 3: Navigation ââââââââââââââââââââââââââââââââââââ */
+  /* ── Step 3: Navigation ──────────────────────────────────── */
   tryAnother.addEventListener('click', function() { goStep(2); });
 
-  /* ââ Step 3: Add all items to cart âââââââââââââââââââââââââ */
+  /* ── Step 3: Add all items to cart ───────────────────────── */
   addCartBtn.addEventListener('click', function() {
     var results = window.__lastTryOnResults || [];
     if (results.length === 0) return;
@@ -1533,4 +1538,5 @@ function initTryOnRoom() {
     });
   });
 }
+
 
