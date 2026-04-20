@@ -1079,8 +1079,15 @@ function renderBanners() {
     const btnLabel = lang === 'tw' ? '立即選購' : 'SHOP NOW';
     const showBtn = clickable;
 
+    // Responsive: desktop uses image_url, mobile uses mobile_image_url (if available)
+    const isMobile = window.innerWidth <= 768;
+    const desktopImg = b.image_url || '';
+    const mobileImg = b.mobile_image_url || desktopImg;
+    const bgImg = isMobile ? mobileImg : desktopImg;
+
     container.innerHTML = `
-      <div class="hero-banner-slide" style="background-image:url('${b.image_url}');${cursorStyle}"
+      <div class="hero-banner-slide" style="background-image:url('${bgImg}');${cursorStyle}"
+           data-desktop-img="${desktopImg}" data-mobile-img="${mobileImg}"
            ${clickable ? `data-brand-id="${b.brand_id || ''}" data-link-url="${b.link_url || ''}"` : ''}>
         <div class="hero-banner-overlay"></div>
         <div class="hero-banner-text">
@@ -1111,6 +1118,13 @@ function renderBanners() {
   }
 
   window._bannerGo = function(i) { current = i; render(); };
+
+  // Swap desktop/mobile image on resize
+  let lastMobile = window.innerWidth <= 768;
+  window.addEventListener('resize', () => {
+    const nowMobile = window.innerWidth <= 768;
+    if (nowMobile !== lastMobile) { lastMobile = nowMobile; render(); }
+  });
 
   // Auto-rotate every 5 seconds
   if (banners.length > 1) {
