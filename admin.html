@@ -1065,7 +1065,8 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 5%;">⋮</th>
-                                        <th style="width: 8%;">Image</th>
+                                        <th style="width: 8%;">Desktop</th>
+                                        <th style="width: 8%;">Mobile</th>
                                         <th>Title</th>
                                         <th>Subtitle</th>
                                         <th>Active</th>
@@ -1449,16 +1450,31 @@
                     </div>
                     <div class="form-row full">
                         <div class="form-group full">
-                            <label>Banner Image</label>
+                            <label>Desktop Banner (21:9 橫式，建議 2100×900)</label>
                             <div style="display: flex; gap: 1rem; align-items: flex-start;">
                                 <div style="flex: 1;">
                                     <input type="text" id="bannerImageUrl" placeholder="Image URL or upload below">
                                     <div style="margin-top: 0.5rem;">
                                         <input type="file" id="bannerImageFile" accept="image/*" style="display: none;">
-                                        <button type="button" class="btn-small" onclick="document.getElementById('bannerImageFile').click()">Upload Image</button>
+                                        <button type="button" class="btn-small" onclick="document.getElementById('bannerImageFile').click()">Upload Desktop Image</button>
                                     </div>
                                 </div>
                                 <img id="bannerImagePreview" class="image-preview" style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label>Mobile Banner (9:16 直式，建議 1080×1920)</label>
+                            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                                <div style="flex: 1;">
+                                    <input type="text" id="bannerMobileImageUrl" placeholder="Mobile image URL or upload below (留空則使用桌面版)">
+                                    <div style="margin-top: 0.5rem;">
+                                        <input type="file" id="bannerMobileImageFile" accept="image/*" style="display: none;">
+                                        <button type="button" class="btn-small" onclick="document.getElementById('bannerMobileImageFile').click()">Upload Mobile Image</button>
+                                    </div>
+                                </div>
+                                <img id="bannerMobileImagePreview" class="image-preview" style="display: none;">
                             </div>
                         </div>
                     </div>
@@ -2272,9 +2288,11 @@
                 tr.draggable = true;
                 tr.dataset.id = banner.id;
                 const img = banner.image_url ? `<img src="${banner.image_url}" class="image-preview" style="width: 80px; height: 50px; border-radius: 4px; object-fit: cover;">` : '-';
+                const mobileImg = banner.mobile_image_url ? `<img src="${banner.mobile_image_url}" class="image-preview" style="width: 35px; height: 60px; border-radius: 4px; object-fit: cover;">` : '<span style="opacity:0.4;font-size:11px">同桌面</span>';
                 tr.innerHTML = `
                     <td style="cursor: move; text-align: center;">⋮</td>
                     <td style="width: 8%;">${img}</td>
+                    <td style="width: 8%;">${mobileImg}</td>
                     <td>${banner.title || '-'}</td>
                     <td>${banner.subtitle || '-'}</td>
                     <td>
@@ -2318,6 +2336,7 @@
             document.getElementById('bannerForm').reset();
             document.getElementById('bannerActive').checked = true;
             document.getElementById('bannerImagePreview').style.display = 'none';
+            document.getElementById('bannerMobileImagePreview').style.display = 'none';
             await populateBannerBrandSelect('');
             document.getElementById('bannerModal').classList.add('active');
         });
@@ -2329,6 +2348,7 @@
             document.getElementById('bannerTitle').value = banner.title || '';
             document.getElementById('bannerSubtitle').value = banner.subtitle || '';
             document.getElementById('bannerImageUrl').value = banner.image_url || '';
+            document.getElementById('bannerMobileImageUrl').value = banner.mobile_image_url || '';
             document.getElementById('bannerLink').value = banner.link_url || '';
             document.getElementById('bannerActive').checked = banner.is_active !== false;
             document.getElementById('bannerSortOrder').value = banner.sort_order || 0;
@@ -2337,6 +2357,12 @@
                 document.getElementById('bannerImagePreview').style.display = 'block';
             } else {
                 document.getElementById('bannerImagePreview').style.display = 'none';
+            }
+            if (banner.mobile_image_url) {
+                document.getElementById('bannerMobileImagePreview').src = banner.mobile_image_url;
+                document.getElementById('bannerMobileImagePreview').style.display = 'block';
+            } else {
+                document.getElementById('bannerMobileImagePreview').style.display = 'none';
             }
             await populateBannerBrandSelect(banner.brand_id || '');
             document.getElementById('bannerModal').classList.add('active');
@@ -2366,6 +2392,23 @@
             }
         });
 
+        document.getElementById('bannerMobileImageFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const filename = `${Date.now()}-mobile-${file.name}`;
+                const path = `banners/${editingBannerId || 'temp'}/${filename}`;
+                const { data, error } = await sb.storage.from('product-images').upload(path, file);
+                if (error) throw error;
+                const { data: publicUrl } = sb.storage.from('product-images').getPublicUrl(path);
+                document.getElementById('bannerMobileImageUrl').value = publicUrl.publicUrl;
+                document.getElementById('bannerMobileImagePreview').src = publicUrl.publicUrl;
+                document.getElementById('bannerMobileImagePreview').style.display = 'block';
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        });
+
         document.getElementById('bannerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -2373,6 +2416,7 @@
                 title: document.getElementById('bannerTitle').value,
                 subtitle: document.getElementById('bannerSubtitle').value,
                 image_url: document.getElementById('bannerImageUrl').value,
+                mobile_image_url: document.getElementById('bannerMobileImageUrl').value,
                 brand_id: document.getElementById('bannerBrandId').value || null,
                 link_url: document.getElementById('bannerLink').value,
                 is_active: document.getElementById('bannerActive').checked,
