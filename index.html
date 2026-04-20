@@ -360,8 +360,18 @@
 
     /* ======== HERO — Aurora gradient ======== */
     .hero {
-      height: calc(100vh - 68px); position: relative;
+      /* Desktop: 21:9 cinematic ratio */
+      aspect-ratio: 21 / 9;
+      max-height: calc(100vh - 68px);
+      position: relative;
       display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    @media (max-width: 768px) {
+      .hero {
+        /* Mobile: 9:16 portrait ratio */
+        aspect-ratio: 9 / 16;
+        max-height: 85vh;
+      }
     }
     /* Dynamic banner slides */
     #hero-banners { position:absolute; inset:0; z-index:2; }
