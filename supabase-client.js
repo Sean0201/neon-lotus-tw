@@ -150,6 +150,7 @@ async function loadSupabaseData() {
     title:     bn.title || '',
     subtitle:  bn.subtitle || '',
     image_url: bn.image_url || '',
+    mobile_image_url: bn.mobile_image_url || '',
     brand_id:  bn.brand_id || '',
     link_url:  bn.link_url || '',
     sort_order: bn.sort_order || 0,
