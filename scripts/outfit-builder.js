@@ -103,10 +103,14 @@
     if (tryBtn) {
       const count = getItemCount();
       tryBtn.disabled = count === 0;
-      const btnLabel = lang === 'en'
-        ? 'Try On Outfit (' + count + ')'
-        : '開始試穿 (' + count + ' 件)';
-      tryBtn.textContent = count > 0 ? '✨ ' + btnLabel : (lang === 'en' ? 'Select items first' : '請先選擇商品');
+      if (count > 0) {
+        const btnLabel = lang === 'en'
+          ? 'Selected ' + count + ' — Start Try On'
+          : '已選擇完成 進行試穿 (' + count + ' 件)';
+        tryBtn.textContent = '✨ ' + btnLabel;
+      } else {
+        tryBtn.textContent = lang === 'en' ? 'Select items first' : '請先選擇商品';
+      }
     }
   }
 
@@ -142,7 +146,8 @@
         });
         if (!res.ok) {
           if (res.status === 429) throw new Error('目前排隊人數較多，請稍後再試！');
-          if (res.status >= 500) throw new Error('系統暫時忙禄，請稍候再試！');
+          if (res.status === 504) throw new Error('AI 處理時間較長，請稍後再試一次！⏳');
+          if (res.status >= 500) throw new Error('系統暫時忙碌，請稍候再試！');
           throw new Error('API 錯誤 (' + res.status + ')');
         }
         const data = await res.json();
