@@ -4,7 +4,7 @@
  * Supports: tops, bottoms, bags, hats â with layered outfit composition
  */
 
-export const config = { runtime: 'edge', maxDuration: 60 };
+export const config = { runtime: 'edge', maxDuration: 300 };
 
 /* ââ Category-specific prompt builders âââââââââââââââââââââââ */
 function getPrompt(category, productName) {
@@ -160,7 +160,7 @@ export default async function handler(request) {
 
     // Call Gemini API with timeout protection
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 50000); // 50s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout
 
     let geminiRes;
     try {
