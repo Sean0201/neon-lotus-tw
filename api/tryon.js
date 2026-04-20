@@ -4,7 +4,7 @@
  * Supports: tops, bottoms, bags, hats â with layered outfit composition
  */
 
-export const config = { runtime: 'edge' };
+export const config = { runtime: 'edge', maxDuration: 60 };
 
 /* ââ Category-specific prompt builders âââââââââââââââââââââââ */
 function getPrompt(category, productName) {
@@ -158,21 +158,35 @@ export default async function handler(request) {
       });
     }
 
-    // Call Gemini API
-    const geminiRes = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + GEMINI_KEY,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts }],
-          generationConfig: {
-            responseModalities: ['TEXT', 'IMAGE'],
-            temperature: 0.4
-          }
-        })
+    // Call Gemini API with timeout protection
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 50000); // 50s timeout
+
+    let geminiRes;
+    try {
+      geminiRes = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + GEMINI_KEY,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts }],
+            generationConfig: {
+              responseModalities: ['TEXT', 'IMAGE'],
+              temperature: 0.4
+            }
+          })
+        }
+      );
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      if (fetchErr.name === 'AbortError') {
+        return json(504, { error: 'Gemini API timeout', details: 'The AI took too long to generate the image. Please try again.' });
       }
-    );
+      throw fetchErr;
+    }
+    clearTimeout(timeoutId);
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
