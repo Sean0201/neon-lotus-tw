@@ -114,6 +114,43 @@
     }
   }
 
+  /* ── Helper: fetch image URL and convert to base64 on client side ── */
+  async function imageUrlToBase64(url) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('fetch failed');
+      const blob = await res.blob();
+      return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+        reader.onloadend = function() {
+          const dataUrl = reader.result;
+          const comma = dataUrl.indexOf(',');
+          const mime = dataUrl.substring(5, dataUrl.indexOf(';'));
+          const b64 = dataUrl.substring(comma + 1);
+          resolve({ base64: b64, mimeType: mime });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return new Promise(function(resolve, reject) {
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+          var c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          c.getContext('2d').drawImage(img, 0, 0);
+          var dataUrl = c.toDataURL('image/jpeg', 0.85);
+          var comma = dataUrl.indexOf(',');
+          resolve({ base64: dataUrl.substring(comma + 1), mimeType: 'image/jpeg' });
+        };
+        img.onerror = function() { reject(new Error('無法載入商品圖片')); };
+        img.src = url;
+      });
+    }
+  }
+
   async function executeTryOn(onProgress, onComplete, onError) {
     if (isProcessing) return;
     if (!selfieBase64) { onError('請先上傳照片'); return; }
@@ -133,13 +170,25 @@
         : label.tw + ' (' + (i + 1) + '/' + layers.length + ')';
       onProgress(i, layers.length, stepLabel, cat);
       try {
+        // Convert clothing image to base64 on client side (avoids Edge fetch issues)
+        let clothingB64 = null;
+        let clothingMime = 'image/jpeg';
+        try {
+          const imgData = await imageUrlToBase64(item.imageUrl);
+          clothingB64 = imgData.base64;
+          clothingMime = imgData.mimeType;
+        } catch (imgErr) {
+          throw new Error('商品圖片無法載入，請試試其他款式！');
+        }
+
         const res = await fetch('/api/tryon', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             selfieBase64: currentBase64,
             selfieType: currentType,
-            clothingUrl: item.imageUrl,
+            clothingBase64: clothingB64,
+            clothingType: clothingMime,
             productName: item.product.name || 'item',
             category: cat
           })
