@@ -371,6 +371,8 @@
         /* Mobile: 9:16 portrait ratio */
         aspect-ratio: 9 / 16;
         max-height: 85vh;
+        width: 100vw;
+        margin-left: calc(-50vw + 50%);
       }
     }
     /* Dynamic banner slides */
@@ -379,6 +381,7 @@
       position:absolute; inset:0;
       background-size:cover; background-position:center;
       display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.45s ease, transform 0.45s ease;
     }
     .hero-banner-overlay {
       position:absolute; inset:0;
