@@ -4,7 +4,7 @@
  * Supports: tops, bottoms, bags, hats â with layered outfit composition
  */
 
-export const config = { runtime: 'edge', maxDuration: 300, preferredRegion: ['iad1', 'cle1', 'sfo1'] };
+export const config = { runtime: 'edge', maxDuration: 300, regions: ['iad1'] };
 
 /* ââ Category-specific prompt builders âââââââââââââââââââââââ */
 function getPrompt(category, productName) {
