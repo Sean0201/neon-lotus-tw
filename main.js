@@ -1133,10 +1133,43 @@ function renderBanners() {
     if (nowMobile !== lastMobile) { lastMobile = nowMobile; render(); }
   });
 
-  // Auto-rotate every 5 seconds
+  // ── Touch-swipe support ──
   if (banners.length > 1) {
-    setInterval(() => { current = (current + 1) % banners.length; render(); }, 5000);
+    let touchStartX = 0, touchStartY = 0, touchStartTime = 0, swiping = false;
+    container.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+      swiping = true;
+    }, { passive: true });
+    container.addEventListener('touchmove', (e) => {
+      if (!swiping) return;
+      const dy = Math.abs(e.touches[0].clientY - touchStartY);
+      const dx = Math.abs(e.touches[0].clientX - touchStartX);
+      if (dy > dx) { swiping = false; }
+    }, { passive: true });
+    container.addEventListener('touchend', (e) => {
+      if (!swiping) return;
+      swiping = false;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dt = Date.now() - touchStartTime;
+      if (Math.abs(dx) < 40 || dt > 400) return;
+      if (dx < 0) { current = (current + 1) % banners.length; }
+      else { current = (current - 1 + banners.length) % banners.length; }
+      render();
+      resetAutoRotate();
+    });
   }
+
+  // Auto-rotate every 5s (resets on swipe)
+  let autoTimer = null;
+  function resetAutoRotate() {
+    if (autoTimer) clearInterval(autoTimer);
+    if (banners.length > 1) {
+      autoTimer = setInterval(() => { current = (current + 1) % banners.length; render(); }, 5000);
+    }
+  }
+  resetAutoRotate();
 
   render();
 }
