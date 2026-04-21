@@ -8,9 +8,9 @@
  *   ECPAY_MERCHANT_ID
  *   ECPAY_HASH_KEY
  *   ECPAY_HASH_IV
- *   ECPAY_API_URL        — 測試: https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5
- *                           正式: https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5
- *   SITE_URL              — 你的網站網址 e.g. https://neon-lotus-tw.vercel.app
+ *   ECPAY_API_URL — 測試: https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5
+ *                   正式: https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5
+ *   SITE_URL      — 你的網站網址 e.g. https://neon-lotus-tw.vercel.app
  */
 
 import crypto from 'crypto';
@@ -52,14 +52,19 @@ function generateCheckMacValue(params, hashKey, hashIV) {
 /* ── 產生唯一交易編號 ────────────────────────────────── */
 function generateTradeNo() {
   const now = new Date();
-  const ts = now.getFullYear().toString() +
-    String(now.getMonth() + 1).padStart(2, '0') +
-    String(now.getDate()).padStart(2, '0') +
-    String(now.getHours()).padStart(2, '0') +
-    String(now.getMinutes()).padStart(2, '0') +
-    String(now.getSeconds()).padStart(2, '0');
+  const ts = now.getFullYear().toString()
+    + String(now.getMonth() + 1).padStart(2, '0')
+    + String(now.getDate()).padStart(2, '0')
+    + String(now.getHours()).padStart(2, '0')
+    + String(now.getMinutes()).padStart(2, '0')
+    + String(now.getSeconds()).padStart(2, '0');
   const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `NL${ts}${rand}`;  // 最多 20 碼
+}
+
+/* ── 清理交易編號 (綠界只接受英數字, 最多 20 碼) ──────── */
+function sanitizeTradeNo(raw) {
+  return raw.replace(/[^A-Za-z0-9]/g, '').substring(0, 20);
 }
 
 /* ── 格式化日期 (綠界要求 yyyy/MM/dd HH:mm:ss) ──────── */
@@ -99,28 +104,29 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'ECPay credentials not configured' });
     }
 
-    const tradeNo = orderId || generateTradeNo();
+    // 清理 MerchantTradeNo: 移除非英數字元, 截斷至 20 碼
+    const tradeNo = sanitizeTradeNo(orderId || generateTradeNo());
     const tradeDate = formatDate(new Date());
 
     // 商品名稱 (綠界格式: 品名1 x 數量1 # 品名2 x 數量2)
     const itemName = items
       .map(i => `${i.name} x${i.quantity}`)
       .join('#')
-      .substring(0, 200);  // 綠界限制 200 字
+      .substring(0, 200); // 綠界限制 200 字
 
     // 建立綠界參數
     const params = {
-      MerchantID:        MERCHANT_ID,
-      MerchantTradeNo:   tradeNo,
+      MerchantID:       MERCHANT_ID,
+      MerchantTradeNo:  tradeNo,
       MerchantTradeDate: tradeDate,
-      PaymentType:       'aio',
-      TotalAmount:       String(Math.round(totalAmount)),
-      TradeDesc:         'Neon Lotus 訂單',
-      ItemName:          itemName,
-      ReturnURL:         `${SITE_URL}/api/ecpay-notify`,   // 綠界 server-to-server 通知
-      OrderResultURL:    `${SITE_URL}/api/ecpay-return`,   // 付款後導回前端
-      ChoosePayment:     'ALL',                             // 顯示所有付款方式
-      EncryptType:       '1',                               // SHA256
+      PaymentType:      'aio',
+      TotalAmount:      String(Math.round(totalAmount)),
+      TradeDesc:        'Neon Lotus',
+      ItemName:         itemName,
+      ReturnURL:        `${SITE_URL}/api/ecpay-notify`,       // 綠界 server-to-server 通知
+      OrderResultURL:   `${SITE_URL}/api/ecpay-return`,       // 付款後導回前端
+      ChoosePayment:    'ALL',                                 // 顯示所有付款方式
+      EncryptType:      '1',                                   // SHA256
       NeedExtraPaidInfo: 'Y',
     };
 
