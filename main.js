@@ -555,8 +555,15 @@ function renderBrandsGrid() {
     const coverSrc   = b.cover_url || _getBrandCoverSrc(b) || '';
     const logoSrc    = b.logo_url || '';
     const itemCount  = b.products.length;
-    const cityLabel  = b.meta_location || b.origin || '';
     const cardId     = `bc-${b.id}`;
+
+    // Build style tags from b.style (split by / or ,)
+    const styleTags = (b.style || '')
+      .split(/[\/,]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+      .map(s => `<span class="brand-card-tag">${s}</span>`)
+      .join('');
 
     // Background style: CDN image or neon gradient
     const bgStyle = coverSrc
@@ -581,7 +588,7 @@ function renderBrandsGrid() {
         ${logoHtml}
         <div class="brand-card-overlay"></div>
         <div class="brand-card-info">
-          <div class="brand-card-origin">${cityLabel}</div>
+          <div class="brand-card-tags">${styleTags}</div>
           <div class="brand-card-name">${displayName}</div>
           <div class="brand-card-count">${itemCount} ITEMS</div>
         </div>
