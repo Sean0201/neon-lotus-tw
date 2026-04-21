@@ -531,11 +531,16 @@
     }
     .brand-card:hover .brand-card-overlay { opacity:0.7; }
     .brand-card-info { position:absolute; bottom:0; left:0; right:0; padding:24px 22px; z-index:1; }
-    .brand-card-origin {
-      font-size:0.6rem; letter-spacing:0.25em; text-transform:uppercase;
-      background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom:4px; line-height:1.3;
+    .brand-card-tags {
+      display:flex; flex-wrap:wrap; gap:5px; margin-bottom:6px;
+    }
+    .brand-card-tag {
+      display:inline-block; font-size:0.55rem; letter-spacing:0.12em; text-transform:uppercase;
+      padding:3px 9px; border-radius:20px;
+      background:rgba(180,120,255,0.18); border:1px solid rgba(180,120,255,0.35);
+      color:rgba(220,190,255,0.92); line-height:1.3;
+      backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+      white-space:nowrap;
     }
     .brand-card-name {
       font-family: var(--font-headline); font-size:1.5rem; font-weight:700;
