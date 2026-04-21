@@ -682,6 +682,75 @@
         color: ${colors.black};
       }
 
+      /* CVS Brand Selector */
+      .neon-cvs-brands {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .neon-cvs-brand-btn {
+        padding: 10px 12px;
+        border: 1px solid ${colors.border};
+        background: transparent;
+        color: ${colors.white};
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        text-align: center;
+      }
+
+      .neon-cvs-brand-btn:hover {
+        border-color: ${colors.accent};
+        color: ${colors.accent};
+      }
+
+      .neon-cvs-brand-btn.active {
+        background: ${colors.accent};
+        border-color: ${colors.accent};
+        color: ${colors.black};
+      }
+
+      /* Store Picker */
+      .neon-store-picker {
+        margin-top: 12px;
+      }
+
+      .neon-store-pick-btn {
+        width: 100%;
+        padding: 12px 16px;
+        background: transparent;
+        border: 1px dashed ${colors.accent};
+        color: ${colors.accent};
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+      }
+
+      .neon-store-pick-btn:hover {
+        background: rgba(192, 132, 252, 0.1);
+      }
+
+      .neon-store-info {
+        margin-top: 8px;
+        padding: 12px;
+        background: rgba(192, 132, 252, 0.06);
+        border: 1px solid ${colors.border};
+        border-radius: 6px;
+        font-size: 13px;
+        color: ${colors.lightgrey};
+        line-height: 1.6;
+      }
+
+      .neon-store-info strong {
+        color: ${colors.white};
+      }
+
       .neon-checkout-summary {
         background: rgba(255, 255, 255, 0.02);
         border: 1px solid ${colors.border};
@@ -1024,7 +1093,14 @@
 
     footer.querySelector('.neon-cart-btn-checkout').addEventListener('click', () => {
       closeCartDrawer();
-      showCheckoutPage();
+      // 判斷是否有國際配送商品 → 走物流結帳；全是親自運送 → 走簡單結帳
+      const cartItems = CartState.get();
+      const hasShipping = cartItems.some(i => i.shipping_method === 'shipping');
+      if (hasShipping) {
+        showCheckoutPage();          // 完整結帳 (超商/宅配 + 線上付款/貨到付款)
+      } else {
+        showCarrybackCheckoutPage(); // 簡單結帳 (親自運送)
+      }
     });
 
     footer.querySelector('.neon-cart-btn-continue').addEventListener('click', closeCartDrawer);
@@ -1162,7 +1238,223 @@
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // CHECKOUT PAGE
+  // CARRYBACK (親自運送) CHECKOUT PAGE — 簡單結帳
+  // ─────────────────────────────────────────────────────────────────
+
+  async function showCarrybackCheckoutPage() {
+    injectStyles();
+
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'page neon-checkout-page';
+    pageDiv.id = 'neon-checkout-page';
+
+    const items = CartState.get();
+    const total = CartState.getTotal();
+
+    let itemsSummary = '';
+    items.forEach((item) => {
+      itemsSummary += `
+        <div class="neon-checkout-summary-item">
+          <span class="neon-checkout-summary-item-name">${item.product_name}</span>
+          <span class="neon-checkout-summary-item-qty">\u00d7${item.quantity}</span>
+          <span class="neon-checkout-summary-item-price">NT$ ${(item.unit_price * item.quantity).toLocaleString()}</span>
+        </div>
+      `;
+    });
+
+    const html = `
+      <div class="neon-checkout-header">
+        <button type="button" id="checkout-back" style="position:absolute;left:20px;top:50%;transform:translateY(-50%);background:none;border:1px solid ${colors.border};color:${colors.white};padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;">\u2190 返回</button>
+        <h1 class="neon-checkout-title">結帳 — 親自運送</h1>
+      </div>
+      <div class="neon-checkout-container">
+        <div class="neon-checkout-grid">
+          <div class="neon-checkout-form-section">
+            <div class="neon-checkout-form-group">
+              <label class="neon-checkout-form-label">姓名 *</label>
+              <input class="neon-checkout-form-input" id="checkout-name" type="text" placeholder="你的姓名" required />
+            </div>
+            <div class="neon-checkout-form-group">
+              <label class="neon-checkout-form-label">電話 *</label>
+              <input class="neon-checkout-form-input" id="checkout-phone" type="tel" placeholder="你的電話號碼" required />
+            </div>
+            <div class="neon-checkout-form-group">
+              <label class="neon-checkout-form-label">Email *</label>
+              <input class="neon-checkout-form-input" id="checkout-email" type="email" placeholder="你的 Email" required />
+            </div>
+            <div class="neon-checkout-form-group">
+              <label class="neon-checkout-form-label">備註</label>
+              <textarea class="neon-checkout-form-textarea" id="checkout-note" placeholder="有任何特殊要求嗎?"></textarea>
+            </div>
+          </div>
+
+          <div class="neon-checkout-summary">
+            <div class="neon-checkout-summary-title">訂單摘要</div>
+            <div class="neon-checkout-summary-items">
+              ${itemsSummary}
+            </div>
+            <div class="neon-checkout-summary-totals">
+              <div class="neon-checkout-summary-row">
+                <span class="neon-checkout-summary-label">配送方式:</span>
+                <span class="neon-checkout-summary-value">親自運送</span>
+              </div>
+              <div class="neon-checkout-summary-total">
+                <span>合計:</span>
+                <span class="neon-checkout-summary-total-value">NT$ ${total.toLocaleString()}</span>
+              </div>
+            </div>
+            <button type="button" class="neon-checkout-btn" id="checkout-submit">確認訂單</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    pageDiv.innerHTML = html;
+    document.body.appendChild(pageDiv);
+    document.body.style.overflow = 'hidden';
+    pageDiv.scrollTop = 0;
+
+    // Back button
+    pageDiv.querySelector('#checkout-back').addEventListener('click', () => {
+      pageDiv.remove();
+      document.body.style.overflow = '';
+    });
+
+    // Submit
+    pageDiv.querySelector('#checkout-submit').addEventListener('click', async () => {
+      const name  = pageDiv.querySelector('#checkout-name').value.trim();
+      const phone = pageDiv.querySelector('#checkout-phone').value.trim();
+      const email = pageDiv.querySelector('#checkout-email').value.trim();
+      const note  = pageDiv.querySelector('#checkout-note').value.trim();
+
+      if (!name || !phone || !email) {
+        alert('請填入姓名、電話和 Email');
+        return;
+      }
+
+      const submitBtn = pageDiv.querySelector('#checkout-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '處理中...';
+
+      try {
+        const supabase = window.supabase.createClient(
+          'https://epemuyojkprepknuzuzc.supabase.co',
+          [
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+            'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZW11eW9qa3ByZXBrbnV6dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDMwMTAsImV4cCI6MjA5MTM3OTAxMH0',
+            'nTv7W1_ndzzAQGNgVzSKSkruvsnEgt6N7PbnRK31l0M'
+          ].join('.')
+        );
+
+        const now = new Date();
+        const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+        const rand = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+        const orderNumber = `NL-${dateStr}-${rand}`;
+
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .insert([{
+            order_number: orderNumber,
+            customer_name: name,
+            customer_phone: phone,
+            customer_email: email,
+            customer_address: '',
+            shipping_method: '親自運送',
+            payment_method: '線上付款',
+            status: 'pending',
+            subtotal: total,
+            shipping_fee: 0,
+            total: total,
+            note: note,
+            line_notified: false,
+          }])
+          .select();
+
+        if (orderError) throw new Error(orderError.message);
+        if (!orderData || !orderData[0]) throw new Error('Failed to create order');
+
+        const orderId = orderData[0].id;
+
+        const orderItems = items.map((item) => ({
+          order_id: orderId,
+          product_id: item.product_id,
+          product_name: item.product_name,
+          brand_id: item.brand_id,
+          size: item.size,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          image_url: item.image_url,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
+
+        if (itemsError) throw new Error(itemsError.message);
+
+        // ── 準備商品資料 ──
+        const ecpayItems = items.map(item => ({
+          name: item.product_name,
+          quantity: item.quantity,
+          price: item.unit_price,
+        }));
+
+        // ── 線上付款 → ECPay 金流 ──
+        submitBtn.textContent = '導向付款頁面...';
+
+        const ecpayRes = await fetch('/api/ecpay-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: ecpayItems,
+            totalAmount: total,
+            buyerName: name,
+            buyerEmail: email,
+            buyerPhone: phone,
+            orderId: orderNumber,
+          }),
+        });
+
+        const ecpayData = await ecpayRes.json();
+
+        if (!ecpayData.success || !ecpayData.formHtml) {
+          throw new Error(ecpayData.error || '無法建立付款訂單');
+        }
+
+        // Clear cart before redirecting to ECPay
+        CartState.clear();
+        updateCartIcon();
+        pageDiv.remove();
+        document.body.style.overflow = '';
+
+        // Insert ECPay auto-submit form (redirects user to ECPay payment page)
+        const ecpayDiv = document.createElement('div');
+        ecpayDiv.id = 'ecpay-redirect';
+        ecpayDiv.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;align-items:center;justify-content:center;color:#f5f4f0;font-size:1.1rem;';
+        ecpayDiv.innerHTML = '<div style="text-align:center"><div style="margin-bottom:16px;font-size:2rem">🔒</div>正在導向綠界付款頁面...</div>';
+        document.body.appendChild(ecpayDiv);
+
+        const formContainer = document.createElement('div');
+        formContainer.style.display = 'none';
+        formContainer.innerHTML = ecpayData.formHtml;
+        document.body.appendChild(formContainer);
+
+        const ecpayForm = formContainer.querySelector('form');
+        if (ecpayForm) {
+          ecpayForm.submit();
+        }
+
+      } catch (error) {
+        console.error('[CartSystem] Carryback checkout error:', error);
+        alert('訂單提交失敗: ' + error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = '確認訂單';
+      }
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // SHIPPING (國際配送) CHECKOUT PAGE — 完整結帳 (物流 + 金流)
   // ─────────────────────────────────────────────────────────────────
 
   async function showCheckoutPage() {
@@ -1211,16 +1503,37 @@
               <input class="neon-checkout-form-input" id="checkout-email" type="email" placeholder="你的 Email" required />
             </div>
 
-            <div class="neon-checkout-form-group">
-              <label class="neon-checkout-form-label">地址 *</label>
-              <input class="neon-checkout-form-input" id="checkout-address" type="text" placeholder="送貨地址" required />
-            </div>
-
+            <!-- 配送方式 -->
             <div class="neon-checkout-form-group">
               <label class="neon-checkout-form-label">配送方式 *</label>
               <div class="neon-shipping-toggle">
-                <button type="button" class="neon-shipping-option active" data-shipping="shipping">國際配送</button>
-                <button type="button" class="neon-shipping-option" data-shipping="carryback">親自運送</button>
+                <button type="button" class="neon-shipping-option active" data-shipping="cvs">超商取貨</button>
+                <button type="button" class="neon-shipping-option" data-shipping="home">宅配到府</button>
+              </div>
+            </div>
+
+            <!-- 超商取貨區域 -->
+            <div id="checkout-cvs-section">
+              <div class="neon-checkout-form-group">
+                <label class="neon-checkout-form-label">選擇超商</label>
+                <div class="neon-cvs-brands">
+                  <button type="button" class="neon-cvs-brand-btn active" data-subtype="UNIMARTC2C">7-ELEVEN</button>
+                  <button type="button" class="neon-cvs-brand-btn" data-subtype="FAMIC2C">全家</button>
+                  <button type="button" class="neon-cvs-brand-btn" data-subtype="HILIFEC2C">萊爾富</button>
+                  <button type="button" class="neon-cvs-brand-btn" data-subtype="OKMARTC2C">OK超商</button>
+                </div>
+              </div>
+              <div class="neon-checkout-form-group neon-store-picker">
+                <button type="button" class="neon-store-pick-btn" id="checkout-pick-store">📍 選擇取貨門市</button>
+                <div class="neon-store-info" id="checkout-store-info" style="display:none;"></div>
+              </div>
+            </div>
+
+            <!-- 宅配到府區域 (預設隱藏) -->
+            <div id="checkout-home-section" style="display:none;">
+              <div class="neon-checkout-form-group">
+                <label class="neon-checkout-form-label">收件地址 *</label>
+                <input class="neon-checkout-form-input" id="checkout-address" type="text" placeholder="完整收件地址 (含縣市區)" />
               </div>
             </div>
 
@@ -1265,27 +1578,94 @@
       document.body.style.overflow = '';
     });
 
-    // Handle shipping option toggle
-    let selectedShipping = 'shipping';
+    /* ── 配送方式切換 ── */
+    let selectedShipping = 'cvs';          // 'cvs' | 'home'
+    let selectedCvsSubType = 'UNIMARTC2C'; // C2C subtype
+    let selectedStore = null;              // { storeId, storeName, storeAddress }
+
+    const cvsSection  = pageDiv.querySelector('#checkout-cvs-section');
+    const homeSection = pageDiv.querySelector('#checkout-home-section');
+
     pageDiv.querySelectorAll('.neon-shipping-option').forEach((btn) => {
       btn.addEventListener('click', () => {
         pageDiv.querySelectorAll('.neon-shipping-option').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         selectedShipping = btn.dataset.shipping;
+        cvsSection.style.display  = selectedShipping === 'cvs' ? '' : 'none';
+        homeSection.style.display = selectedShipping === 'home' ? '' : 'none';
       });
     });
 
-    // Handle submit
+    /* ── 超商品牌切換 ── */
+    pageDiv.querySelectorAll('.neon-cvs-brand-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        pageDiv.querySelectorAll('.neon-cvs-brand-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedCvsSubType = btn.dataset.subtype;
+        // 清除已選門市 (換品牌要重選)
+        selectedStore = null;
+        pageDiv.querySelector('#checkout-store-info').style.display = 'none';
+        pageDiv.querySelector('#checkout-pick-store').textContent = '📍 選擇取貨門市';
+      });
+    });
+
+    /* ── 選擇門市 (開啟綠界地圖) ── */
+    pageDiv.querySelector('#checkout-pick-store').addEventListener('click', () => {
+      const mapUrl = `/api/logistics-map?subType=${selectedCvsSubType}&isCollection=N`;
+      const mapWin = window.open(mapUrl, 'ecpayMap', 'width=800,height=600,scrollbars=yes');
+      if (!mapWin) {
+        alert('請允許彈出視窗以選擇門市');
+      }
+    });
+
+    // 接收門市選擇結果 (從 logistics-map-callback postMessage)
+    function handleStoreMessage(event) {
+      if (event.data && event.data.type === 'ecpay-cvs-store') {
+        selectedStore = {
+          storeId:   event.data.storeId,
+          storeName: event.data.storeName,
+          storeAddress: event.data.storeAddress,
+          logisticsSubType: event.data.logisticsSubType,
+        };
+        const storeInfo = pageDiv.querySelector('#checkout-store-info');
+        storeInfo.innerHTML = `<strong>${selectedStore.storeName}</strong><br>${selectedStore.storeAddress}<br>門市代號: ${selectedStore.storeId}`;
+        storeInfo.style.display = '';
+        pageDiv.querySelector('#checkout-pick-store').textContent = '📍 重新選擇門市';
+      }
+    }
+    window.addEventListener('message', handleStoreMessage);
+
+    /* ── 清理事件 ── */
+    function cleanupCheckout() {
+      window.removeEventListener('message', handleStoreMessage);
+      pageDiv.remove();
+      document.body.style.overflow = '';
+    }
+
+    /* ── Handle Submit ── */
     pageDiv.querySelector('#checkout-submit').addEventListener('click', async () => {
-      const name = pageDiv.querySelector('#checkout-name').value.trim();
+      const name  = pageDiv.querySelector('#checkout-name').value.trim();
       const phone = pageDiv.querySelector('#checkout-phone').value.trim();
       const email = pageDiv.querySelector('#checkout-email').value.trim();
-      const address = pageDiv.querySelector('#checkout-address').value.trim();
-      const note = pageDiv.querySelector('#checkout-note').value.trim();
+      const note  = pageDiv.querySelector('#checkout-note').value.trim();
 
-      if (!name || !phone || !email || !address) {
-        alert('請填入所有必要欄位');
+      /* 驗證必填 */
+      if (!name || !phone || !email) {
+        alert('請填入姓名、電話和 Email');
         return;
+      }
+
+      if (selectedShipping === 'cvs' && !selectedStore) {
+        alert('請先選擇取貨門市');
+        return;
+      }
+
+      if (selectedShipping === 'home') {
+        const address = pageDiv.querySelector('#checkout-address').value.trim();
+        if (!address) {
+          alert('請填入收件地址');
+          return;
+        }
       }
 
       // Disable submit button
@@ -1310,6 +1690,15 @@
         const rand = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
         const orderNumber = `NL-${dateStr}-${rand}`;
 
+        const address = selectedShipping === 'home'
+          ? pageDiv.querySelector('#checkout-address').value.trim()
+          : (selectedStore ? `${selectedStore.storeName} (${selectedStore.storeAddress})` : '');
+
+        // 配送方式文字
+        const shippingLabel = selectedShipping === 'cvs'
+          ? `超商取貨 - ${selectedStore?.storeName || ''}`
+          : '宅配到府';
+
         // Insert order
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
@@ -1320,7 +1709,8 @@
               customer_phone: phone,
               customer_email: email,
               customer_address: address,
-              shipping_method: selectedShipping,
+              shipping_method: shippingLabel,
+              payment_method: '線上付款',
               status: 'pending',
               subtotal: total,
               shipping_fee: 0,
@@ -1354,14 +1744,14 @@
 
         if (itemsError) throw new Error(itemsError.message);
 
-        // ── ECPay 金流串接 ──
-        // 準備 ECPay 參數
+        // ── 準備商品資料 ──
         const ecpayItems = items.map(item => ({
           name: item.product_name,
           quantity: item.quantity,
           price: item.unit_price,
         }));
 
+        // ── 線上付款 → ECPay 金流 ──
         submitBtn.textContent = '導向付款頁面...';
 
         const ecpayRes = await fetch('/api/ecpay-create', {
@@ -1386,10 +1776,7 @@
         // Clear cart before redirecting to ECPay
         CartState.clear();
         updateCartIcon();
-
-        // Remove checkout page
-        pageDiv.remove();
-        document.body.style.overflow = '';
+        cleanupCheckout();
 
         // Insert ECPay auto-submit form (redirects user to ECPay payment page)
         const ecpayDiv = document.createElement('div');
@@ -1398,21 +1785,11 @@
         ecpayDiv.innerHTML = '<div style="text-align:center"><div style="margin-bottom:16px;font-size:2rem">🔒</div>正在導向綠界付款頁面...</div>';
         document.body.appendChild(ecpayDiv);
 
-        // Write the form HTML and auto-submit
-        const iframe = document.createElement('iframe');
-        iframe.name = 'ecpay-frame';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-
-        // Use a new document to auto-submit
         const formContainer = document.createElement('div');
         formContainer.style.display = 'none';
         formContainer.innerHTML = ecpayData.formHtml;
         document.body.appendChild(formContainer);
 
-        // The form inside formHtml has id="ecpay-form" and auto-submits via script
-        // But since we inserted it as innerHTML, the script won't auto-run
-        // So we manually submit the form
         const ecpayForm = formContainer.querySelector('form');
         if (ecpayForm) {
           ecpayForm.submit();
@@ -1422,7 +1799,7 @@
         console.error('[CartSystem] Checkout error:', error);
         alert('訂單提交失敗: ' + error.message);
         submitBtn.disabled = false;
-        submitBtn.textContent = '確認訂單';
+        submitBtn.textContent = '前往付款';
       }
     });
   }
