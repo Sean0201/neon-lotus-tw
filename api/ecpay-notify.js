@@ -11,7 +11,7 @@
 
 import crypto from 'crypto';
 
-export const config = { runtime: 'nodejs20.x', maxDuration: 30 };
+export const config = { runtime: 'nodejs', maxDuration: 30 };
 
 /* ── 驗證 CheckMacValue ─────────────────────────────── */
 function verifyCheckMacValue(params, hashKey, hashIV) {

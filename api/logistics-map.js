@@ -18,7 +18,7 @@
 
 import crypto from 'crypto';
 
-export const config = { runtime: 'nodejs20.x', maxDuration: 15 };
+export const config = { runtime: 'nodejs', maxDuration: 15 };
 
 function generateCheckMacValue(params, hashKey, hashIV) {
   const sorted = Object.keys(params).sort().reduce((acc, key) => {

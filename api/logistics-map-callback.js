@@ -10,7 +10,7 @@
  *   CVSStoreID, CVSStoreName, CVSAddress, CVSTelephone, CVSOutSide
  */
 
-export const config = { runtime: 'nodejs20.x', maxDuration: 15 };
+export const config = { runtime: 'nodejs', maxDuration: 15 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

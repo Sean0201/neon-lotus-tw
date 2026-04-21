@@ -8,7 +8,7 @@
 
 import crypto from 'crypto';
 
-export const config = { runtime: 'nodejs20.x', maxDuration: 15 };
+export const config = { runtime: 'nodejs', maxDuration: 15 };
 
 /* ── 驗證 CheckMacValue (同 ecpay-notify.js) ─────── */
 function verifyCheckMacValue(params, hashKey, hashIV) {
