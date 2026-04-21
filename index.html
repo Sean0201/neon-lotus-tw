@@ -1062,9 +1062,16 @@
       .tryon-split { grid-template-columns:1fr; }
       .tryon-selfie-col { position:static; display:flex; align-items:center; gap:12px; }
       .tryon-selfie-col img { width:80px; height:100px; object-fit:cover; }
-      .tryon-clothes-grid { grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); }
+      .tryon-clothes-grid { grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:10px; }
       .tryon-compare { grid-template-columns:1fr 1fr; gap:8px; }
       .tryon-upload-area { max-width:320px; }
+      /* Mobile: always show select button (no hover on touch devices) */
+      .tryon-cloth-trybtn { opacity:1 !important; font-size:0.62rem; padding:4px 10px; }
+      .tryon-cloth-card:active { transform:scale(0.97); }
+      /* Loading/result area padding */
+      .tryon-result-loading { padding:40px 16px; }
+      .tryon-result-error { padding:30px 16px; }
+      .tryon-result-info h3 { font-size:0.92rem; }
     }
 
     /* ======== RESPONSIVE ======== */
@@ -1394,6 +1401,7 @@
 .tryon-cloth-selected .tryon-cloth-trybtn {
   background:linear-gradient(135deg,rgba(34,197,94,0.3),rgba(34,197,94,0.2));
   color:#4ade80;
+  opacity:1;
 }
 
 /* ââ Mobile responsive âââââââââââââââââââââââââââ */
@@ -1431,6 +1439,7 @@
 .tryon-cloth-selected .tryon-cloth-trybtn {
   background:linear-gradient(135deg,rgba(34,197,94,0.3),rgba(34,197,94,0.2));
   color:#4ade80;
+  opacity:1;
 }
 
 </style>
