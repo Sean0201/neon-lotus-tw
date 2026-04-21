@@ -1246,7 +1246,7 @@
                 <span class="neon-checkout-summary-total-value">NT$ ${total.toLocaleString()}</span>
               </div>
             </div>
-            <button type="button" class="neon-checkout-btn" id="checkout-submit">確認訂單</button>
+            <button type="button" class="neon-checkout-btn" id="checkout-submit">前往付款</button>
           </div>
         </div>
       </div>
@@ -1354,15 +1354,70 @@
 
         if (itemsError) throw new Error(itemsError.message);
 
-        // Clear cart
+        // ── ECPay 金流串接 ──
+        // 準備 ECPay 參數
+        const ecpayItems = items.map(item => ({
+          name: item.product_name,
+          quantity: item.quantity,
+          price: item.unit_price,
+        }));
+
+        submitBtn.textContent = '導向付款頁面...';
+
+        const ecpayRes = await fetch('/api/ecpay-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: ecpayItems,
+            totalAmount: total,
+            buyerName: name,
+            buyerEmail: email,
+            buyerPhone: phone,
+            orderId: orderNumber,
+          }),
+        });
+
+        const ecpayData = await ecpayRes.json();
+
+        if (!ecpayData.success || !ecpayData.formHtml) {
+          throw new Error(ecpayData.error || '無法建立付款訂單');
+        }
+
+        // Clear cart before redirecting to ECPay
         CartState.clear();
         updateCartIcon();
 
         // Remove checkout page
         pageDiv.remove();
+        document.body.style.overflow = '';
 
-        // Show confirmation
-        showConfirmationPage(orderNumber);
+        // Insert ECPay auto-submit form (redirects user to ECPay payment page)
+        const ecpayDiv = document.createElement('div');
+        ecpayDiv.id = 'ecpay-redirect';
+        ecpayDiv.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;align-items:center;justify-content:center;color:#f5f4f0;font-size:1.1rem;';
+        ecpayDiv.innerHTML = '<div style="text-align:center"><div style="margin-bottom:16px;font-size:2rem">🔒</div>正在導向綠界付款頁面...</div>';
+        document.body.appendChild(ecpayDiv);
+
+        // Write the form HTML and auto-submit
+        const iframe = document.createElement('iframe');
+        iframe.name = 'ecpay-frame';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+
+        // Use a new document to auto-submit
+        const formContainer = document.createElement('div');
+        formContainer.style.display = 'none';
+        formContainer.innerHTML = ecpayData.formHtml;
+        document.body.appendChild(formContainer);
+
+        // The form inside formHtml has id="ecpay-form" and auto-submits via script
+        // But since we inserted it as innerHTML, the script won't auto-run
+        // So we manually submit the form
+        const ecpayForm = formContainer.querySelector('form');
+        if (ecpayForm) {
+          ecpayForm.submit();
+        }
+
       } catch (error) {
         console.error('[CartSystem] Checkout error:', error);
         alert('訂單提交失敗: ' + error.message);
@@ -1408,6 +1463,84 @@
       document.body.style.overflow = '';
       window.location.href = '/';
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // ECPay PAYMENT RESULT PAGE (hash routing)
+  // ─────────────────────────────────────────────────────────────────
+
+  function showPaymentResultPage(success, params) {
+    injectStyles();
+
+    // Remove any loading overlay
+    const loadingEl = document.getElementById('ecpay-redirect');
+    if (loadingEl) loadingEl.remove();
+
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'page neon-confirmation-page';
+    pageDiv.id = 'neon-payment-result-page';
+
+    const orderNo = params.get('order') || '';
+    const amount  = params.get('amount') || '';
+    const msg     = params.get('msg') || '';
+
+    const html = success ? `
+      <div class="neon-confirmation-content">
+        <div class="neon-confirmation-icon" style="background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(16,185,129,0.2));border-color:rgba(34,197,94,0.4)">✓</div>
+        <h1 class="neon-confirmation-title">付款成功！</h1>
+        ${orderNo ? `<div class="neon-confirmation-order-num">訂單編號: ${orderNo}</div>` : ''}
+        ${amount ? `<div class="neon-confirmation-order-num" style="margin-top:8px;font-size:1.1rem">付款金額: NT$ ${Number(amount).toLocaleString()}</div>` : ''}
+        <p class="neon-confirmation-subtitle">
+          感謝您的購買！我們已收到您的付款，將盡快為您出貨。<br>
+          如有任何問題，請透過 LINE 與我們聯繫。
+        </p>
+        <div class="neon-confirmation-actions">
+          <a href="${LINE_URL}" target="_blank" class="neon-confirmation-btn neon-confirmation-btn-line">
+            透過 LINE 聯繫我們
+          </a>
+          <button type="button" class="neon-confirmation-btn neon-confirmation-btn-home">回到首頁</button>
+        </div>
+      </div>
+    ` : `
+      <div class="neon-confirmation-content">
+        <div class="neon-confirmation-icon" style="background:linear-gradient(135deg,rgba(239,68,68,0.2),rgba(220,38,38,0.2));border-color:rgba(239,68,68,0.4)">✗</div>
+        <h1 class="neon-confirmation-title">付款未完成</h1>
+        ${orderNo ? `<div class="neon-confirmation-order-num">訂單編號: ${orderNo}</div>` : ''}
+        ${msg ? `<p class="neon-confirmation-subtitle" style="color:rgba(239,68,68,0.8)">${msg}</p>` : ''}
+        <p class="neon-confirmation-subtitle">
+          您的付款未能完成。訂單仍然保留，您可以稍後重新付款或透過 LINE 聯繫我們。
+        </p>
+        <div class="neon-confirmation-actions">
+          <a href="${LINE_URL}" target="_blank" class="neon-confirmation-btn neon-confirmation-btn-line">
+            透過 LINE 聯繫我們
+          </a>
+          <button type="button" class="neon-confirmation-btn neon-confirmation-btn-home">回到首頁</button>
+        </div>
+      </div>
+    `;
+
+    pageDiv.innerHTML = html;
+    document.body.appendChild(pageDiv);
+    document.body.style.overflow = 'hidden';
+
+    pageDiv.querySelector('.neon-confirmation-btn-home').addEventListener('click', () => {
+      pageDiv.remove();
+      document.body.style.overflow = '';
+      // Clean up URL
+      history.replaceState(null, '', '/');
+    });
+  }
+
+  // ── Check for ECPay payment result on page load ──
+  function checkPaymentResult() {
+    const hash = window.location.hash;
+    const params = new URLSearchParams(window.location.search);
+
+    if (hash === '#order-success') {
+      showPaymentResultPage(true, params);
+    } else if (hash === '#order-failed') {
+      showPaymentResultPage(false, params);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -1502,6 +1635,7 @@
   function init() {
     injectStyles();
     updateCartIcon();
+    checkPaymentResult();
   }
 
   // ─────────────────────────────────────────────────────────────────
