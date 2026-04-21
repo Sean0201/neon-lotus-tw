@@ -4,7 +4,7 @@
  * Supports: tops, bottoms, bags, hats â with layered outfit composition
  */
 
-export const config = { runtime: 'edge', maxDuration: 300 };
+export const config = { runtime: 'edge', maxDuration: 300, preferredRegion: ['iad1', 'cle1', 'sfo1'] };
 
 /* ââ Category-specific prompt builders âââââââââââââââââââââââ */
 function getPrompt(category, productName) {
@@ -190,6 +190,10 @@ export default async function handler(request) {
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
+      // Friendly error for region restriction
+      if (errText.includes('location is not supported')) {
+        return json(400, { error: 'Region not supported', details: 'location_error' });
+      }
       return json(geminiRes.status, { error: 'Gemini API error', details: errText.substring(0, 500) });
     }
 
