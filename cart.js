@@ -1466,7 +1466,15 @@
     pageDiv.id = 'neon-checkout-page';
 
     const items = CartState.get();
-    const total = CartState.getTotal();
+    const subtotal = CartState.getTotal();
+
+    // ── 運費設定 ──
+    const SHIPPING_FEE_CVS  = 70;   // 超商取貨運費
+    const SHIPPING_FEE_HOME = 120;  // 宅配到府運費
+    const FREE_SHIPPING_THRESHOLD = 3000; // 滿額免運門檻
+
+    const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+    let currentShippingFee = isFreeShipping ? 0 : SHIPPING_FEE_CVS; // 預設超商
 
     let itemsSummary = '';
     items.forEach((item) => {
@@ -1478,6 +1486,10 @@
         </div>
       `;
     });
+
+    const freeShippingNote = isFreeShipping
+      ? '<div id="checkout-free-shipping-note" style="color:#4ade80;font-size:13px;margin-top:4px;">訂單滿 NT$ 3,000 享免運優惠！</div>'
+      : `<div id="checkout-free-shipping-note" style="color:${colors.muted};font-size:13px;margin-top:4px;">再消費 NT$ ${(FREE_SHIPPING_THRESHOLD - subtotal).toLocaleString()} 即享免運</div>`;
 
     const html = `
       <div class="neon-checkout-header">
@@ -1507,8 +1519,8 @@
             <div class="neon-checkout-form-group">
               <label class="neon-checkout-form-label">配送方式 *</label>
               <div class="neon-shipping-toggle">
-                <button type="button" class="neon-shipping-option active" data-shipping="cvs">超商取貨</button>
-                <button type="button" class="neon-shipping-option" data-shipping="home">宅配到府</button>
+                <button type="button" class="neon-shipping-option active" data-shipping="cvs">超商取貨 ${isFreeShipping ? '(免運)' : '(NT$ 70)'}</button>
+                <button type="button" class="neon-shipping-option" data-shipping="home">宅配到府 ${isFreeShipping ? '(免運)' : '(NT$ 120)'}</button>
               </div>
             </div>
 
@@ -1552,11 +1564,16 @@
             <div class="neon-checkout-summary-totals">
               <div class="neon-checkout-summary-row">
                 <span class="neon-checkout-summary-label">小計:</span>
-                <span class="neon-checkout-summary-value">NT$ ${total.toLocaleString()}</span>
+                <span class="neon-checkout-summary-value">NT$ ${subtotal.toLocaleString()}</span>
               </div>
+              <div class="neon-checkout-summary-row" id="checkout-shipping-row">
+                <span class="neon-checkout-summary-label">運費 (超商取貨):</span>
+                <span class="neon-checkout-summary-value" id="checkout-shipping-value">${isFreeShipping ? '<span style="text-decoration:line-through;color:' + colors.muted + '">NT$ 70</span> <span style="color:#4ade80">免運</span>' : 'NT$ ' + currentShippingFee.toLocaleString()}</span>
+              </div>
+              ${freeShippingNote}
               <div class="neon-checkout-summary-total">
                 <span>合計:</span>
-                <span class="neon-checkout-summary-total-value">NT$ ${total.toLocaleString()}</span>
+                <span class="neon-checkout-summary-total-value" id="checkout-grand-total">NT$ ${(subtotal + currentShippingFee).toLocaleString()}</span>
               </div>
             </div>
             <button type="button" class="neon-checkout-btn" id="checkout-submit">前往付款</button>
@@ -1586,6 +1603,31 @@
     const cvsSection  = pageDiv.querySelector('#checkout-cvs-section');
     const homeSection = pageDiv.querySelector('#checkout-home-section');
 
+    // ── 更新運費 UI 的 helper ──
+    function updateShippingUI() {
+      const fee = selectedShipping === 'cvs' ? SHIPPING_FEE_CVS : SHIPPING_FEE_HOME;
+      currentShippingFee = isFreeShipping ? 0 : fee;
+      const shippingLabel = selectedShipping === 'cvs' ? '超商取貨' : '宅配到府';
+
+      // 運費行
+      const shippingRow = pageDiv.querySelector('#checkout-shipping-row');
+      if (shippingRow) {
+        shippingRow.querySelector('.neon-checkout-summary-label').textContent = `運費 (${shippingLabel}):`;
+        const valEl = shippingRow.querySelector('#checkout-shipping-value');
+        if (isFreeShipping) {
+          valEl.innerHTML = `<span style="text-decoration:line-through;color:${colors.muted}">NT$ ${fee.toLocaleString()}</span> <span style="color:#4ade80">免運</span>`;
+        } else {
+          valEl.textContent = `NT$ ${currentShippingFee.toLocaleString()}`;
+        }
+      }
+
+      // 合計
+      const grandTotalEl = pageDiv.querySelector('#checkout-grand-total');
+      if (grandTotalEl) {
+        grandTotalEl.textContent = `NT$ ${(subtotal + currentShippingFee).toLocaleString()}`;
+      }
+    }
+
     pageDiv.querySelectorAll('.neon-shipping-option').forEach((btn) => {
       btn.addEventListener('click', () => {
         pageDiv.querySelectorAll('.neon-shipping-option').forEach((b) => b.classList.remove('active'));
@@ -1593,6 +1635,7 @@
         selectedShipping = btn.dataset.shipping;
         cvsSection.style.display  = selectedShipping === 'cvs' ? '' : 'none';
         homeSection.style.display = selectedShipping === 'home' ? '' : 'none';
+        updateShippingUI();
       });
     });
 
@@ -1712,9 +1755,9 @@
               shipping_method: shippingLabel,
               payment_method: '線上付款',
               status: 'pending',
-              subtotal: total,
-              shipping_fee: 0,
-              total: total,
+              subtotal: subtotal,
+              shipping_fee: currentShippingFee,
+              total: subtotal + currentShippingFee,
               note: note,
               line_notified: false,
             },
@@ -1754,12 +1797,14 @@
         // ── 線上付款 → ECPay 金流 ──
         submitBtn.textContent = '導向付款頁面...';
 
+        const grandTotal = subtotal + currentShippingFee;
+
         const ecpayRes = await fetch('/api/ecpay-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             items: ecpayItems,
-            totalAmount: total,
+            totalAmount: grandTotal,
             buyerName: name,
             buyerEmail: email,
             buyerPhone: phone,
