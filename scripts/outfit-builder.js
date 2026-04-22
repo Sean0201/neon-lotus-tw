@@ -190,18 +190,34 @@
           }
         }
 
-        const res = await fetch('/api/tryon', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyObj)
-        });
-        if (!res.ok) {
+        /* Fetch with retry (max 2 attempts) */
+        var attempts = 0;
+        var maxRetries = 2;
+        var res, data;
+        while (attempts < maxRetries) {
+          attempts++;
+          res = await fetch('/api/tryon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyObj)
+          });
+          if (res.ok) {
+            data = await res.json();
+            break;
+          }
+          var errBody = {};
+          try { errBody = await res.json(); } catch(e) {}
+          var errDetail = errBody.details || errBody.error || '';
+          console.warn('[tryon] attempt ' + attempts + '/' + maxRetries + ' status=' + res.status + ' ' + errDetail);
+          if (attempts < maxRetries && (res.status >= 500 || res.status === 429)) {
+            await new Promise(function(r){ setTimeout(r, 3000); });
+            continue;
+          }
           if (res.status === 429) throw new Error('目前排隊人數較多，請稍後再試！');
-          if (res.status === 504) throw new Error('AI 處理時間較長，請稍後再試一次！⏳');
-          if (res.status >= 500) throw new Error('系統暫時忙碌，請稍候再試！');
-          throw new Error('API 錯誤 (' + res.status + ')');
+          if (res.status === 504) throw new Error('AI 處理時間較長，請稍後再試一次！');
+          if (res.status >= 500) throw new Error('系統忙碌 (' + (errDetail || res.status) + ')');
+          throw new Error('API 錯誤 (' + res.status + '): ' + errDetail);
         }
-        const data = await res.json();
         if (data.success && data.image) {
           currentBase64 = data.image;
           currentType = data.mimeType || 'image/png';
