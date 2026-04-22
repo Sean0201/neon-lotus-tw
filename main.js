@@ -1262,22 +1262,10 @@ function initTryOnRoom() {
 
   // ── Step navigation ─────────────────────────────────────────
   function goStep(n) {
-        /* Add all outfit items to cart */
-        const CS = window.CartSystem;
-        if (!CS) { alert("Cart not available"); return; }
-        let added = 0;
-        for (const [slot, prod] of Object.entries(outfitSlots)) {
-          if (!prod) continue;
-          const size = (prod.sizes && prod.sizes.length > 0) ? prod.sizes[0] : "FREE";
-          CS.addToCart(prod, size, "shipping");
-          added++;
-        }
-        if (added > 0) {
-          CS.openCart();
-        } else {
-          alert("No items selected");
-        }
-      }
+    document.querySelectorAll('.tryon-step').forEach(el => el.classList.remove('active'));
+    const step = document.getElementById('tryon-step' + n);
+    if (step) step.classList.add('active');
+  }
 
   // ── Step 1: Upload selfie ───────────────────────────────────
   uploadArea.addEventListener('click', () => fileInput.click());
@@ -1601,6 +1589,27 @@ function initTryOnRoom() {
 
 
   tryAnother.addEventListener('click', () => goStep(2));
+
+  // ── Add outfit items to cart ──────────────────────────────────
+  if (addCartBtn) {
+    addCartBtn.addEventListener('click', function() {
+      var CS = window.CartSystem;
+      if (!CS) { alert("Cart not available"); return; }
+      var added = 0;
+      for (var key in outfitSlots) {
+        var prod = outfitSlots[key];
+        if (!prod) continue;
+        var size = (prod.sizes && prod.sizes.length > 0) ? prod.sizes[0] : "FREE";
+        CS.addToCart(prod, size, "shipping");
+        added++;
+      }
+      if (added > 0) {
+        CS.openCart();
+      } else {
+        alert("No items selected");
+      }
+    });
+  }
 
   addCartBtn.addEventListener('click', () => {
     if (currentProduct && window.CartSystem) {
