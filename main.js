@@ -1314,8 +1314,9 @@ function initTryOnRoom() {
   });
 
   nextBtn.addEventListener('click', () => {
-    if (!selfieBase64) return;
-    selfieSmall.src = preview.src;
+    if (selfieBase64) {
+      selfieSmall.src = preview.src;
+    }
     populateBrandFilter();
     renderClothes('all', 'ALL');
     goStep(2);
