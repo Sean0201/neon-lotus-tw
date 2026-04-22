@@ -1611,19 +1611,5 @@ function initTryOnRoom() {
     });
   }
 
-  addCartBtn.addEventListener('click', () => {
-    if (currentProduct && window.CartSystem) {
-      // Find the size options
-      const sizes = currentProduct.sizes || [];
-      const defaultSize = sizes[0]?.label || 'ONE SIZE';
-      window.CartSystem.addItem({
-        id: currentProduct.id,
-        name: currentProduct.name,
-        price: currentProduct.price?.twd_shipping || 0,
-        image: _getProductImageSrc(currentProduct) || '',
-        size: defaultSize,
-        brand: currentProduct.brandName || ''
-      });
-    }
-  });
+ 
 }
