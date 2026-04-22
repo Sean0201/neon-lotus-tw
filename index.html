@@ -1462,6 +1462,59 @@
   opacity:1;
 }
 
+
+    /* ── Outfit Slots Panel ── */
+    .outfit-slots {
+      display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .outfit-slot {
+      width: 72px; height: 90px; border-radius: 10px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      position: relative; cursor: pointer; transition: all .2s;
+    }
+    .outfit-slot.empty {
+      border: 2px dashed rgba(255,255,255,.25); background: rgba(255,255,255,.05);
+    }
+    .outfit-slot.filled {
+      border: 2px solid var(--accent, #a855f7); background: rgba(168,85,247,.1);
+    }
+    .outfit-slot.filled img {
+      width: 48px; height: 48px; object-fit: cover; border-radius: 6px;
+    }
+    .outfit-slot .slot-placeholder {
+      font-size: 24px; opacity: .4;
+    }
+    .outfit-slot .slot-label {
+      font-size: 10px; color: rgba(255,255,255,.6); margin-top: 4px;
+      white-space: nowrap;
+    }
+    .outfit-slot .slot-remove {
+      position: absolute; top: -6px; right: -6px; width: 18px; height: 18px;
+      border-radius: 50%; background: #ef4444; color: #fff; border: none;
+      font-size: 12px; line-height: 18px; text-align: center; cursor: pointer;
+      padding: 0; display: flex; align-items: center; justify-content: center;
+    }
+    .layer-badge {
+      display: inline-block; padding: 4px 10px; margin: 4px;
+      background: rgba(168,85,247,.2); border: 1px solid rgba(168,85,247,.4);
+      border-radius: 20px; font-size: 12px; color: #d8b4fe;
+    }
+    #outfit-tryon-btn {
+      width: 100%; padding: 12px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, var(--accent, #a855f7), #7c3aed);
+      color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: opacity .2s;
+    }
+    #outfit-tryon-btn:disabled {
+      opacity: .4; cursor: not-allowed;
+      background: rgba(255,255,255,.1);
+    }
+    #tryon-layer-progress {
+      width: 100%; background: rgba(255,255,255,.1); border-radius: 4px;
+      overflow: hidden; margin-bottom: 12px;
+    }
+
 </style>
 </head>
 <body>
@@ -1906,6 +1959,6 @@
 <script src="cart.js"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js"></script>
-    <script src="main.js?v=32" defer></script>
+    <script src="main.js?v=33" defer></script>
 </body>
 </html>
