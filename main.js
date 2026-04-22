@@ -6,7 +6,7 @@
  *       npx serve .          (requires Node.js)
  *       python3 -m http.server 8080
  *     Then open: http://localhost:8080
- * ─────────────────────────────────────────────────────────────────
+ * ────────────────────────────────────────────────────────────────
  */
 
 'use strict';
@@ -1081,8 +1081,11 @@ function renderBanners() {
     const btnLabel = lang === 'tw' ? '立即選購' : 'SHOP NOW';
     const showBtn = clickable;
 
+    const isMobile = window.innerWidth <= 768;
+    const bgImg = (isMobile && b.mobile_image_url) ? b.mobile_image_url : b.image_url;
+
     container.innerHTML = `
-      <div class="hero-banner-slide" style="background-image:url('${b.image_url}');${cursorStyle}"
+      <div class="hero-banner-slide" style="background-image:url('${bgImg}');${cursorStyle}"
            ${clickable ? `data-brand-id="${b.brand_id || ''}" data-link-url="${b.link_url || ''}"` : ''}>
         <div class="hero-banner-overlay"></div>
         <div class="hero-banner-text">
