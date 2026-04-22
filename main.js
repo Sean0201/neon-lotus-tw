@@ -1332,7 +1332,7 @@ function initTryOnRoom() {
     });
   }
 
-  brandSelect.addEventListener('change', () => { currentOutfitCat = 'ALL'; updateOutfitCatTabs(); renderClothes(brandSelect.value, 'ALL'); }
+  brandSelect.addEventListener('change', () => { currentOutfitCat = 'ALL'; updateOutfitCatTabs(); renderClothes(brandSelect.value, 'ALL'); });
 
   // ── Category filter for outfit tabs ─────────────────────────
   let currentOutfitCat = 'ALL';
