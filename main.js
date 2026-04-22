@@ -1339,6 +1339,80 @@ function initTryOnRoom() {
 
   // ── Category filter for outfit tabs ─────────────────────────
   let currentOutfitCat = 'ALL';
+
+    /* ── Outfit multi-select slots ── */
+    const outfitSlots = { top: null, bottom: null, outerwear: null, accessory: null };
+
+    function getProductCategory(product) {
+      const cat = (product.category || '').toUpperCase();
+      if (OUTFIT_CAT_MAP.top.includes(cat)) return 'top';
+      if (OUTFIT_CAT_MAP.bottom.includes(cat)) return 'bottom';
+      if (OUTFIT_CAT_MAP.outerwear.includes(cat)) return 'outerwear';
+      return 'accessory';
+    }
+
+    function addToOutfit(product) {
+      const slot = getProductCategory(product);
+      outfitSlots[slot] = product;
+      renderOutfitPanel();
+      updateTryOnButton();
+    }
+
+    function removeFromOutfit(slot) {
+      outfitSlots[slot] = null;
+      renderOutfitPanel();
+      updateTryOnButton();
+    }
+
+    function updateTryOnButton() {
+      const btn = document.getElementById('outfit-tryon-btn');
+      const count = Object.values(outfitSlots).filter(v => v !== null).length;
+      if (count > 0) {
+        btn.disabled = false;
+        const lang = document.documentElement.lang === 'en' ? 'en' : 'tw';
+        btn.textContent = lang === 'en' ? 'Try On ' + count + ' items' : '\u8A66\u7A7F ' + count + ' \u4EF6\u5546\u54C1';
+      } else {
+        btn.disabled = true;
+        btn.textContent = btn.dataset.tw || '\u8ACB\u5148\u9078\u64C7\u5546\u54C1';
+      }
+    }
+
+    function renderOutfitPanel() {
+      const panel = document.getElementById('outfit-panel');
+      const slotLabels = {
+        top: { icon: '\uD83D\uDC55', tw: '\u4E0A\u8863', en: 'Top' },
+        bottom: { icon: '\uD83D\uDC56', tw: '\u8932\u5B50', en: 'Pants' },
+        outerwear: { icon: '\u{1F9E5}', tw: '\u5916\u5957', en: 'Outerwear' },
+        accessory: { icon: '\uD83C\uDFA9', tw: '\u914D\u4EF6', en: 'Accessory' }
+      };
+      let html = '<div class="outfit-slots">';
+      for (const [slot, prod] of Object.entries(outfitSlots)) {
+        const label = slotLabels[slot];
+        if (prod) {
+          const imgSrc = _getProductImageSrc(prod) || '';
+          html += '<div class="outfit-slot filled" data-slot="' + slot + '">'
+            + '<img src="' + imgSrc + '" alt="' + (prod.name || '') + '">'
+            + '<span class="slot-label">' + label.icon + ' ' + label.tw + '</span>'
+            + '<button class="slot-remove" data-slot="' + slot + '">&times;</button>'
+            + '</div>';
+        } else {
+          html += '<div class="outfit-slot empty" data-slot="' + slot + '">'
+            + '<span class="slot-placeholder">' + label.icon + '</span>'
+            + '<span class="slot-label">' + label.tw + '</span>'
+            + '</div>';
+        }
+      }
+      html += '</div>';
+      panel.innerHTML = html;
+
+      panel.querySelectorAll('.slot-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeFromOutfit(btn.dataset.slot);
+        });
+      });
+    }
+
   const OUTFIT_CAT_MAP = {
     top:       ['TOP','TOPS','TEE','TEES','SHIRT','SHIRTS','POLO','POLOS','TANK','TANKS','LONGSLEEVES','SWEATERS','SWEATER','JERSEYS','JERSEY','HOODIE','HOODIES'],
     bottom:    ['BOTTOM','BOTTOMS','PANTS','PANT','SHORTS','SHORT','SKIRTS','SKIRT'],
@@ -1412,7 +1486,7 @@ function initTryOnRoom() {
       card.addEventListener('click', () => {
         const pid = card.dataset.productId;
         const prod = products.find(p => p.id === pid);
-        if (prod) startTryOn(prod);
+        if (prod) addToOutfit(prod);
       });
     });
 
@@ -1420,81 +1494,119 @@ function initTryOnRoom() {
   }
 
   // ── Step 3: Try on with AI ──────────────────────────────────
-  async function startTryOn(product) {
-    currentProduct = product;
-    goStep(3);
+  async function startMultiTryOn() {
+      const items = Object.entries(outfitSlots).filter(([k, v]) => v !== null);
+      if (items.length === 0) return;
 
-    const loading = document.getElementById('tryon-loading');
-    const result  = document.getElementById('tryon-result');
-    const error   = document.getElementById('tryon-error');
+      goStep(3);
+      const loading = document.getElementById('tryon-loading');
+      const result  = document.getElementById('tryon-result');
+      const error   = document.getElementById('tryon-error');
+      const progress = document.getElementById('tryon-layer-progress');
 
-    loading.style.display = 'block';
-    result.style.display = 'none';
-    error.style.display = 'none';
-    addCartBtn.style.display = 'none';
+      loading.style.display = 'flex';
+      result.style.display  = 'none';
+      error.style.display   = 'none';
+      if (progress) progress.style.display = 'block';
 
-    // Get clothing image URL (use gallery if available, fallback to cover)
-    const clothUrl = _getProductImageSrc(product) || '';
+      const loadingMsg = document.getElementById('tryon-loading-msg');
 
-    try {
-      const res = await fetch('/api/tryon', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          selfieBase64,
-          selfieType,
-          clothingUrl: clothUrl,
-          productName: product.name || 'clothing'
-        })
-      });
+      try {
+        let currentImage = selfieBase64;
+        let currentType  = 'base64';
+        const resultNames = [];
+        const resultPrices = [];
 
-      // Friendly branded error messages
-      if (!res.ok && res.status === 413) throw new Error('CUSTOM:照片檔案太大了，請換一張較小的照片再試試看！');
-      if (!res.ok && res.status === 429) throw new Error('CUSTOM:目前試衣間排隊人數較多，請稍後再試喔！✨');
-      if (!res.ok && res.status >= 500) throw new Error('CUSTOM:試衣間暫時維護中，請稍候片刻再回來！🔧');
+        for (let idx = 0; idx < items.length; idx++) {
+          const [slot, product] = items[idx];
+          const clothUrl = _getProductImageSrc(product);
+          if (!clothUrl) continue;
 
-      const rawText = await res.text();
-      let data;
-      try { data = JSON.parse(rawText); } catch {
-        console.error('Non-JSON response:', res.status, rawText.substring(0, 200));
-        throw new Error('CUSTOM:系統忙碌中，請稍後再試一次！');
-      }
+          if (loadingMsg) {
+            loadingMsg.textContent = '\u8655\u7406\u4E2D (' + (idx + 1) + '/' + items.length + '): ' + (product.name || '');
+          }
+          if (progress) {
+            progress.innerHTML = '<div style="width:' + Math.round(((idx + 1) / items.length) * 100) + '%;height:4px;background:var(--accent);border-radius:2px;transition:width .3s"></div>';
+          }
 
-      loading.style.display = 'none';
+          const bodyObj = currentType === 'base64'
+            ? { selfieBase64: currentImage, clothingUrl: clothUrl, productName: product.name || '' }
+            : { selfieUrl: currentImage, clothingUrl: clothUrl, productName: product.name || '' };
 
-      if (data.success && data.image) {
-        // Show result
-        document.getElementById('tryon-result-before').src = preview.src;
-        document.getElementById('tryon-result-after').src = `data:${data.mimeType};base64,${data.image}`;
-        document.getElementById('tryon-result-name').textContent = product.name || '';
-        document.getElementById('tryon-result-price').textContent =
-          product.price?.twd_shipping ? `NT$ ${product.price.twd_shipping.toLocaleString()}` : '';
-        result.style.display = 'block';
-        addCartBtn.style.display = 'inline-flex';
-      } else {
-        // Map API errors to friendly messages
-        const errMsg = data.error || '';
-        const details = data.details || '';
-        if (details.includes('429') || details.includes('quota') || details.includes('RESOURCE_EXHAUSTED')) {
-          throw new Error('CUSTOM:目前試衣間排隊人數較多，請稍後再試喔！✨');
-        } else if (details.includes('safety') || details.includes('blocked')) {
-          throw new Error('CUSTOM:這張照片無法處理，請換一張清晰的正面照再試試看！📸');
-        } else if (errMsg.includes('Failed to fetch clothing')) {
-          throw new Error('CUSTOM:商品圖片暫時無法載入，請試試其他款式！');
-        } else {
-          throw new Error('CUSTOM:AI 造型師正在休息中，請稍後再試！💤');
+          const res = await fetch('/api/tryon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyObj)
+          });
+
+          if (!res.ok) {
+            const errText = await res.text();
+            throw new Error('API error (' + res.status + '): ' + errText.substring(0, 200));
+          }
+
+          const rawText = await res.text();
+          const data = JSON.parse(rawText);
+
+          if (data.error) throw new Error(data.error);
+          if (!data.resultUrl) throw new Error('No result image returned');
+
+          currentImage = data.resultUrl;
+          currentType  = 'url';
+          resultNames.push(product.name || '');
+          resultPrices.push(product.price || 0);
         }
+
+        loading.style.display = 'none';
+        if (progress) progress.style.display = 'none';
+        result.style.display = 'block';
+
+        const beforeImg = document.getElementById('tryon-result-before');
+        const afterImg  = document.getElementById('tryon-result-after');
+        const nameEl    = document.getElementById('tryon-result-name');
+        const priceEl   = document.getElementById('tryon-result-price');
+
+        if (beforeImg) beforeImg.src = selfieBase64 || '';
+        if (afterImg)  afterImg.src  = currentImage;
+        if (nameEl)    nameEl.textContent = resultNames.join(' + ');
+        if (priceEl) {
+          const total = resultPrices.reduce((a, b) => a + b, 0);
+          priceEl.textContent = 'NT$ ' + Math.round(total * 0.00125).toLocaleString();
+        }
+
+        // Show layer badges
+        const layersEl = document.getElementById('tryon-result-layers');
+        if (layersEl) {
+          layersEl.innerHTML = items.map(([slot, prod]) => {
+            const catIcons = { top: '\uD83D\uDC55', bottom: '\uD83D\uDC56', outerwear: '\u{1F9E5}', accessory: '\uD83C\uDFA9' };
+            const catLabels = { top: '\u4E0A\u8863', bottom: '\u8932\u5B50', outerwear: '\u5916\u5957', accessory: '\u914D\u4EF6' };
+            return '<span class="layer-badge">' + (catIcons[slot] || '') + ' ' + (catLabels[slot] || slot) + '</span>';
+          }).join('');
+        }
+
+      } catch (err) {
+        loading.style.display = 'none';
+        if (progress) progress.style.display = 'none';
+        error.style.display = 'block';
+        const errMsg = document.getElementById('tryon-error-msg');
+        if (errMsg) errMsg.textContent = err.message || 'Unknown error';
       }
-    } catch (err) {
-      loading.style.display = 'none';
-      error.style.display = 'block';
-      console.error('Try-on error:', err);
-      // Strip CUSTOM: prefix for branded messages, keep raw for unexpected errors
-      const msg = err.message || '';
-      const display = msg.startsWith('CUSTOM:') ? msg.slice(7) : '系統忙碌中，請稍後再試一次！';
-      document.getElementById('tryon-error-msg').textContent = display;
     }
-  }
+
+    async function startTryOn(product) {
+      // Legacy single-item - redirect to multi
+      Object.keys(outfitSlots).forEach(k => outfitSlots[k] = null);
+      addToOutfit(product);
+      startMultiTryOn();
+    }
+
+    /* ── Outfit try-on button ── */
+    document.getElementById('outfit-tryon-btn').addEventListener('click', () => {
+      startMultiTryOn();
+    });
+
+    /* ── Initialize outfit panel ── */
+    renderOutfitPanel();
+
 
   tryAnother.addEventListener('click', () => goStep(2));
 
