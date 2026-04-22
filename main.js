@@ -1495,101 +1495,82 @@ function initTryOnRoom() {
 
   // ── Step 3: Try on with AI ──────────────────────────────────
   async function startMultiTryOn() {
-      const items = Object.entries(outfitSlots).filter(([k, v]) => v !== null);
-      if (items.length === 0) return;
-
-      goStep(3);
-      const loading = document.getElementById('tryon-loading');
-      const result  = document.getElementById('tryon-result');
-      const error   = document.getElementById('tryon-error');
-      const progress = document.getElementById('tryon-layer-progress');
-
-      loading.style.display = 'flex';
-      result.style.display  = 'none';
-      error.style.display   = 'none';
-      if (progress) progress.style.display = 'block';
-
-      const loadingMsg = document.getElementById('tryon-loading-msg');
-
-      try {
-        let currentImage = selfieBase64;
-        let currentType  = 'base64';
-        const resultNames = [];
-        const resultPrices = [];
-
-        for (let idx = 0; idx < items.length; idx++) {
-          const [slot, product] = items[idx];
-          const clothUrl = _getProductImageSrc(product);
-          if (!clothUrl) continue;
-
-          if (loadingMsg) {
-            loadingMsg.textContent = '\u8655\u7406\u4E2D (' + (idx + 1) + '/' + items.length + '): ' + (product.name || '');
-          }
-          if (progress) {
-            progress.innerHTML = '<div style="width:' + Math.round(((idx + 1) / items.length) * 100) + '%;height:4px;background:var(--accent);border-radius:2px;transition:width .3s"></div>';
-          }
-
-          const bodyObj = currentType === 'base64'
-            ? { selfieBase64: currentImage, clothingUrl: clothUrl, productName: product.name || '' }
-            : { selfieUrl: currentImage, clothingUrl: clothUrl, productName: product.name || '' };
-
-          const res = await fetch('/api/tryon', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyObj)
-          });
-
-          if (!res.ok) {
-            const errText = await res.text();
-            throw new Error('API error (' + res.status + '): ' + errText.substring(0, 200));
-          }
-
-          const rawText = await res.text();
-          const data = JSON.parse(rawText);
-
-          if (data.error) throw new Error(data.error);
-          if (!data.resultUrl) throw new Error('No result image returned');
-
-          currentImage = data.resultUrl;
-          currentType  = 'url';
-          resultNames.push(product.name || '');
-          resultPrices.push(product.price || 0);
-        }
-
-        loading.style.display = 'none';
-        if (progress) progress.style.display = 'none';
-        result.style.display = 'block';
-
-        const beforeImg = document.getElementById('tryon-result-before');
-        const afterImg  = document.getElementById('tryon-result-after');
-        const nameEl    = document.getElementById('tryon-result-name');
-        const priceEl   = document.getElementById('tryon-result-price');
-
-        if (beforeImg) beforeImg.src = selfieBase64 || '';
-        if (afterImg)  afterImg.src  = currentImage;
-        if (nameEl)    nameEl.textContent = resultNames.join(' + ');
-        if (priceEl) {
-          const total = resultPrices.reduce((a, b) => a + b, 0);
-          priceEl.textContent = 'NT$ ' + Math.round(total * 0.00125).toLocaleString();
-        }
-
-        // Show layer badges
-        const layersEl = document.getElementById('tryon-result-layers');
-        if (layersEl) {
-          layersEl.innerHTML = items.map(([slot, prod]) => {
-            const catIcons = { top: '\uD83D\uDC55', bottom: '\uD83D\uDC56', outerwear: '\u{1F9E5}', accessory: '\uD83C\uDFA9' };
-            const catLabels = { top: '\u4E0A\u8863', bottom: '\u8932\u5B50', outerwear: '\u5916\u5957', accessory: '\u914D\u4EF6' };
-            return '<span class="layer-badge">' + (catIcons[slot] || '') + ' ' + (catLabels[slot] || slot) + '</span>';
-          }).join('');
-        }
-
-      } catch (err) {
-        loading.style.display = 'none';
-        if (progress) progress.style.display = 'none';
-        error.style.display = 'block';
-        const errMsg = document.getElementById('tryon-error-msg');
-        if (errMsg) errMsg.textContent = err.message || 'Unknown error';
+      /* Sync selections to OutfitBuilder */
+      if (!window.OutfitBuilder) { alert("OutfitBuilder not loaded"); return; }
+      const OB = window.OutfitBuilder;
+      OB.clearOutfit();
+      /* Sync selfie */
+      if (!selfieBase64) { alert("Please upload a selfie first"); return; }
+      const rawB64 = selfieBase64.indexOf(",") !== -1 ? selfieBase64.split(",")[1] : selfieBase64;
+      const selfieSmImg = document.getElementById("tryon-selfie-small");
+      OB.setSelfie(rawB64, selfieType || "image/jpeg", selfieSmImg ? selfieSmImg.src : null);
+      /* Sync outfit items */
+      for (const [slot, prod] of Object.entries(outfitSlots)) {
+        if (!prod) continue;
+        const cat = OB.resolveCategory(prod);
+        if (cat) OB.setItem(cat, prod);
       }
+      if (OB.getItemCount() === 0) { alert("Please select items first"); return; }
+      /* Switch to step 3 */
+      goStep(3);
+      const loadingEl  = document.getElementById("tryon-loading");
+      const loadingMsg = document.getElementById("tryon-loading-msg");
+      const progressEl = document.getElementById("tryon-layer-progress");
+      const resultEl   = document.getElementById("tryon-result");
+      const errorEl    = document.getElementById("tryon-error");
+      const errorMsg   = document.getElementById("tryon-error-msg");
+      loadingEl.style.display = "block";
+      resultEl.style.display  = "none";
+      errorEl.style.display   = "none";
+      if (progressEl) progressEl.style.display = "block";
+      /* Call OutfitBuilder API */
+      OB.executeTryOn(
+        function onProgress(i, total, stepLabel) {
+          if (loadingMsg) loadingMsg.textContent = stepLabel;
+          if (progressEl) {
+            var pct = Math.round(((i + 0.5) / total) * 100);
+            progressEl.innerHTML = '<div style="width:' + pct + '%;height:100%;background:#a855f7;border-radius:6px;transition:width .3s"></div>';
+          }
+        },
+        function onComplete(results, origSrc) {
+          loadingEl.style.display = "none";
+          if (progressEl) progressEl.style.display = "none";
+          if (!results || results.length === 0) {
+            errorEl.style.display = "block";
+            errorMsg.textContent  = "No result returned";
+            return;
+          }
+          resultEl.style.display = "block";
+          var last = results[results.length - 1];
+          var afterImg = document.getElementById("tryon-result-after");
+          var beforeImg = document.getElementById("tryon-result-before");
+          if (afterImg) afterImg.src = "data:" + (last.mimeType || "image/png") + ";base64," + last.image;
+          if (beforeImg && origSrc) beforeImg.src = origSrc;
+          else if (beforeImg && selfieSmImg) beforeImg.src = selfieSmImg.src;
+          /* Show layer badges */
+          var layersEl = document.getElementById("tryon-result-layers");
+          if (layersEl) {
+            layersEl.innerHTML = results.map(function(r) {
+              var lbl = OB.CATEGORY_LABELS[r.category];
+              return '<span class="layer-badge">' + (lbl ? lbl.icon + " " + lbl.tw : r.category) + '</span>';
+            }).join(" + ");
+          }
+          /* Show product info */
+          var nameEl = document.getElementById("tryon-result-name");
+          var priceEl = document.getElementById("tryon-result-price");
+          if (nameEl) nameEl.textContent = results.map(function(r){ return r.product.name || ""; }).join(" + ");
+          if (priceEl) {
+            var total = results.reduce(function(s, r){ return s + (parseFloat(r.product.price) || 0); }, 0);
+            priceEl.textContent = "NT$ " + total.toLocaleString();
+          }
+        },
+        function onError(msg) {
+          loadingEl.style.display = "none";
+          if (progressEl) progressEl.style.display = "none";
+          errorEl.style.display = "block";
+          errorMsg.textContent   = msg;
+        }
+      );
     }
 
     async function startTryOn(product) {
