@@ -1302,7 +1302,6 @@ function initTryOnRoom() {
       preview.style.display = 'block';
       placeholder.style.display = 'none';
       changeBtn.style.display = 'inline-flex';
-      nextBtn.disabled = false;
     };
     img.src = url;
   }
