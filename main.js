@@ -1314,7 +1314,7 @@ function initTryOnRoom() {
     if (!selfieBase64) return;
     selfieSmall.src = preview.src;
     populateBrandFilter();
-    renderClothes('all');
+    renderClothes('all', 'ALL');
     goStep(2);
   });
 
@@ -1332,9 +1332,45 @@ function initTryOnRoom() {
     });
   }
 
-  brandSelect.addEventListener('change', () => renderClothes(brandSelect.value));
+  brandSelect.addEventListener('change', () => currentOutfitCat = 'ALL'; updateOutfitCatTabs(); renderClothes(brandSelect.value, 'ALL')
 
-  function renderClothes(brandFilter) {
+  // ── Category filter for outfit tabs ─────────────────────────
+  let currentOutfitCat = 'ALL';
+  const OUTFIT_CAT_MAP = {
+    top:       ['TOP','TOPS','TEE','TEES','SHIRT','SHIRTS','POLO','POLOS','TANK','TANKS','LONGSLEEVES','SWEATERS','SWEATER','JERSEYS','JERSEY','HOODIE','HOODIES'],
+    bottom:    ['BOTTOM','BOTTOMS','PANTS','PANT','SHORTS','SHORT','SKIRTS','SKIRT'],
+    outerwear: ['OUTERWEAR','JACKET','JACKETS','COAT','COATS'],
+    bag:       ['BAG','BAGS','BACKPACK','BACKPACKS','TOTE','TOTES'],
+    hat:       ['CAP','CAPS','HAT','HATS','BEANIE','BEANIES','BUCKET','BUCKETS'],
+  };
+
+  function matchesOutfitCat(product, cat) {
+    if (!cat || cat === 'ALL') return true;
+    const pCat = (product.category || product.tag || '').toUpperCase();
+    const allowed = OUTFIT_CAT_MAP[cat] || [];
+    return allowed.some(c => pCat.includes(c));
+  }
+
+  function updateOutfitCatTabs() {
+    document.querySelectorAll('.outfit-cat-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.cat === currentOutfitCat);
+    });
+  }
+
+  const outfitCatTabsEl = document.getElementById('outfit-cat-tabs');
+  if (outfitCatTabsEl) {
+    outfitCatTabsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.outfit-cat-tab');
+      if (!btn) return;
+      currentOutfitCat = btn.dataset.cat;
+      updateOutfitCatTabs();
+      renderClothes(brandSelect.value, currentOutfitCat);
+    });
+  }
+
+);
+
+  function renderClothes(brandFilter, catFilter) {
     let products = [];
     const activeBrands = BRANDS.filter(b => b.products.length > 0);
 
@@ -1351,6 +1387,9 @@ function initTryOnRoom() {
     products = products.filter(p => {
       return _getProductImageSrc(p);
     });
+
+    // Filter by outfit category
+    products = products.filter(p => matchesOutfitCat(p, catFilter));
 
     clothesGrid.innerHTML = products.map(p => {
       const imgUrl = _getProductImageSrc(p) || '';
