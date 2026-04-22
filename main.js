@@ -1368,8 +1368,6 @@ function initTryOnRoom() {
     });
   }
 
-);
-
   function renderClothes(brandFilter, catFilter) {
     let products = [];
     const activeBrands = BRANDS.filter(b => b.products.length > 0);
