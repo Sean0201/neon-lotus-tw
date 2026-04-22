@@ -1262,11 +1262,22 @@ function initTryOnRoom() {
 
   // ── Step navigation ─────────────────────────────────────────
   function goStep(n) {
-    document.querySelectorAll('.tryon-step').forEach(s => s.classList.remove('active'));
-    const step = document.getElementById(`tryon-step${n}`);
-    if (step) step.classList.add('active');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+        /* Add all outfit items to cart */
+        const CS = window.CartSystem;
+        if (!CS) { alert("Cart not available"); return; }
+        let added = 0;
+        for (const [slot, prod] of Object.entries(outfitSlots)) {
+          if (!prod) continue;
+          const size = (prod.sizes && prod.sizes.length > 0) ? prod.sizes[0] : "FREE";
+          CS.addToCart(prod, size, "shipping");
+          added++;
+        }
+        if (added > 0) {
+          CS.openCart();
+        } else {
+          alert("No items selected");
+        }
+      }
 
   // ── Step 1: Upload selfie ───────────────────────────────────
   uploadArea.addEventListener('click', () => fileInput.click());
