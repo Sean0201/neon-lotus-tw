@@ -143,11 +143,15 @@ export default async function handler(request) {
       });
     } else if (clothingUrl) {
       const imgRes = await fetch(clothingUrl);
-      if (!imgRes.ok) return json(400, { error: 'Failed to fetch clothing image' });
+      if (!imgRes.ok) return json(400, { error: 'Failed to fetch clothing image', details: 'status ' + imgRes.status + ' from ' + clothingUrl.substring(0, 100) });
       const imgBuf = await imgRes.arrayBuffer();
       const bytes = new Uint8Array(imgBuf);
+      /* Chunk-based btoa to avoid string size limits in Edge runtime */
+      const CHUNK = 8192;
       let binary = '';
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
+      }
       const imgBase64 = btoa(binary);
       const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
       parts.push({
@@ -220,7 +224,7 @@ export default async function handler(request) {
     });
 
   } catch (err) {
-    return json(500, { error: err.message || 'Unknown server error' });
+    return json(500, { error: err.message || 'Unknown server error', details: String(err.stack || err).substring(0, 300) });
   }
 }
 
