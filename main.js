@@ -1112,14 +1112,57 @@ function renderBanners() {
     }
   }
 
-  window._bannerGo = function(i) { current = i; render(); };
+  window._bannerGo = function(i) { current = i; render(); resetAutoRotate(); };
 
   // Auto-rotate every 5 seconds
+  let autoTimer = null;
+  function resetAutoRotate() {
+    if (autoTimer) clearInterval(autoTimer);
+    if (banners.length > 1) {
+      autoTimer = setInterval(() => { current = (current + 1) % banners.length; render(); }, 5000);
+    }
+  }
+
+  // ── Touch swipe support ──
   if (banners.length > 1) {
-    setInterval(() => { current = (current + 1) % banners.length; render(); }, 5000);
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwiping = false;
+
+    container.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      isSwiping = true;
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+      if (!isSwiping) return;
+      const dx = e.touches[0].clientX - touchStartX;
+      const dy = e.touches[0].clientY - touchStartY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    container.addEventListener('touchend', (e) => {
+      if (!isSwiping) return;
+      isSwiping = false;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) {
+          current = (current + 1) % banners.length;
+        } else {
+          current = (current - 1 + banners.length) % banners.length;
+        }
+        render();
+        resetAutoRotate();
+      }
+    }, { passive: true });
   }
 
   render();
+  resetAutoRotate();
 }
 
 /* ═══════════════════════════════════════════════════════════════
