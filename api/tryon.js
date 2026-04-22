@@ -160,7 +160,7 @@ export default async function handler(request) {
 
     // Call Gemini API with timeout protection
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 250000); // 250s timeout
 
     let geminiRes;
     try {
