@@ -170,28 +170,30 @@
         : label.tw + ' (' + (i + 1) + '/' + layers.length + ')';
       onProgress(i, layers.length, stepLabel, cat);
       try {
-        // Convert clothing image to base64 on client side (avoids Edge fetch issues)
-        let clothingB64 = null;
-        let clothingMime = 'image/jpeg';
+        // Try client-side base64 conversion first, fall back to sending URL
+        let bodyObj = {
+          selfieBase64: currentBase64,
+          selfieType: currentType,
+          productName: item.product.name || 'item',
+          category: cat
+        };
         try {
           const imgData = await imageUrlToBase64(item.imageUrl);
-          clothingB64 = imgData.base64;
-          clothingMime = imgData.mimeType;
+          bodyObj.clothingBase64 = imgData.base64;
+          bodyObj.clothingType = imgData.mimeType;
         } catch (imgErr) {
-          throw new Error('商品圖片無法載入，請試試其他款式！');
+          // Client-side conversion failed (CORS) — let server fetch the image
+          if (item.imageUrl) {
+            bodyObj.clothingUrl = item.imageUrl;
+          } else {
+            throw new Error('商品圖片無法載入，請試試其他款式！');
+          }
         }
 
         const res = await fetch('/api/tryon', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            selfieBase64: currentBase64,
-            selfieType: currentType,
-            clothingBase64: clothingB64,
-            clothingType: clothingMime,
-            productName: item.product.name || 'item',
-            category: cat
-          })
+          body: JSON.stringify(bodyObj)
         });
         if (!res.ok) {
           if (res.status === 429) throw new Error('目前排隊人數較多，請稍後再試！');
