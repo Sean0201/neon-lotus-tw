@@ -133,6 +133,7 @@ async function loadSupabaseData() {
       vnd:            p.price_vnd || p.price_vnd_estimated || 0,
       thb_shipping:   p.price_thb_shipping || 0,
       thb_carryback:  p.price_thb_carryback || 0,
+      note:           p.price_note || '',
     },
     sizes:   [],          // lazy — filled by loadBrandDetail()
     images: {
