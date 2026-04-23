@@ -216,6 +216,18 @@ function _parseData(data) {
       const recalc = calcPrice(vnd, tag);
       p.price.twd_shipping  = recalc.twd_shipping;
       p.price.twd_carryback = recalc.twd_carryback;
+      // price_note override: e.g. "twd_carryback:750"
+      var note = p.price?.note || '';
+      if (note) {
+        note.split(';').forEach(function(part) {
+          var kv = part.trim().split(':');
+          if (kv.length === 2) {
+            var k = kv[0].trim(), v = parseInt(kv[1].trim());
+            if (k === 'twd_carryback' && v > 0) p.price.twd_carryback = v;
+            if (k === 'twd_shipping' && v > 0)  p.price.twd_shipping  = v;
+          }
+        });
+      }
     }
     if (!byBrand[p.brand_id]) byBrand[p.brand_id] = [];
     byBrand[p.brand_id].push(p);
