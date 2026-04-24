@@ -2525,12 +2525,27 @@
                             <select style="font-size:11px;padding:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text);" onchange="updateOrderStatus('${o.id}', this.value)">
                                 ${ORDER_STATUSES.map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}
                             </select>
+                            <button style="font-size:11px;padding:4px 8px;background:#ef535022;color:#ef5350;border:1px solid #ef535044;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="deleteOrder('${o.id}','${o.order_number || ""}')">刪除</button>
                         </td>
                     </tr>`;
                 }).join('');
             } catch (err) {
                 console.error('Failed to load orders:', err);
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef5350;">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function deleteOrder(orderId, orderNumber) {
+            if (!confirm('確定要刪除訂單 ' + (orderNumber || orderId) + '？\n此操作無法復原！')) return;
+            try {
+                await sb.from('order_items').delete().eq('order_id', orderId);
+                const { error } = await sb.from('orders').delete().eq('id', orderId);
+                if (error) throw error;
+                showToast('訂單 ' + (orderNumber || orderId) + ' 已刪除');
+                loadOrders();
+            } catch (err) {
+                console.error('Failed to delete order:', err);
+                showToast('刪除失敗: ' + err.message, 'error');
             }
         }
 
