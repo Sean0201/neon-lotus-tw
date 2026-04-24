@@ -1392,6 +1392,31 @@
 
         if (itemsError) throw new Error(itemsError.message);
 
+        // Send Telegram notification
+        try {
+          var tgToken = '8573719490:AAE0VQM7LndIvJKXkTuqGn0JEQPV_wzGoLg';
+          var tgChat = '7083254563';
+          var itemLines = items.map(function(it) {
+            return '  \u2022 ' + it.product_name + ' (Size ' + it.size + ') x' + it.quantity + ' \u2014 NT$' + it.unit_price;
+          }).join('\n');
+          var shipLabel = selectedShipping === 'carryback' ? '\u89AA\u81EA\u5E36\u56DE' : '\u570B\u969B\u914D\u9001';
+          var tgMsg = '\ud83d\uded2 *New Order*\n\n'
+            + '\ud83d\udccb ' + orderNumber + '\n'
+            + '\ud83d\udc64 ' + name + '\n'
+            + '\ud83d\udcf1 ' + phone + '\n'
+            + (email ? '\ud83d\udce7 ' + email + '\n' : '')
+            + (address ? '\ud83d\udccd ' + address + '\n' : '')
+            + '\ud83d\ude9a ' + shipLabel + '\n'
+            + '\ud83d\udcb0 *NT$ ' + total.toLocaleString() + '*\n\n'
+            + '\ud83d\udce6 *Items:*\n' + itemLines
+            + (note ? '\n\n\ud83d\udcdd ' + note : '');
+          fetch('https://api.telegram.org/bot' + tgToken + '/sendMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: tgChat, text: tgMsg, parse_mode: 'Markdown' })
+          }).catch(function(e) { console.warn('[TG]', e); });
+        } catch (tgErr) { console.warn('[TG]', tgErr); }
+
         // ── 訂單完成 → 顯示成功頁面 ──
         // (ECPay 金流暫時停用，待開通後再啟用)
         CartState.clear();
