@@ -1787,6 +1787,26 @@
 
         if (itemsError) throw new Error(itemsError.message);
 
+        // Send order notification via server-side API (non-blocking)
+        try {
+          var _n = typeof name !== 'undefined' ? name : (typeof customerName !== 'undefined' ? customerName : '');
+          var _p = typeof phone !== 'undefined' ? phone : (typeof customerPhone !== 'undefined' ? customerPhone : '');
+          var _e = typeof email !== 'undefined' ? email : (typeof customerEmail !== 'undefined' ? customerEmail : '');
+          var _a = typeof address !== 'undefined' ? address : (typeof customerAddress !== 'undefined' ? customerAddress : '');
+          var _nt = typeof note !== 'undefined' ? note : (typeof customerNote !== 'undefined' ? customerNote : '');
+          var _sh = typeof selectedShipping !== 'undefined' ? selectedShipping : (typeof shippingMethod !== 'undefined' ? shippingMethod : '');
+          fetch('/api/notify-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderNumber: orderNumber,
+              name: _n, phone: _p, email: _e, address: _a,
+              shipping: _sh, total: total, items: items, note: _nt
+            })
+          }).catch(function(e) { console.warn('[Notify]', e); });
+        } catch(ne) { console.warn('[Notify]', ne); }
+
+
         // ── 訂單完成 → 顯示成功頁面 ──
         // (ECPay 金流暫時停用，待開通後再啟用)
         CartState.clear();
