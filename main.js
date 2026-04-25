@@ -282,6 +282,10 @@ function _showFatalError(title, subtitle, bullets = []) {
         ${bullets.map(b => `<li style="background:rgba(255,255,255,0.05);padding:10px 20px;border-radius:6px;border:1px solid rgba(168,85,247,0.2)">${b}</li>`).join('')}
       </ul>
     </div>`;
+  }
+
+  renderFilters();
+  renderProducts('ALL');
 }
 
 /* ═══════════════════════════════════════════════════════════════
