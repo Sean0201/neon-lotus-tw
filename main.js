@@ -1,22 +1,22 @@
 /**
- * main.js — NEON LOTUS
- * ─────────────────────────────────────────────────────────────────
- *  ⚠️  IMPORTANT: must be served over HTTP — NOT opened via file://
+ * main.js â NEON LOTUS
+ * âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+ *  â ï¸  IMPORTANT: must be served over HTTP â NOT opened via file://
  *     Quick start:
  *       npx serve .          (requires Node.js)
  *       python3 -m http.server 8080
  *     Then open: http://localhost:8080
- * ────────────────────────────────────────────────────────────────
+ * ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
  */
 
 'use strict';
 
-/* ═══════════════════════════════════════════════════════════════
-   § 0.  CONFIG & CONSTANTS
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 0.  CONFIG & CONSTANTS
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
-/** Price formula constants — edit here to update all prices */
-const RATE = 0.00125;         // 1 VND → TWD
+/** Price formula constants â edit here to update all prices */
+const RATE = 0.00125;         // 1 VND â TWD
 
 const SHIP_VND = {            // Estimated shipping per category (VND)
   Top:          100_000,
@@ -28,16 +28,16 @@ const SHIP_VND = {            // Estimated shipping per category (VND)
 };
 
 const TIERS = [               // Price multiplier tiers
-  { max:   500_000, mult: 1.5 },   // ≤500k VND  → x1.5
-  { max: 1_300_000, mult: 1.4 },   // 500k–1.3M  → x1.4
-  { max: 2_500_000, mult: 1.35 },   // 1.3M–2.5M  → x1.35
-  { max: Infinity,  mult: 1.3 },   // >2.5M      → x1.3
+  { max:   500_000, mult: 1.5 },   // â¤500k VND  â x1.5
+  { max: 1_300_000, mult: 1.4 },   // 500kâ1.3M  â x1.4
+  { max: 2_500_000, mult: 1.35 },   // 1.3Mâ2.5M  â x1.35
+  { max: Infinity,  mult: 1.3 },   // >2.5M      â x1.3
 ];
 
 /**
  * Brand-specific theme overrides.
- * accent    → replaces --accent for the entire brand page (borders, labels, active states …)
- * infoBar   → background tint for the brand info bar section
+ * accent    â replaces --accent for the entire brand page (borders, labels, active states â¦)
+ * infoBar   â background tint for the brand info bar section
  */
 const BRAND_THEME = {
   blish:            { accent: '#29b6f6', infoBar: '#040810' }, // Cyberpunk / electric blue
@@ -78,44 +78,44 @@ const BRAND_THEME = {
   'latui-atelier':  { accent: '#c9a96e', infoBar: '#0e0c0a' }, // Avant-garde / warm bronze
 };
 
-/** Category display labels — used by dynamic filter buttons */
+/** Category display labels â used by dynamic filter buttons */
 const CAT_LABELS = {
-  ALL:         { tw: '全部',   en: 'ALL' },
-  TOPS:        { tw: '上衣',   en: 'TOPS' },
-  TEES:        { tw: 'T恤',    en: 'TEES' },
-  LONGSLEEVES: { tw: '長袖',   en: 'LONG SLEEVES' },
-  SHIRTS:      { tw: '襟衫',   en: 'SHIRTS' },
+  ALL:         { tw: 'å¨é¨',   en: 'ALL' },
+  TOPS:        { tw: 'ä¸è¡£',   en: 'TOPS' },
+  TEES:        { tw: 'Tæ¤',    en: 'TEES' },
+  LONGSLEEVES: { tw: 'é·è¢',   en: 'LONG SLEEVES' },
+  SHIRTS:      { tw: 'è¥è¡«',   en: 'SHIRTS' },
   POLOS:       { tw: 'POLO',   en: 'POLOS' },
-  TANKS:       { tw: '背心',   en: 'TANKS' },
-  SWEATERS:    { tw: '毛衣',   en: 'SWEATERS' },
-  JERSEYS:     { tw: '球衣',   en: 'JERSEYS' },
-  OUTERWEAR:   { tw: '外套',   en: 'OUTERWEAR' },
-  JACKETS:     { tw: '夾克',   en: 'JACKETS' },
-  HOODIES:     { tw: '帽T',    en: 'HOODIES' },
-  BOTTOMS:     { tw: '褲款',   en: 'BOTTOMS' },
-  PANTS:       { tw: '長褲',   en: 'PANTS' },
-  SHORTS:      { tw: '短褲',   en: 'SHORTS' },
-  SKIRTS:      { tw: '裙款',   en: 'SKIRTS' },
-  DRESSES:     { tw: '洋裝',   en: 'DRESSES' },
-  SETS:        { tw: '套裝',   en: 'SETS' },
-  BAGS:        { tw: '包款',   en: 'BAGS' },
-  CAPS:        { tw: '帽款',   en: 'CAPS' },
-  ACCESSORIES: { tw: '配件',   en: 'ACCESSORIES' },
-  FOOTWEAR:    { tw: '鞋款',   en: 'FOOTWEAR' },
-  UNDERWEAR:   { tw: '內著',   en: 'UNDERWEAR' },
+  TANKS:       { tw: 'èå¿',   en: 'TANKS' },
+  SWEATERS:    { tw: 'æ¯è¡£',   en: 'SWEATERS' },
+  JERSEYS:     { tw: 'çè¡£',   en: 'JERSEYS' },
+  OUTERWEAR:   { tw: 'å¤å¥',   en: 'OUTERWEAR' },
+  JACKETS:     { tw: 'å¤¾å',   en: 'JACKETS' },
+  HOODIES:     { tw: 'å¸½T',    en: 'HOODIES' },
+  BOTTOMS:     { tw: 'è¤²æ¬¾',   en: 'BOTTOMS' },
+  PANTS:       { tw: 'é·è¤²',   en: 'PANTS' },
+  SHORTS:      { tw: 'ç­è¤²',   en: 'SHORTS' },
+  SKIRTS:      { tw: 'è£æ¬¾',   en: 'SKIRTS' },
+  DRESSES:     { tw: 'æ´è£',   en: 'DRESSES' },
+  SETS:        { tw: 'å¥è£',   en: 'SETS' },
+  BAGS:        { tw: 'åæ¬¾',   en: 'BAGS' },
+  CAPS:        { tw: 'å¸½æ¬¾',   en: 'CAPS' },
+  ACCESSORIES: { tw: 'éä»¶',   en: 'ACCESSORIES' },
+  FOOTWEAR:    { tw: 'éæ¬¾',   en: 'FOOTWEAR' },
+  UNDERWEAR:   { tw: 'å§è',   en: 'UNDERWEAR' },
 };
 const CAT_ORDER = ['TOPS','TEES','LONGSLEEVES','SHIRTS','POLOS','TANKS','SWEATERS','JERSEYS','OUTERWEAR','JACKETS','HOODIES','BOTTOMS','PANTS','SHORTS','SKIRTS','DRESSES','SETS','BAGS','CAPS','ACCESSORIES','FOOTWEAR','UNDERWEAR'];
 
-/* ═══════════════════════════════════════════════════════════════
-   § 1.  APP STATE
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 1.  APP STATE
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 let BRANDS      = [];       // populated by loadData()
 let currentLang = 'tw';     // 'tw' | 'en'
 
-/* ═══════════════════════════════════════════════════════════════
-   § 2.  PRICE UTILITIES  (mirrors price_calc.js)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 2.  PRICE UTILITIES  (mirrors price_calc.js)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 function getMultiplier(vnd) {
   for (const { max, mult } of TIERS) if (vnd <= max) return mult;
@@ -126,17 +126,17 @@ function roundTo50(n) { return Math.round(n / 50) * 50; }
 
 /**
  * Psychological pricing: round to nearest 10, then force tail to 50 or 80.
- *   tail 00–49  →  xx50   (e.g. 2213 → 2210 → 2250)
- *   tail 50     →  unchanged
- *   tail 51–99  →  xx80   (e.g. 2265 → 2270 → 2280)
+ *   tail 00â49  â  xx50   (e.g. 2213 â 2210 â 2250)
+ *   tail 50     â  unchanged
+ *   tail 51â99  â  xx80   (e.g. 2265 â 2270 â 2280)
  */
 function psychPrice(n) {
   if (n == null) return n;
   const r    = Math.round(n / 10) * 10;   // round to nearest 10
   const tail = r % 100;
-  if (tail === 50) return r;              // already x50 → leave it
-  if (tail <= 49)  return r - tail + 50;  // 00–49 → force to x50
-  return r - tail + 80;                   // 51–99 → force to x80
+  if (tail === 50) return r;              // already x50 â leave it
+  if (tail <= 49)  return r - tail + 50;  // 00â49 â force to x50
+  return r - tail + 80;                   // 51â99 â force to x80
 }
 
 /**
@@ -152,14 +152,14 @@ function calcPrice(vnd, tag) {
   };
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 3.  DATA LOADING
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 3.  DATA LOADING
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 async function loadData() {
   _showLoadingState();
 
-  // ── Priority 1: window.BRANDS_DATA set by supabase-client.js (or legacy data.js) ──
+  // ââ Priority 1: window.BRANDS_DATA set by supabase-client.js (or legacy data.js) ââ
   // supabase-client.js fetches data async; wait up to 15s for it.
   if (window.BRANDS_DATA) {
     _parseData(window.BRANDS_DATA);
@@ -181,12 +181,12 @@ async function loadData() {
     return;
   }
 
-  // ── Fallback: fetch brands_products.json (legacy) ──────────
+  // ââ Fallback: fetch brands_products.json (legacy) ââââââââââ
   if (location.protocol === 'file:') {
     _showFatalError(
-      '⚠️ 無法載入資料',
-      'Supabase 連線失敗，且本地沒有 data.js。',
-      ['請確認網路連線正常，或使用本地伺服器: <code>npx serve .</code>']
+      'â ï¸ ç¡æ³è¼å¥è³æ',
+      'Supabase é£ç·å¤±æï¼ä¸æ¬å°æ²æ data.jsã',
+      ['è«ç¢ºèªç¶²è·¯é£ç·æ­£å¸¸ï¼æä½¿ç¨æ¬å°ä¼ºæå¨: <code>npx serve .</code>']
     );
     return;
   }
@@ -198,14 +198,14 @@ async function loadData() {
   } catch (err) {
     console.error('loadData() failed:', err);
     _showFatalError(
-      '⚠️ 無法載入資料',
-      '無法從 Supabase 或備援來源取得資料。',
-      ['請重新整理頁面，或稍後再試。']
+      'â ï¸ ç¡æ³è¼å¥è³æ',
+      'ç¡æ³å¾ Supabase æåæ´ä¾æºåå¾è³æã',
+      ['è«éæ°æ´çé é¢ï¼æç¨å¾åè©¦ã']
     );
   }
 }
 
-/** Shared parse logic — called whether data came from data.js or fetch() */
+/** Shared parse logic â called whether data came from data.js or fetch() */
 function _parseData(data) {
   // Group products by brand_id & recalculate TWD prices with current TIERS
   const byBrand = {};
@@ -233,7 +233,7 @@ function _parseData(data) {
     byBrand[p.brand_id].push(p);
   }
 
-  // Map JSON brands → internal BRANDS array
+  // Map JSON brands â internal BRANDS array
   BRANDS = data.brands.map(b => ({
     id:            b.id,
     name:          b.name,
@@ -251,7 +251,7 @@ function _parseData(data) {
   }));
 }
 
-/* ── Loading / error helpers ────────────────────────────────── */
+/* ââ Loading / error helpers ââââââââââââââââââââââââââââââââââ */
 function _showLoadingState() {
   const grid = document.getElementById('brands-grid');
   if (!grid) return;
@@ -266,7 +266,7 @@ function _showLoadingState() {
 }
 
 function _hideLoadingState() {
-  // renderBrandsGrid() will overwrite the grid — nothing extra needed
+  // renderBrandsGrid() will overwrite the grid â nothing extra needed
 }
 
 function _showFatalError(title, subtitle, bullets = []) {
@@ -282,15 +282,11 @@ function _showFatalError(title, subtitle, bullets = []) {
         ${bullets.map(b => `<li style="background:rgba(255,255,255,0.05);padding:10px 20px;border-radius:6px;border:1px solid rgba(168,85,247,0.2)">${b}</li>`).join('')}
       </ul>
     </div>`;
-  }
-
-  renderFilters();
-  renderProducts('ALL');
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 4.  PAGE NAVIGATION
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 4.  PAGE NAVIGATION
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 function showPage(page, brandId, skipPush) {
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
@@ -303,14 +299,14 @@ function showPage(page, brandId, skipPush) {
   if (page === 'home') setTimeout(observeFadeIns, 80);
   updateTexts();
 
-  // ── Browser history support (back/forward buttons) ──────────
+  // ââ Browser history support (back/forward buttons) ââââââââââ
   if (!skipPush) {
     const hash = brandId ? `#${page}/${brandId}` : `#${page}`;
     history.pushState({ page, brandId: brandId || null }, '', hash);
   }
 }
 
-// ── Listen for browser back/forward buttons ───────────────────
+// ââ Listen for browser back/forward buttons âââââââââââââââââââ
 window.addEventListener('popstate', (e) => {
   if (e.state && e.state.page) {
     showPage(e.state.page, e.state.brandId || null, true);
@@ -326,15 +322,15 @@ window.addEventListener('popstate', (e) => {
   }
 });
 
-/* ═══════════════════════════════════════════════════════════════
-   § 4.1  核心修復：顯示品牌與品項
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 4.1  æ ¸å¿ä¿®å¾©ï¼é¡¯ç¤ºåçèåé 
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 async function renderBrandPage(brandId) {
-  // Use internal BRANDS array (already parsed by _parseData) — no longer depends on window.BRANDS_DATA
+  // Use internal BRANDS array (already parsed by _parseData) â no longer depends on window.BRANDS_DATA
   const brand = BRANDS.find(b => b.id === brandId);
   if (!brand) return;
 
-  // ── Apply brand-specific colour theme ────────────────────────
+  // ââ Apply brand-specific colour theme ââââââââââââââââââââââââ
   const theme  = BRAND_THEME[brandId] || {};
   const pageEl = document.getElementById('page-brand');
   pageEl.style.setProperty('--accent',        theme.accent  || '#c084fc');
@@ -344,17 +340,17 @@ async function renderBrandPage(brandId) {
     `color-mix(in srgb, ${theme.accent || '#c084fc'} 18%, transparent)`
   );
 
-  // ── Lazy-load gallery & sizes for this brand ────────────────
+  // ââ Lazy-load gallery & sizes for this brand ââââââââââââââââ
   //    loadBrandDetail() patches BRANDS_DATA.products in place,
   //    so brand.products will have gallery + sizes after this call.
   if (typeof window.loadBrandDetail === 'function') {
     // Show a quick loading state in the product grid
     const grid = document.getElementById('products-grid');
-    if (grid) grid.innerHTML = '<p style="text-align:center;padding:60px;color:#c084fc;font-size:1.1rem">Loading products…</p>';
+    if (grid) grid.innerHTML = '<p style="text-align:center;padding:60px;color:#c084fc;font-size:1.1rem">Loading productsâ¦</p>';
     try {
       await window.loadBrandDetail(brandId);
       // Re-read brand from BRANDS since _parseData built it from BRANDS_DATA
-      // but loadBrandDetail patched BRANDS_DATA.products — we need to sync
+      // but loadBrandDetail patched BRANDS_DATA.products â we need to sync
       _syncBrandProducts(brandId);
     } catch (err) {
       console.error('[renderBrandPage] loadBrandDetail failed:', err);
@@ -368,7 +364,7 @@ async function renderBrandPage(brandId) {
   const nameEl = document.getElementById('brand-hero-name');
   if (nameEl) nameEl.innerText = brand.name;
 
-  // Hero background — use first product image
+  // Hero background â use first product image
   const heroBg = document.getElementById('brand-hero-bg');
   if (heroBg) {
     const firstProd = window.CURRENT_BRAND_PRODUCTS[0];
@@ -383,7 +379,7 @@ async function renderBrandPage(brandId) {
     }
   }
 
-  // Info bar — description + meta
+  // Info bar â description + meta
   const infoBar = document.getElementById('brand-info-bar');
   if (infoBar) {
     const desc = currentLang === 'tw' ? (brand.desc_tw || '') : (brand.desc_en || '');
@@ -394,61 +390,13 @@ async function renderBrandPage(brandId) {
       ${brand.meta_location  ? `<div class="brand-meta-item"><div class="brand-meta-label">ORIGIN</div><div class="brand-meta-value">${brand.meta_location}</div></div>` : ''}
     `;
   }
-    
 
-/* ── Size Chart Modal ───────────────────────────────────────── */
-function showSizeChartModal(brandId) {
-  var old = document.getElementById('sizechart-modal');
-  if (old) old.remove();
-  var chartData = window.SITE_SETTINGS && window.SITE_SETTINGS['sizechart_' + brandId];
-  var chartImg = window.SITE_SETTINGS && window.SITE_SETTINGS['sizechart_img_' + brandId];
-  var overlay = document.createElement('div');
-  overlay.id = 'sizechart-modal';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
-  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
-  var box = document.createElement('div');
-  box.style.cssText = 'background:#1a1a2e;border:1px solid rgba(192,132,252,0.3);border-radius:16px;max-width:700px;width:100%;max-height:85vh;overflow-y:auto;padding:30px;position:relative;';
-  var closeBtn = document.createElement('button');
-  closeBtn.textContent = '\u2715';
-  closeBtn.style.cssText = 'position:absolute;top:12px;right:16px;background:none;border:none;color:#999;font-size:20px;cursor:pointer;';
-  closeBtn.onclick = function() { overlay.remove(); };
-  box.appendChild(closeBtn);
-  if (chartImg) {
-    var imgUrl = typeof chartImg === 'string' ? chartImg : (chartImg.url || '');
-    var t1 = document.createElement('h2');
-    t1.textContent = '\ud83d\udccf \u5c3a\u5bf8\u8868 Size Guide';
-    t1.style.cssText = 'color:#c084fc;margin:0 0 20px;font-size:20px;';
-    box.appendChild(t1);
-    var img = document.createElement('img');
-    img.src = imgUrl; img.style.cssText = 'width:100%;border-radius:8px;';
-    box.appendChild(img);
-  } else if (chartData) {
-    var t2 = document.createElement('h2');
-    t2.textContent = chartData.title || '\ud83d\udccf \u5c3a\u5bf8\u8868 Size Guide';
-    t2.style.cssText = 'color:#c084fc;margin:0 0 20px;font-size:20px;';
-    box.appendChild(t2);
-    (chartData.categories || []).forEach(function(cat) {
-      var h3 = document.createElement('h3');
-      h3.textContent = cat.name;
-      h3.style.cssText = 'color:#e0e0e0;margin:20px 0 8px;font-size:16px;border-bottom:1px solid rgba(192,132,252,0.2);padding-bottom:6px;';
-      box.appendChild(h3);
-      if (cat.rec) { var p = document.createElement('p'); p.textContent = cat.rec; p.style.cssText = 'color:#a0a0a0;font-size:13px;white-space:pre-line;margin:0 0 10px;'; box.appendChild(p); }
-      if (cat.headers && cat.rows) {
-        var tbl = document.createElement('table');
-        tbl.style.cssText = 'width:100%;border-collapse:collapse;margin-bottom:16px;font-size:14px;';
-        var thead = '<tr>' + cat.headers.map(function(h) { return '<th style="padding:8px 12px;text-align:left;color:#c084fc;border-bottom:2px solid rgba(192,132,252,0.3);font-weight:600;">' + h + '</th>'; }).join('') + '</tr>';
-        var tbody = cat.rows.map(function(row) { return '<tr>' + row.map(function(c) { return '<td style="padding:8px 12px;color:#e0e0e0;border-bottom:1px solid rgba(255,255,255,0.06);">' + c + '</td>'; }).join('') + '</tr>'; }).join('');
-        tbl.innerHTML = thead + tbody;
-        box.appendChild(tbl);
-      }
-    });
-  }
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
+  renderFilters();
+  renderProducts('ALL');
 }
 
 /**
- * Sync BRANDS_DATA.products → internal BRANDS[].products
+ * Sync BRANDS_DATA.products â internal BRANDS[].products
  * after loadBrandDetail() patches gallery/sizes onto BRANDS_DATA.products.
  */
 function _syncBrandProducts(brandId) {
@@ -461,9 +409,9 @@ function _syncBrandProducts(brandId) {
   brand.products = patched;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 5.  LANGUAGE
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 5.  LANGUAGE
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 function setLang(lang) {
   currentLang = lang;
@@ -473,7 +421,7 @@ function setLang(lang) {
   updateTexts();
 
   // 2. Toggle about-strip & about-page lang-content blocks ONLY
-  //    (scoped to .lang-content class — never touches brand cards)
+  //    (scoped to .lang-content class â never touches brand cards)
   document.querySelectorAll('.lang-content').forEach(el => el.classList.remove('active'));
   [`about-${lang}`, `page-about-${lang}`].forEach(id => {
     const el = document.getElementById(id);
@@ -482,20 +430,20 @@ function setLang(lang) {
 
   // 3. Update switch button text (desktop + mobile)
   const sw = document.getElementById('lang-switch');
-  if (sw) sw.textContent = lang === 'tw' ? 'EN' : '中';
+  if (sw) sw.textContent = lang === 'tw' ? 'EN' : 'ä¸­';
   const msw = document.getElementById('mobile-lang-switch');
-  if (msw) msw.textContent = lang === 'tw' ? 'EN' : '中';
+  if (msw) msw.textContent = lang === 'tw' ? 'EN' : 'ä¸­';
 
   // 3b. Update mobile overlay nav button text
   document.querySelectorAll('#mobile-overlay .mobile-nav-btn[data-tw], #mobile-overlay .mobile-nav-btn[data-en]').forEach(el => {
     const txt = el.getAttribute('data-' + lang);
     if (txt) {
-      const hasChevron = el.textContent.includes('▾');
-      el.textContent = txt + (hasChevron ? ' ▾' : '');
+      const hasChevron = el.textContent.includes('â¾');
+      el.textContent = txt + (hasChevron ? ' â¾' : '');
     }
   });
 
-  // 4. Re-render brand grid (language-neutral — only uses b.name, never TH text)
+  // 4. Re-render brand grid (language-neutral â only uses b.name, never TH text)
   if (BRANDS.length) {
     console.log('[setLang] Re-rendering brands grid for:', lang);
     renderBrandsGrid();
@@ -515,17 +463,17 @@ function setLang(lang) {
   renderBanners();
 }
 
-/* ── Lang-switch button click ─────────────────────────── */
+/* ââ Lang-switch button click âââââââââââââââââââââââââââ */
 document.addEventListener('DOMContentLoaded', () => {
   const sw = document.getElementById('lang-switch');
   if (sw) sw.addEventListener('click', () => {
     setLang(currentLang === 'tw' ? 'en' : 'tw');
   });
 
-  /* ── Dropdown hover-delay system ─────────────────────────────
+  /* ââ Dropdown hover-delay system âââââââââââââââââââââââââââââ
      Uses JS to add/remove .dropdown-open class with a 300ms
      leave-delay, preventing accidental menu closure.
-     ──────────────────────────────────────────────────────────── */
+     ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
   const navItems = document.querySelectorAll('.nav-item');
   const HOVER_DELAY = 300; // ms delay before hiding
 
@@ -594,9 +542,9 @@ function updateTexts() {
   });
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 6.  RENDER — HOME: BRANDS GRID
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 6.  RENDER â HOME: BRANDS GRID
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 function renderBrandsGrid() {
   const grid = document.getElementById('brands-grid');
@@ -607,17 +555,17 @@ function renderBrandsGrid() {
   // Neon gradient fallback when no cover image exists
   const FALLBACK_BG = 'linear-gradient(135deg, #1a0520 0%, #0d0820 40%, #070a18 70%, #16141e 100%)';
 
-  // 按英文字母 A→Z 排序
+  // æè±æå­æ¯ AâZ æåº
   const activeBrands = BRANDS.filter(b => b.products.length > 0)
     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' }));
   console.log('[renderBrandsGrid] Active brands (with products):', activeBrands.length);
 
   grid.innerHTML = activeBrands.map(b => {
-    // Brand name: always use b.name (English brand name) — never language-dependent
+    // Brand name: always use b.name (English brand name) â never language-dependent
     const displayName = b.name || b.id || 'UNKNOWN';
     const safeName    = displayName.replace(/'/g, "\\'");
 
-    // Image: use DB cover_url → CDN product image → neon gradient fallback
+    // Image: use DB cover_url â CDN product image â neon gradient fallback
     const coverSrc   = b.cover_url || _getBrandCoverSrc(b) || '';
     const logoSrc    = b.logo_url || '';
     const itemCount  = b.products.length;
@@ -651,16 +599,16 @@ function renderBrandsGrid() {
           <div class="brand-card-name">${displayName}</div>
           <div class="brand-card-count">${itemCount} ITEMS</div>
         </div>
-        <div class="brand-card-arrow">↗</div>
+        <div class="brand-card-arrow">â</div>
       </div>`;
   }).join('');
 }
 
 /** Find best displayable cover image from product data (CDN URLs).
- *  Priority: detail gallery (CDN) → source gallery (CDN) → original_cover_url → cover (CDN) */
+ *  Priority: detail gallery (CDN) â source gallery (CDN) â original_cover_url â cover (CDN) */
 function _getBrandCoverSrc(brand) {
   const _cdnUrl = (g) => (g.original_url || g.url || '').startsWith('http') ? (g.original_url || g.url) : null;
-  // Pass 1: CDN 'detail' image (model/lifestyle — usually darker)
+  // Pass 1: CDN 'detail' image (model/lifestyle â usually darker)
   for (const p of brand.products) {
     const gallery = p.images?.gallery || [];
     const detail = gallery.find(g => g.type === 'detail' && _cdnUrl(g));
@@ -694,9 +642,9 @@ function _getProductImageSrc(product) {
   return null;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 7.  RENDER — NAV: BRANDS DROPDOWN  (A → Z)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 7.  RENDER â NAV: BRANDS DROPDOWN  (A â Z)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 function renderDropdown() {
   const container = document.getElementById('dropdown-letters');
@@ -721,9 +669,9 @@ function renderDropdown() {
     </div>`).join('');
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 8.  RENDER FILTERS (對齊版)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 8.  RENDER FILTERS (å°é½ç)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 function renderFilters() {
   const container = document.getElementById('products-filter');
   if (!container) return;
@@ -742,7 +690,7 @@ function renderFilters() {
     return m ? (currentLang === 'tw' ? m.tw : m.en) : cat;
   };
   let html = '<button class="filter-btn active" data-cat="ALL"><span>' +
-    (currentLang === 'tw' ? '全部' : 'ALL') +
+    (currentLang === 'tw' ? 'å¨é¨' : 'ALL') +
     '</span><span class="filter-count">' + products.length + '</span></button>';
   sorted.forEach(cat => {
     html += '<button class="filter-btn" data-cat="' + cat + '"><span>' +
@@ -758,9 +706,9 @@ function renderFilters() {
   });
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 9.  FILTER PRODUCTS
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 9.  FILTER PRODUCTS
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 function filterProducts(brandId, tag, btn) {
   const b = BRANDS.find(x => x.id === brandId);
@@ -782,14 +730,14 @@ function filterProducts(brandId, tag, btn) {
   setTimeout(() => grid.classList.remove('animating'), 700);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 10a. BUILD A SINGLE PRODUCT CARD
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 10a. BUILD A SINGLE PRODUCT CARD
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 function _buildProductCard(p) {
   const gallery  = p.images?.gallery || [];
 
   // === Image resolution: prefer CDN links, skip local paths on server ===
-  // Priority: gallery[].original_url (CDN) → gallery[].url (if CDN) → original_cover_url
+  // Priority: gallery[].original_url (CDN) â gallery[].url (if CDN) â original_cover_url
   const cdnGalleryUrls = gallery
     .map(g => g.original_url || g.url || '')
     .filter(u => u.startsWith('http'));
@@ -808,16 +756,16 @@ function _buildProductCard(p) {
 
   const mainImg = coverUrl
     ? `<img class="card-main-img loaded" src="${coverUrl}" loading="lazy" alt="${p.name}"
-           onerror="this.parentNode.innerHTML='<div class=\\'product-img-placeholder\\'><div class=\\'placeholder-icon\\'>👕</div><div class=\\'placeholder-text\\'>NO IMAGE</div></div>'">`
+           onerror="this.parentNode.innerHTML='<div class=\\'product-img-placeholder\\'><div class=\\'placeholder-icon\\'>ð</div><div class=\\'placeholder-text\\'>NO IMAGE</div></div>'">`
     : `<div class="product-img-placeholder">
-         <div class="placeholder-icon">👕</div>
+         <div class="placeholder-icon">ð</div>
          <div class="placeholder-text">NO IMAGE</div>
        </div>`;
 
   const soldOverlay = '';
 
   const countBadge = imgUrls.length > 1
-    ? `<div class="photo-count-badge">📷 ${imgUrls.length}</div>` : '';
+    ? `<div class="photo-count-badge">ð· ${imgUrls.length}</div>` : '';
 
   const thumbsHtml = imgUrls.length > 1
     ? `<div class="gallery-thumbs">
@@ -838,8 +786,8 @@ function _buildProductCard(p) {
 
   const priceHtml = `
     <div class="product-price-wrap">
-      ${twdShip  != null ? `<div class="price-row"><span class="price-main">NT$ ${twdShip.toLocaleString()}</span><span class="price-tag-pill">${currentLang === 'tw' ? '國際<span class="pill-sub">配送</span>' : 'SHIP<span class="pill-sub">INC.</span>'}</span></div>` : ''}
-      ${twdCarry != null ? `<div class="price-row"><span class="price-carry">NT$ ${twdCarry.toLocaleString()}</span><span class="price-tag-pill carry">${currentLang === 'tw' ? '親自<span class="pill-sub">運送</span>' : 'CARRY<span class="pill-sub">BACK</span>'}</span></div>` : ''}
+      ${twdShip  != null ? `<div class="price-row"><span class="price-main">NT$ ${twdShip.toLocaleString()}</span><span class="price-tag-pill">${currentLang === 'tw' ? 'åé<span class="pill-sub">éé</span>' : 'SHIP<span class="pill-sub">INC.</span>'}</span></div>` : ''}
+      ${twdCarry != null ? `<div class="price-row"><span class="price-carry">NT$ ${twdCarry.toLocaleString()}</span><span class="price-tag-pill carry">${currentLang === 'tw' ? 'è¦ªèª<span class="pill-sub">éé</span>' : 'CARRY<span class="pill-sub">BACK</span>'}</span></div>` : ''}
     </div>`;
 
   return `
@@ -854,40 +802,15 @@ function _buildProductCard(p) {
         <div class="product-name">${p.name}</div>
         ${priceHtml}
         ${sizesHtml}
-        ${_buildSizeGuideHtml(p)}
         <span class="product-tag">${p.category || p.tag || ''}</span>
         ${typeof window.renderAddToCartButton === 'function' ? window.renderAddToCartButton(p) : ''}
       </div>
     </div>`;
 }
 
-
-function _buildSizeGuideHtml(p) {
-  var settings = window.SITE_SETTINGS || {};
-  var chart = settings['sizechart_' + p.brand_id];
-  var chartImg = settings['sizechart_img_' + p.brand_id];
-  if (!chart && !chartImg) return '';
-  if (chartImg) {
-    var imgUrl = typeof chartImg === 'string' ? chartImg : (chartImg.url || '');
-    return '<div class="product-sizeguide" style="margin-top:6px;"><button onclick="showSizeChartModal(\x27' + p.brand_id + '\x27)" style="font-size:12px;color:#a78bfa;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">\ud83d\udccf \u5c3a\u5bf8\u8868</button></div>';
-  }
-  var tag = (p.tag || p.category || '').toLowerCase();
-  var matched = null;
-  (chart.categories || []).forEach(function(cat) {
-    var cn = cat.name.toLowerCase();
-    if (tag.indexOf('top') !== -1 && (cn.indexOf('top') !== -1 || cn.indexOf('tee') !== -1 || cn.indexOf('shirt') !== -1)) matched = cat;
-    else if (tag.indexOf('bottom') !== -1 && (cn.indexOf('pant') !== -1 || cn.indexOf('short') !== -1)) matched = cat;
-    else if (tag.indexOf('outerwear') !== -1 && (cn.indexOf('hoodie') !== -1 || cn.indexOf('jacket') !== -1)) matched = cat;
-  });
-  if (!matched && chart.categories && chart.categories.length > 0) matched = chart.categories[0];
-  if (!matched || !matched.rec) return '';
-  var recText = matched.rec.replace(/\n/g, ' \u00B7 ');
-  return '<div class="product-sizeguide" style="margin-top:6px;font-size:11px;color:#a0a0a0;line-height:1.5;padding:6px 8px;background:rgba(167,139,250,0.06);border-radius:6px;border:1px solid rgba(167,139,250,0.1);">\ud83d\udccf ' + recText + '</div>';
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   § 10.  RENDER — PRODUCT CARDS (修正過濾版)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 10.  RENDER â PRODUCT CARDS (ä¿®æ­£éæ¿¾ç)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 function renderProducts(cat) {
   cat = cat || 'ALL';
   const grid = document.getElementById('products-grid');
@@ -909,9 +832,9 @@ function renderProducts(cat) {
   if (typeof initImgLazy === 'function') initImgLazy();
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 11.  GALLERY THUMBNAIL SWITCHER
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 11.  GALLERY THUMBNAIL SWITCHER
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 function switchThumb(thumbEl, url, evt) {
   if (evt) evt.stopPropagation();
@@ -943,9 +866,9 @@ function switchThumb(thumbEl, url, evt) {
     .forEach(t => t.classList.toggle('active', t === thumbEl));
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 12.  LAZY IMAGE LOADING  (IntersectionObserver)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 12.  LAZY IMAGE LOADING  (IntersectionObserver)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 (function () {
   let _obs = null;
 
@@ -978,9 +901,9 @@ function switchThumb(thumbEl, url, evt) {
   };
 })();
 
-/* ═══════════════════════════════════════════════════════════════
-   § 13.  LIGHTBOX
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 13.  LIGHTBOX
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 (function () {
   let imgs = [], idx = 0;
 
@@ -1044,9 +967,9 @@ function switchThumb(thumbEl, url, evt) {
   });
 })();
 
-/* ═══════════════════════════════════════════════════════════════
-   § 14.  FADE-IN OBSERVER  (scroll animations)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 14.  FADE-IN OBSERVER  (scroll animations)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 function observeFadeIns() {
   const obs = new IntersectionObserver(entries => {
     entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
@@ -1054,9 +977,9 @@ function observeFadeIns() {
   document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 15b.  STYLE FILTER  (navbar dropdown)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 15b.  STYLE FILTER  (navbar dropdown)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 function filterByStyle(keyword) {
   showPage('home');
   setTimeout(() => {
@@ -1079,12 +1002,12 @@ function filterByStyle(keyword) {
   }, 50);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 16.  INIT
-   ═══════════════════════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════════════════════
-   § 16a. MOBILE MENU
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 16.  INIT
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 16a. MOBILE MENU
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 function toggleMobileMenu() {
   const overlay = document.getElementById('mobile-overlay');
   const hamburger = document.getElementById('hamburger');
@@ -1138,13 +1061,13 @@ function toggleMobileLang() {
   setLang(next);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 15a.  DYNAMIC BANNERS (from CMS)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 15a.  DYNAMIC BANNERS (from CMS)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 function renderBanners() {
   const banners = window.BANNERS_DATA || [];
-  if (!banners.length) return;   // no banners — keep static hero
+  if (!banners.length) return;   // no banners â keep static hero
 
   const container = document.getElementById('hero-banners');
   if (!container) return;
@@ -1162,12 +1085,12 @@ function renderBanners() {
     const title    = b.title || '';
     const subtitle = b.subtitle || '';
 
-    // Determine click target: brand_id → brand page, link_url → external link
+    // Determine click target: brand_id â brand page, link_url â external link
     const hasBrand = !!b.brand_id;
     const hasLink  = !!b.link_url;
     const clickable = hasBrand || hasLink;
     const cursorStyle = clickable ? 'cursor:pointer;' : '';
-    const btnLabel = lang === 'tw' ? '立即選購' : 'SHOP NOW';
+    const btnLabel = lang === 'tw' ? 'ç«å³é¸è³¼' : 'SHOP NOW';
     const showBtn = clickable;
 
     const isMobile = window.innerWidth <= 768;
@@ -1215,7 +1138,7 @@ function renderBanners() {
     }
   }
 
-  // ── Touch swipe support ──
+  // ââ Touch swipe support ââ
   if (banners.length > 1) {
     let touchStartX = 0;
     let touchStartY = 0;
@@ -1257,9 +1180,9 @@ function renderBanners() {
   resetAutoRotate();
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 15b.  DYNAMIC SEO META (from CMS site_settings)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 15b.  DYNAMIC SEO META (from CMS site_settings)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 function applySeoMeta() {
   const settings = window.SITE_SETTINGS || {};
@@ -1282,9 +1205,9 @@ function applySeoMeta() {
   if (ogDesc && desc)   ogDesc.setAttribute('content', desc);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   § 16.  INIT
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 16.  INIT
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
 
@@ -1298,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setLang('tw');        // default to Traditional Chinese
   initImgLazy();
 
-  // ── Cart icon in nav ──────────────────────────────────────────
+  // ââ Cart icon in nav ââââââââââââââââââââââââââââââââââââââââââ
   if (typeof window.renderCartIcon === 'function') {
     const cartSlot = document.getElementById('nav-cart-icon');
     if (cartSlot) {
@@ -1310,7 +1233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // ── Restore page from URL hash (supports direct links & refresh) ──
+  // ââ Restore page from URL hash (supports direct links & refresh) ââ
   const initHash = location.hash.replace('#', '');
   if (initHash && initHash !== 'home') {
     const [pg, bid] = initHash.split('/');
@@ -1322,13 +1245,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     '', location.hash || '#home'
   );
 
-  // ── Init Virtual Fitting Room ──────────────────────────────────
+  // ââ Init Virtual Fitting Room ââââââââââââââââââââââââââââââââââ
   initTryOnRoom();
 });
 
-/* ═══════════════════════════════════════════════════════════════
-   § 17.  VIRTUAL FITTING ROOM (Nano Banana 2 / Gemini)
-   ═══════════════════════════════════════════════════════════════ */
+/* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   Â§ 17.  VIRTUAL FITTING ROOM (Nano Banana 2 / Gemini)
+   âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 function initTryOnRoom() {
   let selfieBase64 = null;
   let selfieType = 'image/jpeg';
@@ -1349,14 +1272,14 @@ function initTryOnRoom() {
 
   if (!uploadArea) return; // page not loaded
 
-  // ── Step navigation ─────────────────────────────────────────
+  // ââ Step navigation âââââââââââââââââââââââââââââââââââââââââ
   function goStep(n) {
     document.querySelectorAll('.tryon-step').forEach(el => el.classList.remove('active'));
     const step = document.getElementById('tryon-step' + n);
     if (step) step.classList.add('active');
   }
 
-  // ── Step 1: Upload selfie ───────────────────────────────────
+  // ââ Step 1: Upload selfie âââââââââââââââââââââââââââââââââââ
   uploadArea.addEventListener('click', () => fileInput.click());
   uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
   uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
@@ -1411,10 +1334,10 @@ function initTryOnRoom() {
 
   backBtn.addEventListener('click', () => goStep(1));
 
-  // ── Step 2: Browse & select clothes ─────────────────────────
+  // ââ Step 2: Browse & select clothes âââââââââââââââââââââââââ
   function populateBrandFilter() {
     const sel = brandSelect;
-    sel.innerHTML = '<option value="all">所有品牌</option>';
+    sel.innerHTML = '<option value="all">ææåç</option>';
     BRANDS.filter(b => b.products.length > 0).forEach(b => {
       const opt = document.createElement('option');
       opt.value = b.id;
@@ -1425,10 +1348,10 @@ function initTryOnRoom() {
 
   brandSelect.addEventListener('change', () => { currentOutfitCat = 'ALL'; updateOutfitCatTabs(); renderClothes(brandSelect.value, 'ALL'); });
 
-  // ── Category filter for outfit tabs ─────────────────────────
+  // ââ Category filter for outfit tabs âââââââââââââââââââââââââ
   let currentOutfitCat = 'ALL';
 
-    /* ── Outfit multi-select slots ── */
+    /* ââ Outfit multi-select slots ââ */
     const outfitSlots = { top: null, bottom: null, outerwear: null, accessory: null };
 
     function getProductCategory(product) {
@@ -1561,7 +1484,7 @@ function initTryOnRoom() {
       return `
         <div class="tryon-cloth-card" data-product-id="${p.id}">
           <img src="${imgUrl}" alt="${name}" loading="lazy" />
-          <div class="tryon-cloth-trybtn" data-en="TRY ON" data-tw="試穿">試穿</div>
+          <div class="tryon-cloth-trybtn" data-en="TRY ON" data-tw="è©¦ç©¿">è©¦ç©¿</div>
           <div class="tryon-cloth-info">
             <h4>${name}</h4>
             <span>${price}</span>
@@ -1581,7 +1504,7 @@ function initTryOnRoom() {
     updateTexts();
   }
 
-  // ── Step 3: Try on with AI ──────────────────────────────────
+  // ââ Step 3: Try on with AI ââââââââââââââââââââââââââââââââââ
   async function startMultiTryOn() {
       /* Sync selections to OutfitBuilder */
       if (!window.OutfitBuilder) { alert("OutfitBuilder not loaded"); return; }
@@ -1668,18 +1591,18 @@ function initTryOnRoom() {
       startMultiTryOn();
     }
 
-    /* ── Outfit try-on button ── */
+    /* ââ Outfit try-on button ââ */
     document.getElementById('outfit-tryon-btn').addEventListener('click', () => {
       startMultiTryOn();
     });
 
-    /* ── Initialize outfit panel ── */
+    /* ââ Initialize outfit panel ââ */
     renderOutfitPanel();
 
 
   tryAnother.addEventListener('click', () => goStep(2));
 
-  // ── Add outfit items to cart ──────────────────────────────────
+  // ââ Add outfit items to cart ââââââââââââââââââââââââââââââââââ
   if (addCartBtn) {
     addCartBtn.addEventListener('click', function() {
       var CS = window.CartSystem;
