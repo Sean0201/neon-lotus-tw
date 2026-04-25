@@ -1393,21 +1393,23 @@
         if (itemsError) throw new Error(itemsError.message);
 
         // Send order notification via server-side API (non-blocking)
-        fetch('/api/notify-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderNumber: orderNumber,
-            name: name,
-            phone: phone,
-            email: email || '',
-            address: address || '',
-            shipping: selectedShipping,
-            total: total,
-            items: items,
-            note: note || ''
-          })
-        }).catch(function(e) { console.warn('[Notify]', e); });
+        try {
+          var _n = typeof name !== 'undefined' ? name : '';
+          var _p = typeof phone !== 'undefined' ? phone : '';
+          var _e = typeof email !== 'undefined' ? email : '';
+          var _a = typeof address !== 'undefined' ? address : '';
+          var _nt = typeof note !== 'undefined' ? note : '';
+          var _sh = typeof selectedShipping !== 'undefined' ? selectedShipping : '';
+          fetch('/api/notify-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderNumber: orderNumber,
+              name: _n, phone: _p, email: _e, address: _a,
+              shipping: _sh, total: total, items: items, note: _nt
+            })
+          }).catch(function(e) { console.warn('[Notify]', e); });
+        } catch(ne) { console.warn('[Notify]', ne); }
 
         // ── 訂單完成 → 顯示成功頁面 ──
         // (ECPay 金流暫時停用，待開通後再啟用)
