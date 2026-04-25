@@ -390,9 +390,72 @@ async function renderBrandPage(brandId) {
       ${brand.meta_location  ? `<div class="brand-meta-item"><div class="brand-meta-label">ORIGIN</div><div class="brand-meta-value">${brand.meta_location}</div></div>` : ''}
     `;
   }
+    // Add size chart button if data exists
+    var sizeChartData = window.SITE_SETTINGS && window.SITE_SETTINGS['sizechart_' + brandId];
+    var sizeChartImg  = window.SITE_SETTINGS && window.SITE_SETTINGS['sizechart_img_' + brandId];
+    if (sizeChartData || sizeChartImg) {
+      var btn = document.createElement('button');
+      btn.textContent = '\ud83d\udccf \u5c3a\u5bf8\u8868 Size Guide';
+      btn.style.cssText = 'margin-top:12px;padding:10px 24px;background:rgba(192,132,252,0.15);color:#c084fc;border:1px solid rgba(192,132,252,0.3);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s;';
+      btn.onmouseenter = function() { this.style.background = 'rgba(192,132,252,0.3)'; };
+      btn.onmouseleave = function() { this.style.background = 'rgba(192,132,252,0.15)'; };
+      btn.onclick = function() { showSizeChartModal(brandId); };
+      infoBar.appendChild(btn);
+    }
 
   renderFilters();
   renderProducts('ALL');
+}
+
+/* ── Size Chart Modal ───────────────────────────────────────── */
+function showSizeChartModal(brandId) {
+  var old = document.getElementById('sizechart-modal');
+  if (old) old.remove();
+  var chartData = window.SITE_SETTINGS && window.SITE_SETTINGS['sizechart_' + brandId];
+  var chartImg = window.SITE_SETTINGS && window.SITE_SETTINGS['sizechart_img_' + brandId];
+  var overlay = document.createElement('div');
+  overlay.id = 'sizechart-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a2e;border:1px solid rgba(192,132,252,0.3);border-radius:16px;max-width:700px;width:100%;max-height:85vh;overflow-y:auto;padding:30px;position:relative;';
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '\u2715';
+  closeBtn.style.cssText = 'position:absolute;top:12px;right:16px;background:none;border:none;color:#999;font-size:20px;cursor:pointer;';
+  closeBtn.onclick = function() { overlay.remove(); };
+  box.appendChild(closeBtn);
+  if (chartImg) {
+    var imgUrl = typeof chartImg === 'string' ? chartImg : (chartImg.url || '');
+    var t1 = document.createElement('h2');
+    t1.textContent = '\ud83d\udccf \u5c3a\u5bf8\u8868 Size Guide';
+    t1.style.cssText = 'color:#c084fc;margin:0 0 20px;font-size:20px;';
+    box.appendChild(t1);
+    var img = document.createElement('img');
+    img.src = imgUrl; img.style.cssText = 'width:100%;border-radius:8px;';
+    box.appendChild(img);
+  } else if (chartData) {
+    var t2 = document.createElement('h2');
+    t2.textContent = chartData.title || '\ud83d\udccf \u5c3a\u5bf8\u8868 Size Guide';
+    t2.style.cssText = 'color:#c084fc;margin:0 0 20px;font-size:20px;';
+    box.appendChild(t2);
+    (chartData.categories || []).forEach(function(cat) {
+      var h3 = document.createElement('h3');
+      h3.textContent = cat.name;
+      h3.style.cssText = 'color:#e0e0e0;margin:20px 0 8px;font-size:16px;border-bottom:1px solid rgba(192,132,252,0.2);padding-bottom:6px;';
+      box.appendChild(h3);
+      if (cat.rec) { var p = document.createElement('p'); p.textContent = cat.rec; p.style.cssText = 'color:#a0a0a0;font-size:13px;white-space:pre-line;margin:0 0 10px;'; box.appendChild(p); }
+      if (cat.headers && cat.rows) {
+        var tbl = document.createElement('table');
+        tbl.style.cssText = 'width:100%;border-collapse:collapse;margin-bottom:16px;font-size:14px;';
+        var thead = '<tr>' + cat.headers.map(function(h) { return '<th style="padding:8px 12px;text-align:left;color:#c084fc;border-bottom:2px solid rgba(192,132,252,0.3);font-weight:600;">' + h + '</th>'; }).join('') + '</tr>';
+        var tbody = cat.rows.map(function(row) { return '<tr>' + row.map(function(c) { return '<td style="padding:8px 12px;color:#e0e0e0;border-bottom:1px solid rgba(255,255,255,0.06);">' + c + '</td>'; }).join('') + '</tr>'; }).join('');
+        tbl.innerHTML = thead + tbody;
+        box.appendChild(tbl);
+      }
+    });
+  }
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 /**
