@@ -390,22 +390,7 @@ async function renderBrandPage(brandId) {
       ${brand.meta_location  ? `<div class="brand-meta-item"><div class="brand-meta-label">ORIGIN</div><div class="brand-meta-value">${brand.meta_location}</div></div>` : ''}
     `;
   }
-    // Add size chart button if data exists
-    var sizeChartData = window.SITE_SETTINGS && window.SITE_SETTINGS['sizechart_' + brandId];
-    var sizeChartImg  = window.SITE_SETTINGS && window.SITE_SETTINGS['sizechart_img_' + brandId];
-    if (sizeChartData || sizeChartImg) {
-      var btn = document.createElement('button');
-      btn.textContent = '\ud83d\udccf \u5c3a\u5bf8\u8868 Size Guide';
-      btn.style.cssText = 'margin-top:12px;padding:10px 24px;background:rgba(192,132,252,0.15);color:#c084fc;border:1px solid rgba(192,132,252,0.3);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s;';
-      btn.onmouseenter = function() { this.style.background = 'rgba(192,132,252,0.3)'; };
-      btn.onmouseleave = function() { this.style.background = 'rgba(192,132,252,0.15)'; };
-      btn.onclick = function() { showSizeChartModal(brandId); };
-      infoBar.appendChild(btn);
-    }
-
-  renderFilters();
-  renderProducts('ALL');
-}
+    
 
 /* ── Size Chart Modal ───────────────────────────────────────── */
 function showSizeChartModal(brandId) {
@@ -865,10 +850,35 @@ function _buildProductCard(p) {
         <div class="product-name">${p.name}</div>
         ${priceHtml}
         ${sizesHtml}
+        ${_buildSizeGuideHtml(p)}
         <span class="product-tag">${p.category || p.tag || ''}</span>
         ${typeof window.renderAddToCartButton === 'function' ? window.renderAddToCartButton(p) : ''}
       </div>
     </div>`;
+}
+
+
+function _buildSizeGuideHtml(p) {
+  var settings = window.SITE_SETTINGS || {};
+  var chart = settings['sizechart_' + p.brand_id];
+  var chartImg = settings['sizechart_img_' + p.brand_id];
+  if (!chart && !chartImg) return '';
+  if (chartImg) {
+    var imgUrl = typeof chartImg === 'string' ? chartImg : (chartImg.url || '');
+    return '<div class="product-sizeguide" style="margin-top:6px;"><button onclick="showSizeChartModal(\x27' + p.brand_id + '\x27)" style="font-size:12px;color:#a78bfa;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">\ud83d\udccf \u5c3a\u5bf8\u8868</button></div>';
+  }
+  var tag = (p.tag || p.category || '').toLowerCase();
+  var matched = null;
+  (chart.categories || []).forEach(function(cat) {
+    var cn = cat.name.toLowerCase();
+    if (tag.indexOf('top') !== -1 && (cn.indexOf('top') !== -1 || cn.indexOf('tee') !== -1 || cn.indexOf('shirt') !== -1)) matched = cat;
+    else if (tag.indexOf('bottom') !== -1 && (cn.indexOf('pant') !== -1 || cn.indexOf('short') !== -1)) matched = cat;
+    else if (tag.indexOf('outerwear') !== -1 && (cn.indexOf('hoodie') !== -1 || cn.indexOf('jacket') !== -1)) matched = cat;
+  });
+  if (!matched && chart.categories && chart.categories.length > 0) matched = chart.categories[0];
+  if (!matched || !matched.rec) return '';
+  var recText = matched.rec.replace(/\n/g, ' \u00B7 ');
+  return '<div class="product-sizeguide" style="margin-top:6px;font-size:11px;color:#a0a0a0;line-height:1.5;padding:6px 8px;background:rgba(167,139,250,0.06);border-radius:6px;border:1px solid rgba(167,139,250,0.1);">\ud83d\udccf ' + recText + '</div>';
 }
 
 /* ═══════════════════════════════════════════════════════════════
