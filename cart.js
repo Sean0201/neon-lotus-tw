@@ -2035,10 +2035,15 @@
   // ─────────────────────────────────────────────────────────────────
 
   function renderAddToCartButton(product) {
+    const hasSC = window.SITE_SETTINGS && (window.SITE_SETTINGS['sizechart_' + product.brand_id] || window.SITE_SETTINGS['sizechart_img_' + product.brand_id]);
+    const scBtn = hasSC ? '<button type="button" class="neon-sizechart-btn" onclick="event.stopPropagation();window.showSizeChart(\x27' + product.brand_id + '\x27,\x27' + (product.tag || product.category || '').replace(/'/g,'') + '\x27)">\ud83d\udccf \u5c3a\u5bf8\u8868</button>' : '';
     const html = `
-      <button type="button" class="neon-add-to-cart-btn" data-product-id="${product.id}">
-        加入購物車
-      </button>
+      <div class="neon-card-actions">
+        ${scBtn}
+        <button type="button" class="neon-add-to-cart-btn" data-product-id="${product.id}">
+          \u52A0\u5165\u8CFC\u7269\u8ECA
+        </button>
+      </div>
     `;
     return html;
   }
