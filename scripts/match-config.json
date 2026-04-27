@@ -11,6 +11,18 @@
     {
       "source": "scripts/data/aesir_scrape.json",
       "target_brand_id": "aesirstudio"
+    },
+    {
+      "source": "scripts/data/badrabbit_scrape.json",
+      "target_brand_id": "badrabbit"
+    },
+    {
+      "source": "scripts/data/badhabits_scrape.json",
+      "target_brand_id": "badhabits"
+    },
+    {
+      "source": "scripts/data/bunnyhill_scrape.json",
+      "target_brand_id": "bunnyhillconcept"
     }
   ]
 }
