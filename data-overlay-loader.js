@@ -48,9 +48,20 @@
     const newProducts = ov.products || [];
     const sizeMap     = ov.size_charts || {};
     const imageMap    = ov.image_overlay || {};
-    const sizeMapByName = ov.size_charts_by_name || {};
-    const imageMapByName = ov.image_overlay_by_name || {};
-    const targetBrand = ov.target_brand_id || null;
+    // 新版: 多品牌 nested by_name = { <brand_id>: { size_charts, image_overlay } }
+    // 舊版: 平鋪 size_charts_by_name (僅一個品牌). 兩者都支援 (向後相容)
+    const byNameNested = ov.by_name || null;
+    const sizeMapByNameFlat  = ov.size_charts_by_name || {};
+    const imageMapByNameFlat = ov.image_overlay_by_name || {};
+    const targetBrandLegacy  = ov.target_brand_id || null;
+    function getByName(brandId, kind /* 'size_charts'|'image_overlay' */) {
+      if (byNameNested && byNameNested[brandId] && byNameNested[brandId][kind])
+        return byNameNested[brandId][kind];
+      // legacy fallback
+      if (kind === 'size_charts'  && targetBrandLegacy === brandId) return sizeMapByNameFlat;
+      if (kind === 'image_overlay' && targetBrandLegacy === brandId) return imageMapByNameFlat;
+      return null;
+    }
 
     // 1) 新品牌 (僅當 Supabase 沒有此 id 時加入)
     const brandIds = new Set(data.brands.map(b => b.id));
@@ -85,12 +96,15 @@
         patchedSize++;
       }
       // -- size_chart by name (fallback) --
-      if (!p.size_chart && (!targetBrand || p.brand_id === targetBrand)) {
-        for (const b of baseKeys(p.name)) {
-          if (sizeMapByName[b]) {
-            p.size_chart = sizeMapByName[b];
-            patchedSizeByName++;
-            break;
+      if (!p.size_chart) {
+        const sizeMapByName = getByName(p.brand_id, 'size_charts');
+        if (sizeMapByName) {
+          for (const b of baseKeys(p.name)) {
+            if (sizeMapByName[b]) {
+              p.size_chart = sizeMapByName[b];
+              patchedSizeByName++;
+              break;
+            }
           }
         }
       }
@@ -106,11 +120,14 @@
           p.images.gallery = cur.concat(extra);
           patchedImg++;
         }
-      } else if (!targetBrand || p.brand_id === targetBrand) {
+      } else {
         // -- image overlay by name (fallback) --
+        const imageMapByName = getByName(p.brand_id, 'image_overlay');
         let ovG = null;
-        for (const b of baseKeys(p.name)) {
-          if (imageMapByName[b]) { ovG = imageMapByName[b]; break; }
+        if (imageMapByName) {
+          for (const b of baseKeys(p.name)) {
+            if (imageMapByName[b]) { ovG = imageMapByName[b]; break; }
+          }
         }
         if (ovG && ovG.length) {
           if (!p.images) p.images = { cover: '', gallery: [] };
