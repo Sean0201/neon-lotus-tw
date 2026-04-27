@@ -23,6 +23,22 @@
     {
       "source": "scripts/data/bunnyhill_scrape.json",
       "target_brand_id": "bunnyhillconcept"
+    },
+    {
+      "source": "scripts/data/dirtycoins_scrape.json",
+      "target_brand_id": "dirtycoins"
+    },
+    {
+      "source": "scripts/data/dimoir_scrape.json",
+      "target_brand_id": "dirmior"
+    },
+    {
+      "source": "scripts/data/devotus_scrape.json",
+      "target_brand_id": "devotus"
+    },
+    {
+      "source": "scripts/data/ceci_scrape.json",
+      "target_brand_id": "ceci"
     }
   ]
 }
