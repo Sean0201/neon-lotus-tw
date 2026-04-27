@@ -110,7 +110,8 @@ function ensureTranslatedChart(sc) {
 }
 
 function processPair(supaProducts, scrapeProducts, brandId) {
-  // 1) 從 scrape 端建立 base → chart / gallery
+  // 從 scrape 端建立 base → chart / gallery
+  // (by_name 是唯一信任的查找方式; by_id 已棄用因為 Supabase ID 會漂移)
   const chartByBase = {};
   const galleryByBase = {};
   for (const p of scrapeProducts) {
@@ -128,9 +129,8 @@ function processPair(supaProducts, scrapeProducts, brandId) {
     }
   }
 
-  // 2) 對 Supabase 端商品 patch
-  const sizeChartsById = {};
-  const imageOverlayById = {};
+  // 統計: 對「目前 data.js 的 Supabase product 名稱」做一次模擬
+  // (僅用於統計, 實際 patch 在 loader 端用 live Supabase data 即時跑 by-name)
   let matched = 0, unmatched = 0, imgPatched = 0;
   const unmatchedExamples = [];
   for (const p of supaProducts) {
@@ -140,22 +140,15 @@ function processPair(supaProducts, scrapeProducts, brandId) {
       if (!gal && galleryByBase[b]) gal = galleryByBase[b];
       if (ch && gal) break;
     }
-    if (ch) {
-      sizeChartsById[p.id] = ch;
-      matched++;
-    } else {
+    if (ch) matched++;
+    else {
       unmatched++;
       if (unmatchedExamples.length < 8) unmatchedExamples.push(p.id + ' | ' + p.name);
     }
-    const supN = ((p.images || {}).gallery || []).length;
-    if (gal && gal.length > supN) {
-      imageOverlayById[p.id] = gal;
-      imgPatched++;
-    }
+    if (gal && gal.length > ((p.images||{}).gallery||[]).length) imgPatched++;
   }
 
   return {
-    sizeChartsById, imageOverlayById,
     by_name: {
       size_charts: chartByBase,
       image_overlay: galleryByBase
@@ -177,12 +170,10 @@ function main() {
   const cfg = loadConfig(args.config);
   const data = readJsAssign(DATA_FILE, 'BRANDS_DATA');
 
-  // 整體 overlay 結構
+  // overlay 結構: 只保留 by_name (Supabase ID 不可靠)
   const overlay = {
     brands: [], products: [],
-    size_charts: {},          // 平鋪: by product_id (legacy)
-    image_overlay: {},        // 平鋪: by product_id (legacy)
-    by_name: {}               // nested: { brand_id: { size_charts, image_overlay } }
+    by_name: {}               // { brand_id: { size_charts, image_overlay } }
   };
 
   for (const pair of cfg.pairs) {
@@ -197,18 +188,16 @@ function main() {
 
     console.log(`\n━━ ${pair.target_brand_id}`);
     console.log(`  source: ${path.relative(ROOT, sourceFile)} (${scrapeProducts.length} 件, ${scrapeProducts.filter(p => p.size_chart).length} 張表)`);
-    console.log(`  Supabase: ${supaProducts.length} 件`);
+    console.log(`  Supabase: ${supaProducts.length} 件 (僅供統計; 實際 patch 在 loader 用 live data 跑 by-name)`);
 
     const result = processPair(supaProducts, scrapeProducts, pair.target_brand_id);
-    Object.assign(overlay.size_charts, result.sizeChartsById);
-    Object.assign(overlay.image_overlay, result.imageOverlayById);
     overlay.by_name[pair.target_brand_id] = result.by_name;
 
     const s = result.stats;
-    console.log(`  匹配: ${s.matched}/${s.total} (未命中 ${s.unmatched}) | 圖片補強: ${s.imgPatched}`);
-    console.log(`  by-name: ${Object.keys(result.by_name.size_charts).length} 張表 / ${Object.keys(result.by_name.image_overlay).length} 套圖`);
+    console.log(`  by-name maps: ${Object.keys(result.by_name.size_charts).length} 張表 / ${Object.keys(result.by_name.image_overlay).length} 套圖`);
+    console.log(`  預期命中率 (依 local data.js): ${s.matched}/${s.total} | 預期圖片補強: ${s.imgPatched}`);
     if (s.unmatchedExamples.length) {
-      console.log('  未命中示例:');
+      console.log('  預期未命中示例:');
       s.unmatchedExamples.forEach(x => console.log('    -', x));
     }
   }
@@ -219,8 +208,6 @@ function main() {
   );
   const kb = (Buffer.byteLength(JSON.stringify(overlay))/1024).toFixed(0);
   console.log(`\n✔ 寫回 data-overlay.js (${kb} KB)`);
-  console.log(`  總 size_charts (by id): ${Object.keys(overlay.size_charts).length}`);
-  console.log(`  總 image_overlay (by id): ${Object.keys(overlay.image_overlay).length}`);
   console.log(`  品牌數 (by_name buckets): ${Object.keys(overlay.by_name).length}`);
 }
 

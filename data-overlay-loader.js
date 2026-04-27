@@ -46,20 +46,13 @@
     const ov = getOverlay();
     const newBrands   = ov.brands || [];
     const newProducts = ov.products || [];
-    const sizeMap     = ov.size_charts || {};
-    const imageMap    = ov.image_overlay || {};
-    // 新版: 多品牌 nested by_name = { <brand_id>: { size_charts, image_overlay } }
-    // 舊版: 平鋪 size_charts_by_name (僅一個品牌). 兩者都支援 (向後相容)
+    // 注意: by_id 已棄用 — Supabase product ID 會漂移 (重新發布時會洗 ID),
+    //       本機 data.js 寫的 ID 對應到線上時可能是別的商品, 會把 size_chart
+    //       配錯位 (e.g. 衣服顯示褲子尺寸). 改成只用 by_name (live data 名稱比較穩定)
     const byNameNested = ov.by_name || null;
-    const sizeMapByNameFlat  = ov.size_charts_by_name || {};
-    const imageMapByNameFlat = ov.image_overlay_by_name || {};
-    const targetBrandLegacy  = ov.target_brand_id || null;
     function getByName(brandId, kind /* 'size_charts'|'image_overlay' */) {
       if (byNameNested && byNameNested[brandId] && byNameNested[brandId][kind])
         return byNameNested[brandId][kind];
-      // legacy fallback
-      if (kind === 'size_charts'  && targetBrandLegacy === brandId) return sizeMapByNameFlat;
-      if (kind === 'image_overlay' && targetBrandLegacy === brandId) return imageMapByNameFlat;
       return null;
     }
 
@@ -85,49 +78,29 @@
       }
     }
 
-    // 3) 為「既有商品」補上 size_chart 與 多餘的圖片
-    //    優先以 product_id 對應 (相容性), 對不到時改用商品名稱比對
-    let patchedSize = 0, patchedSizeByName = 0;
-    let patchedImg = 0,  patchedImgByName = 0;
+    // 3) 為「既有商品」依「商品名稱」(by_name) 補上 size_chart 與圖片
+    let patchedSize = 0, patchedImg = 0;
     for (const p of data.products) {
-      // -- size_chart by id --
-      if (sizeMap[p.id] && !p.size_chart) {
-        p.size_chart = sizeMap[p.id];
-        patchedSize++;
-      }
-      // -- size_chart by name (fallback) --
+      // -- size_chart by name --
       if (!p.size_chart) {
         const sizeMapByName = getByName(p.brand_id, 'size_charts');
         if (sizeMapByName) {
           for (const b of baseKeys(p.name)) {
             if (sizeMapByName[b]) {
               p.size_chart = sizeMapByName[b];
-              patchedSizeByName++;
+              patchedSize++;
               break;
             }
           }
         }
       }
 
-      // -- image overlay by id --
-      const ovGallery = imageMap[p.id];
-      if (ovGallery && ovGallery.length) {
-        if (!p.images) p.images = { cover: '', gallery: [] };
-        const cur = p.images.gallery || [];
-        if (ovGallery.length > cur.length) {
-          const seen = new Set(cur.map(g => g.url));
-          const extra = ovGallery.filter(g => !seen.has(g.url));
-          p.images.gallery = cur.concat(extra);
-          patchedImg++;
-        }
-      } else {
-        // -- image overlay by name (fallback) --
-        const imageMapByName = getByName(p.brand_id, 'image_overlay');
+      // -- image overlay by name --
+      const imageMapByName = getByName(p.brand_id, 'image_overlay');
+      if (imageMapByName) {
         let ovG = null;
-        if (imageMapByName) {
-          for (const b of baseKeys(p.name)) {
-            if (imageMapByName[b]) { ovG = imageMapByName[b]; break; }
-          }
+        for (const b of baseKeys(p.name)) {
+          if (imageMapByName[b]) { ovG = imageMapByName[b]; break; }
         }
         if (ovG && ovG.length) {
           if (!p.images) p.images = { cover: '', gallery: [] };
@@ -136,7 +109,7 @@
             const seen = new Set(cur.map(g => g.url));
             const extra = ovG.filter(g => !seen.has(g.url));
             p.images.gallery = cur.concat(extra);
-            patchedImgByName++;
+            patchedImg++;
           }
         }
       }
@@ -144,8 +117,7 @@
 
     console.log(
       `[overlay] merged: +${addedBrands} brands, +${addedProducts} products | ` +
-      `size_chart: ${patchedSize} by id + ${patchedSizeByName} by name | ` +
-      `image: ${patchedImg} by id + ${patchedImgByName} by name`
+      `size_chart: ${patchedSize} by name | image: ${patchedImg} by name`
     );
     return data;
   }
