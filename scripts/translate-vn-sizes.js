@@ -56,6 +56,9 @@ const VN_TO_ZH = {
   'kich thuoc nguc'          : '胸圍',
   'vong nguc'                : '胸圍',
   'nguc'                     : '胸圍',
+  'ngang nguc'               : '胸寬',
+  'ngang vai'                : '肩寬',
+  'ngang'                    : '胸寬',
   'chest'                    : '胸圍',
   'bust'                     : '胸圍',
 
@@ -80,6 +83,13 @@ const VN_TO_ZH = {
   'dai ao'                   : '衣長',
   'chieu dai'                : '長度',
   'length'                   : '衣長',
+  'dai truoc'                : '前衣長',
+  'dai sau'                  : '後衣長',
+  'dai vat truoc'            : '前衣長',
+  'dai vat sau'              : '後衣長',
+  'vat truoc'                : '前襬',
+  'vat sau'                  : '後襬',
+  'vat'                      : '衣襬',
 
   'dai quan'                 : '褲長',
   'ong quan'                 : '褲口',
