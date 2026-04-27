@@ -39,6 +39,22 @@
     {
       "source": "scripts/data/ceci_scrape.json",
       "target_brand_id": "ceci"
+    },
+    {
+      "source": "scripts/data/goldie_scrape.json",
+      "target_brand_id": "goldie"
+    },
+    {
+      "source": "scripts/data/gamble_scrape.json",
+      "target_brand_id": "gamble"
+    },
+    {
+      "source": "scripts/data/fnos_scrape.json",
+      "target_brand_id": "fnos"
+    },
+    {
+      "source": "scripts/data/firefly_scrape.json",
+      "target_brand_id": "firefly"
     }
   ],
   "_comment_brand_overrides": "覆寫 Supabase 端品牌欄位 (e.g. 名稱拼字錯誤). key 是 Supabase brand_id, value 是要覆寫的欄位.",
