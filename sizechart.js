@@ -109,11 +109,31 @@
         border: 1px dashed rgba(192,132,252,0.25);
         border-radius: 12px;
         padding: 8px;
+        position: relative;
       }
       .neon-sc-img-wrap img {
-        width: 100%; max-height: 280px;
-        object-fit: contain; border-radius: 8px;
-        background: #0a0a0f;
+        display: block;
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        border-radius: 8px;
+        /* 多數尺寸圖是「白底/淺底 + 深色文字」, 用白底避免文字看不到 */
+        background: #ffffff;
+        cursor: zoom-in;
+        transition: max-height 0.3s ease;
+        max-height: 480px;
+      }
+      .neon-sc-img-wrap.expanded img {
+        max-height: none;
+        cursor: zoom-out;
+      }
+      .neon-sc-img-hint {
+        position: absolute; right: 14px; bottom: 14px;
+        background: rgba(0,0,0,0.6); color: #fff;
+        font-size: .62rem; padding: 4px 8px; border-radius: 4px;
+        letter-spacing: .08em;
+        pointer-events: none;
+        opacity: 0.85;
       }
       .neon-sc-img-empty {
         font-size: .7rem; color: var(--lightgrey, #9ca3af);
@@ -282,7 +302,10 @@
       bodyContent = `<div class="neon-sc-empty">📐 暫無提供尺寸數據</div>`;
     } else {
       const imgPart = hasImage
-        ? `<div class="neon-sc-img-wrap"><img src="${escapeHtml(sc.image_url)}" alt="size chart" loading="lazy" onerror="this.parentNode.innerHTML='<div class=\\'neon-sc-img-empty\\'>圖片無法載入</div>'"></div>`
+        ? `<div class="neon-sc-img-wrap" onclick="this.classList.toggle('expanded')">
+            <img src="${escapeHtml(sc.image_url)}" alt="size chart" loading="lazy" onerror="this.parentNode.innerHTML='<div class=\\'neon-sc-img-empty\\'>圖片無法載入</div>'">
+            <div class="neon-sc-img-hint">🔍 點擊放大</div>
+          </div>`
         : '';
       const tablePart = hasChart
         ? `<div>
