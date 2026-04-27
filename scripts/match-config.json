@@ -75,6 +75,26 @@
     {
       "source": "scripts/data/lsoul_scrape.json",
       "target_brand_id": "lsoul"
+    },
+    {
+      "source": "scripts/data/nowsaigon_scrape.json",
+      "target_brand_id": "nowsaigon"
+    },
+    {
+      "source": "scripts/data/mbi_scrape.json",
+      "target_brand_id": "mbi"
+    },
+    {
+      "source": "scripts/data/poisonfang_scrape.json",
+      "target_brand_id": "poison-fang"
+    },
+    {
+      "source": "scripts/data/rich_scrape.json",
+      "target_brand_id": "rich"
+    },
+    {
+      "source": "scripts/data/swe_scrape.json",
+      "target_brand_id": "swe"
     }
   ],
   "_comment_brand_overrides": "覆寫 Supabase 端品牌欄位 (e.g. 名稱拼字錯誤). key 是 Supabase brand_id, value 是要覆寫的欄位.",
