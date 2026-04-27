@@ -89,6 +89,70 @@ function baseKeys(name) {
   return Array.from(out).filter(Boolean);
 }
 
+/**
+ * 從商品名稱抽出「品類」(tee / hoodie / pants / jacket / dress 等)
+ * 用於同品牌內「同品類 fallback」: 沒有自己的尺寸圖時抓同品類其他商品的圖
+ * 同義詞會 normalise 成同一個 key (tee/tshirt/t-shirt → tee)
+ * 回傳 null 代表無法判斷品類 (e.g. 配件)
+ */
+const CATEGORY_MAP = (() => {
+  const groups = {
+    tee:        ['tee','tees','tshirt','tshirts','t-shirt','tee shirt','aotee','aothun','baby tee','crop tee'],
+    tank:       ['tank','tanktop','tank top','singlet','sleeveless'],
+    shirt:      ['shirt','shirts','aosomi','somi','button up','button-up','flannel'],
+    polo:       ['polo'],
+    longsleeve: ['longsleeve','long sleeve','long-sleeve'],
+    hoodie:     ['hoodie','hoodies','hooded','hood','aohoodie'],
+    sweater:    ['sweater','sweatshirt','sweat','jumper','knit','cardigan','crewneck'],
+    jacket:     ['jacket','jackets','blazer','coat','parka','windbreaker','outer','outerwear','varsity','bomber'],
+    pants:      ['pants','pant','trouser','trousers','jean','jeans','denim','aoquan','quan'],
+    shorts:     ['short','shorts'],
+    legging:    ['legging','leggings','tights'],
+    skirt:      ['skirt','skirts','vay'],
+    dress:      ['dress','dresses','maxi','midi','onepiece','one-piece','dam'],
+    bodysuit:   ['bodysuit','onesie'],
+    set:        ['set','setbo','setup','combo'],
+    cap:        ['cap','snapback','trucker','baseball cap'],
+    beanie:     ['beanie','knit hat'],
+    hat:        ['hat','bucket'],
+    bag:        ['bag','tote','crossbody','sling','backpack','handbag'],
+    belt:       ['belt'],
+    accessory:  ['pin','pins','keychain','sticker','patch','wallet','cardholder','sock','socks','glove','scarf','glasses','sunglass','jewelry','necklace','ring','bracelet','watch']
+  };
+  const map = {};
+  for (const [cat, syns] of Object.entries(groups)) {
+    for (const s of syns) {
+      map[s.toLowerCase().replace(/[^a-z0-9]/g,'')] = cat;
+    }
+  }
+  return map;
+})();
+
+function categoryOf(name) {
+  if (!name) return null;
+  let s = String(name).toLowerCase();
+  s = s.replace(/[\u2018\u2019\u02bc'`"]/g, '');
+  s = s.replace(/^\s*23\s*/, '');
+  if (s.includes('/')) s = s.split('/')[0];
+  if (s.includes('//')) s = s.split('//')[0];
+  s = s.replace(/\([^)]*\)/g, ' ');
+  const tokens = s.split(/[^a-z0-9]+/i).map(t => t.toLowerCase()).filter(Boolean);
+  // 從尾端往前找 (品類關鍵字通常在末尾)
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if (i + 1 < tokens.length) {
+      const two = tokens[i] + tokens[i+1];
+      if (CATEGORY_MAP[two]) return CATEGORY_MAP[two];
+    }
+    if (CATEGORY_MAP[tokens[i]]) return CATEGORY_MAP[tokens[i]];
+    const stem = tokens[i].replace(/(es|s)$/, '');
+    if (CATEGORY_MAP[stem]) return CATEGORY_MAP[stem];
+  }
+  return null;
+}
+
+/** 配件類別 (絕對不該套尺寸圖, 即使 fallback 也不要) */
+const NO_SIZE_CATEGORIES = new Set(['cap','beanie','hat','bag','belt','accessory']);
+
 /** 防禦性: 重新翻譯一張 size_chart, 確保所有 headers/keys 都是中文 */
 function ensureTranslatedChart(sc) {
   if (!sc || !Array.isArray(sc.headers)) return sc;
@@ -110,15 +174,24 @@ function ensureTranslatedChart(sc) {
 }
 
 function processPair(supaProducts, scrapeProducts, brandId) {
-  // 從 scrape 端建立 base → chart / gallery
-  // (by_name 是唯一信任的查找方式; by_id 已棄用因為 Supabase ID 會漂移)
+  // 從 scrape 端建立:
+  //   1) chartByBase: 完全名稱比對 (主)
+  //   2) chartByCategory: 品類 fallback (e.g. xx tee 沒圖時用 yy tee 的圖)
+  // 兩者都按品牌分桶 (caller 已分好). 避免跨品牌污染.
   const chartByBase = {};
   const galleryByBase = {};
+  const chartByCategory = {};      // { tee: chart, hoodie: chart, ... }
+  const galleryByCategory = {};
   for (const p of scrapeProducts) {
     if (p.size_chart) {
       const fixed = ensureTranslatedChart(p.size_chart);
       for (const b of baseKeys(p.name)) {
         if (!chartByBase[b]) chartByBase[b] = fixed;
+      }
+      // 同品類 fallback: 第一個出現的當代表
+      const cat = categoryOf(p.name);
+      if (cat && !NO_SIZE_CATEGORIES.has(cat) && !chartByCategory[cat]) {
+        chartByCategory[cat] = fixed;
       }
     }
     const g = (p.images && p.images.gallery) || [];
@@ -126,34 +199,52 @@ function processPair(supaProducts, scrapeProducts, brandId) {
       for (const b of baseKeys(p.name)) {
         if (!galleryByBase[b] || galleryByBase[b].length < g.length) galleryByBase[b] = g;
       }
+      const cat = categoryOf(p.name);
+      if (cat && (!galleryByCategory[cat] || galleryByCategory[cat].length < g.length)) {
+        galleryByCategory[cat] = g;
+      }
     }
   }
 
   // 統計: 對「目前 data.js 的 Supabase product 名稱」做一次模擬
-  // (僅用於統計, 實際 patch 在 loader 端用 live Supabase data 即時跑 by-name)
-  let matched = 0, unmatched = 0, imgPatched = 0;
+  let matchedExact = 0, matchedCat = 0, unmatched = 0, imgPatched = 0;
   const unmatchedExamples = [];
+  const catMatchExamples = [];
   for (const p of supaProducts) {
     let ch = null, gal = null;
+    // 1) 嘗試精確名稱
     for (const b of baseKeys(p.name)) {
       if (!ch && chartByBase[b]) ch = chartByBase[b];
       if (!gal && galleryByBase[b]) gal = galleryByBase[b];
       if (ch && gal) break;
     }
-    if (ch) matched++;
+    if (ch) matchedExact++;
     else {
-      unmatched++;
-      if (unmatchedExamples.length < 8) unmatchedExamples.push(p.id + ' | ' + p.name);
+      // 2) fallback: 同品類
+      const cat = categoryOf(p.name);
+      if (cat && !NO_SIZE_CATEGORIES.has(cat) && chartByCategory[cat]) {
+        matchedCat++;
+        if (catMatchExamples.length < 5) catMatchExamples.push(p.id + ' | ' + p.name + '  ←  [' + cat + ']');
+      } else {
+        unmatched++;
+        if (unmatchedExamples.length < 8) unmatchedExamples.push(p.id + ' | ' + p.name);
+      }
     }
     if (gal && gal.length > ((p.images||{}).gallery||[]).length) imgPatched++;
   }
 
   return {
     by_name: {
-      size_charts: chartByBase,
-      image_overlay: galleryByBase
+      size_charts:           chartByBase,
+      image_overlay:         galleryByBase,
+      size_charts_by_category:   chartByCategory,
+      image_overlay_by_category: galleryByCategory
     },
-    stats: { matched, unmatched, imgPatched, total: supaProducts.length, unmatchedExamples }
+    stats: {
+      matchedExact, matchedCat, unmatched, imgPatched,
+      total: supaProducts.length, unmatchedExamples, catMatchExamples,
+      categoriesAvailable: Object.keys(chartByCategory)
+    }
   };
 }
 
@@ -195,9 +286,14 @@ function main() {
 
     const s = result.stats;
     console.log(`  by-name maps: ${Object.keys(result.by_name.size_charts).length} 張表 / ${Object.keys(result.by_name.image_overlay).length} 套圖`);
-    console.log(`  預期命中率 (依 local data.js): ${s.matched}/${s.total} | 預期圖片補強: ${s.imgPatched}`);
+    console.log(`  by-category maps: ${Object.keys(result.by_name.size_charts_by_category).length} 品類 [${s.categoriesAvailable.join(', ')}]`);
+    console.log(`  預期命中率: ${s.matchedExact}/${s.total} 精確 + ${s.matchedCat} 同品類 fallback (剩 ${s.unmatched} 件) | 圖片補強: ${s.imgPatched}`);
+    if (s.catMatchExamples.length) {
+      console.log('  同品類 fallback 示例:');
+      s.catMatchExamples.forEach(x => console.log('    -', x));
+    }
     if (s.unmatchedExamples.length) {
-      console.log('  預期未命中示例:');
+      console.log('  完全未命中示例 (含配件):');
       s.unmatchedExamples.forEach(x => console.log('    -', x));
     }
   }

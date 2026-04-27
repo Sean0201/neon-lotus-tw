@@ -27,6 +27,7 @@
     s = s.replace(/[\u2018\u2019\u02bc'`"]/g, '');
     s = s.replace(/^\s*23\s*/, '');
     if (s.includes('/')) s = s.split('/')[0];
+    if (s.includes('//')) s = s.split('//')[0];
     s = s.replace(/\([^)]*\)/g, ' ');
     const tokens = s.split(/[^a-z0-9]+/i).filter(Boolean);
     const ROMAN_OR_NUM = /^(i{1,3}|iv|v|vi{0,3}|ix|x|0?\d{1,2})$/;
@@ -39,6 +40,59 @@
     out.add(trimmed.join(''));
     out.add(stemmed.join(''));
     return Array.from(out).filter(Boolean);
+  }
+
+  // ── 品類辨識 (與 matcher 同步) ──────────────────────────────
+  // 用於「同品類 fallback」: 某商品沒有自己的尺寸圖時, 借同品牌同品類的圖
+  const CAT_GROUPS = {
+    tee:        ['tee','tees','tshirt','tshirts','tshirt','aotee','aothun'],
+    tank:       ['tank','tanktop','singlet','sleeveless'],
+    shirt:      ['shirt','shirts','aosomi','somi','flannel'],
+    polo:       ['polo'],
+    longsleeve: ['longsleeve'],
+    hoodie:     ['hoodie','hoodies','hooded','hood','aohoodie'],
+    sweater:    ['sweater','sweatshirt','sweat','jumper','knit','cardigan','crewneck'],
+    jacket:     ['jacket','jackets','blazer','coat','parka','windbreaker','outer','outerwear','varsity','bomber'],
+    pants:      ['pants','pant','trouser','trousers','jean','jeans','denim','aoquan','quan'],
+    shorts:     ['short','shorts'],
+    legging:    ['legging','leggings','tights'],
+    skirt:      ['skirt','skirts','vay'],
+    dress:      ['dress','dresses','maxi','midi','onepiece','dam'],
+    bodysuit:   ['bodysuit','onesie'],
+    set:        ['set','setbo','setup','combo'],
+    cap:        ['cap','snapback','trucker'],
+    beanie:     ['beanie'],
+    hat:        ['hat','bucket'],
+    bag:        ['bag','tote','crossbody','sling','backpack','handbag'],
+    belt:       ['belt'],
+    accessory:  ['pin','pins','keychain','sticker','patch','wallet','cardholder','sock','socks','glove','scarf']
+  };
+  const CAT_MAP = (() => {
+    const m = {};
+    for (const [c, syns] of Object.entries(CAT_GROUPS)) {
+      for (const s of syns) m[s.toLowerCase().replace(/[^a-z0-9]/g,'')] = c;
+    }
+    return m;
+  })();
+  const NO_SIZE_CATS = new Set(['cap','beanie','hat','bag','belt','accessory']);
+  function categoryOf(name) {
+    if (!name) return null;
+    let s = String(name).toLowerCase();
+    s = s.replace(/[\u2018\u2019\u02bc'`"]/g,'').replace(/^\s*23\s*/, '');
+    if (s.includes('/')) s = s.split('/')[0];
+    if (s.includes('//')) s = s.split('//')[0];
+    s = s.replace(/\([^)]*\)/g, ' ');
+    const tokens = s.split(/[^a-z0-9]+/i).map(t => t.toLowerCase()).filter(Boolean);
+    for (let i = tokens.length - 1; i >= 0; i--) {
+      if (i + 1 < tokens.length) {
+        const two = tokens[i] + tokens[i+1];
+        if (CAT_MAP[two]) return CAT_MAP[two];
+      }
+      if (CAT_MAP[tokens[i]]) return CAT_MAP[tokens[i]];
+      const stem = tokens[i].replace(/(es|s)$/, '');
+      if (CAT_MAP[stem]) return CAT_MAP[stem];
+    }
+    return null;
   }
 
   function merge(data) {
@@ -78,19 +132,31 @@
       }
     }
 
-    // 3) 為「既有商品」依「商品名稱」(by_name) 補上 size_chart 與圖片
-    let patchedSize = 0, patchedImg = 0;
+    // 3) 為「既有商品」依「商品名稱」補上 size_chart 與圖片
+    //    順序: exact name → same category fallback (限制同品牌、且非配件)
+    let patchedExact = 0, patchedCat = 0, patchedImg = 0;
     for (const p of data.products) {
-      // -- size_chart by name --
+      // -- size_chart: 1) exact name --
       if (!p.size_chart) {
         const sizeMapByName = getByName(p.brand_id, 'size_charts');
         if (sizeMapByName) {
           for (const b of baseKeys(p.name)) {
             if (sizeMapByName[b]) {
               p.size_chart = sizeMapByName[b];
-              patchedSize++;
+              patchedExact++;
               break;
             }
+          }
+        }
+      }
+      // -- size_chart: 2) same category fallback --
+      if (!p.size_chart) {
+        const cat = categoryOf(p.name);
+        if (cat && !NO_SIZE_CATS.has(cat)) {
+          const sizeMapByCat = getByName(p.brand_id, 'size_charts_by_category');
+          if (sizeMapByCat && sizeMapByCat[cat]) {
+            p.size_chart = sizeMapByCat[cat];
+            patchedCat++;
           }
         }
       }
@@ -117,7 +183,7 @@
 
     console.log(
       `[overlay] merged: +${addedBrands} brands, +${addedProducts} products | ` +
-      `size_chart: ${patchedSize} by name | image: ${patchedImg} by name`
+      `size_chart: ${patchedExact} exact + ${patchedCat} by-category | image: ${patchedImg}`
     );
     return data;
   }
