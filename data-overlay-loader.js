@@ -121,6 +121,17 @@
       }
     }
 
+    // 1b) 品牌欄位覆寫 (修 Supabase 端拼字錯誤等問題, e.g. dirmior → DIMOIR)
+    const brandOverrides = ov.brand_overrides || {};
+    let overriddenBrands = 0;
+    for (const b of data.brands) {
+      const ovFields = brandOverrides[b.id];
+      if (ovFields && typeof ovFields === 'object') {
+        Object.assign(b, ovFields);
+        overriddenBrands++;
+      }
+    }
+
     // 2) 新商品 (僅當 Supabase 沒有此 id 時加入)
     const productIds = new Set(data.products.map(p => p.id));
     let addedProducts = 0;
@@ -182,7 +193,8 @@
     }
 
     console.log(
-      `[overlay] merged: +${addedBrands} brands, +${addedProducts} products | ` +
+      `[overlay] merged: +${addedBrands} brands, +${addedProducts} products, ` +
+      `${overriddenBrands} brand overrides | ` +
       `size_chart: ${patchedExact} exact + ${patchedCat} by-category | image: ${patchedImg}`
     );
     return data;

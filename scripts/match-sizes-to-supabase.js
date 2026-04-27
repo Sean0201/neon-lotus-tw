@@ -261,10 +261,11 @@ function main() {
   const cfg = loadConfig(args.config);
   const data = readJsAssign(DATA_FILE, 'BRANDS_DATA');
 
-  // overlay 結構: 只保留 by_name (Supabase ID 不可靠)
+  // overlay 結構: 只保留 by_name (Supabase ID 不可靠) + 品牌欄位覆寫
   const overlay = {
     brands: [], products: [],
-    by_name: {}               // { brand_id: { size_charts, image_overlay } }
+    by_name: {},              // { brand_id: { size_charts, image_overlay } }
+    brand_overrides: cfg.brand_overrides || {}   // { brand_id: { name?, color_hex?, ... } }
   };
 
   for (const pair of cfg.pairs) {
@@ -305,6 +306,12 @@ function main() {
   const kb = (Buffer.byteLength(JSON.stringify(overlay))/1024).toFixed(0);
   console.log(`\n✔ 寫回 data-overlay.js (${kb} KB)`);
   console.log(`  品牌數 (by_name buckets): ${Object.keys(overlay.by_name).length}`);
+  if (Object.keys(overlay.brand_overrides).length) {
+    console.log(`  品牌覆寫 (brand_overrides):`);
+    for (const [bid, ov] of Object.entries(overlay.brand_overrides)) {
+      console.log(`    ${bid}: ${JSON.stringify(ov)}`);
+    }
+  }
 }
 
 main();
