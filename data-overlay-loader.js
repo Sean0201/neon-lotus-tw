@@ -20,13 +20,37 @@
     return window.DATA_OVERLAY || { brands: [], products: [], size_charts: {} };
   }
 
+  /** 名稱標準化 → 與 matcher 用的 baseName 一致 */
+  function baseKeys(name) {
+    if (!name) return [];
+    let s = String(name).toLowerCase();
+    s = s.replace(/[\u2018\u2019\u02bc'`"]/g, '');
+    s = s.replace(/^\s*23\s*/, '');
+    if (s.includes('/')) s = s.split('/')[0];
+    s = s.replace(/\([^)]*\)/g, ' ');
+    const tokens = s.split(/[^a-z0-9]+/i).filter(Boolean);
+    const ROMAN_OR_NUM = /^(i{1,3}|iv|v|vi{0,3}|ix|x|0?\d{1,2})$/;
+    const trimmed = tokens.slice();
+    while (trimmed.length > 1 && ROMAN_OR_NUM.test(trimmed[trimmed.length - 1])) trimmed.pop();
+    const stem = (t) => t.replace(/(ed|es|s|d)$/, '');
+    const stemmed = trimmed.map(stem);
+    const out = new Set();
+    out.add(tokens.join(''));
+    out.add(trimmed.join(''));
+    out.add(stemmed.join(''));
+    return Array.from(out).filter(Boolean);
+  }
+
   function merge(data) {
     if (!data || !Array.isArray(data.brands) || !Array.isArray(data.products)) return data;
     const ov = getOverlay();
     const newBrands   = ov.brands || [];
     const newProducts = ov.products || [];
     const sizeMap     = ov.size_charts || {};
-    const imageMap    = ov.image_overlay || {};   // { product_id: [{type,url,original_url}, ...] }
+    const imageMap    = ov.image_overlay || {};
+    const sizeMapByName = ov.size_charts_by_name || {};
+    const imageMapByName = ov.image_overlay_by_name || {};
+    const targetBrand = ov.target_brand_id || null;
 
     // 1) 新品牌 (僅當 Supabase 沒有此 id 時加入)
     const brandIds = new Set(data.brands.map(b => b.id));
@@ -51,31 +75,60 @@
     }
 
     // 3) 為「既有商品」補上 size_chart 與 多餘的圖片
-    let patchedSize = 0, patchedImg = 0;
+    //    優先以 product_id 對應 (相容性), 對不到時改用商品名稱比對
+    let patchedSize = 0, patchedSizeByName = 0;
+    let patchedImg = 0,  patchedImgByName = 0;
     for (const p of data.products) {
+      // -- size_chart by id --
       if (sizeMap[p.id] && !p.size_chart) {
         p.size_chart = sizeMap[p.id];
         patchedSize++;
       }
-      // 圖片補強: 若 overlay 提供的 gallery 數量 > 既有, 則覆蓋
+      // -- size_chart by name (fallback) --
+      if (!p.size_chart && (!targetBrand || p.brand_id === targetBrand)) {
+        for (const b of baseKeys(p.name)) {
+          if (sizeMapByName[b]) {
+            p.size_chart = sizeMapByName[b];
+            patchedSizeByName++;
+            break;
+          }
+        }
+      }
+
+      // -- image overlay by id --
       const ovGallery = imageMap[p.id];
       if (ovGallery && ovGallery.length) {
         if (!p.images) p.images = { cover: '', gallery: [] };
         const cur = p.images.gallery || [];
         if (ovGallery.length > cur.length) {
-          // 合併: 既有 cover 保留為第一張, 後面附 overlay 中既有沒有的 url
           const seen = new Set(cur.map(g => g.url));
           const extra = ovGallery.filter(g => !seen.has(g.url));
           p.images.gallery = cur.concat(extra);
           patchedImg++;
         }
+      } else if (!targetBrand || p.brand_id === targetBrand) {
+        // -- image overlay by name (fallback) --
+        let ovG = null;
+        for (const b of baseKeys(p.name)) {
+          if (imageMapByName[b]) { ovG = imageMapByName[b]; break; }
+        }
+        if (ovG && ovG.length) {
+          if (!p.images) p.images = { cover: '', gallery: [] };
+          const cur = p.images.gallery || [];
+          if (ovG.length > cur.length) {
+            const seen = new Set(cur.map(g => g.url));
+            const extra = ovG.filter(g => !seen.has(g.url));
+            p.images.gallery = cur.concat(extra);
+            patchedImgByName++;
+          }
+        }
       }
     }
 
     console.log(
-      `[overlay] merged: +${addedBrands} brands, +${addedProducts} products, ` +
-      `${patchedSize} size_chart patches, ${patchedImg} image patches ` +
-      `(overlay: ${Object.keys(sizeMap).length} charts / ${Object.keys(imageMap).length} galleries)`
+      `[overlay] merged: +${addedBrands} brands, +${addedProducts} products | ` +
+      `size_chart: ${patchedSize} by id + ${patchedSizeByName} by name | ` +
+      `image: ${patchedImg} by id + ${patchedImgByName} by name`
     );
     return data;
   }

@@ -182,12 +182,24 @@ function main() {
     unmatchedExamples.forEach(s => console.log('    -', s));
   }
 
-  // 3) 寫回 overlay: 清空 brands/products, 只留 size_charts + image_overlay
+  // 3) 同時輸出 size_charts_by_name 與 image_overlay_by_name
+  //    (Supabase 商品 ID 可能被重新生成, 名稱比 ID 穩定)
+  //    overlay-loader 會優先用 by_name 查找, by_id 作 fallback
+  const sizeChartsByName = {};
+  const imageOverlayByName = {};
+  for (const [base, ch] of Object.entries(chartByBase)) sizeChartsByName[base] = ch;
+  for (const [base, gal] of Object.entries(galleryByBase)) imageOverlayByName[base] = gal;
+  console.log(`  by-name maps   : ${Object.keys(sizeChartsByName).length} charts, ${Object.keys(imageOverlayByName).length} galleries`);
+
+  // 4) 寫回 overlay: 清空 brands/products, 留 size_charts + image_overlay (by id) + 也存 by_name
   const newOverlay = {
     brands: [],          // 不再加新品牌
     products: [],        // 不再加新商品
     size_charts: newSizeCharts,
-    image_overlay: newImageOverlay
+    image_overlay: newImageOverlay,
+    size_charts_by_name: sizeChartsByName,
+    image_overlay_by_name: imageOverlayByName,
+    target_brand_id: args.to,
   };
   fs.writeFileSync(OVERLAY_FILE,
     '/* eslint-disable */\nwindow.DATA_OVERLAY = ' + JSON.stringify(newOverlay) + ';',
