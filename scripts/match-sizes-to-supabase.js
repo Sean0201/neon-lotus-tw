@@ -23,6 +23,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { translate } from './translate-vn-sizes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -85,6 +86,23 @@ function baseName(name) {           // 為了向後相容仍輸出主 base
   return baseKeys(name)[0] || '';
 }
 
+/** 防禦性: 重新翻譯一張 size_chart, 確保所有 headers/keys 都是中文 */
+function ensureTranslatedChart(sc) {
+  if (!sc || !Array.isArray(sc.headers)) return sc;
+  const newHeaders = sc.headers.map(h => translate(h) || h);
+  const headerMap = {};
+  sc.headers.forEach((h, i) => headerMap[h] = newHeaders[i]);
+  const out = { ...sc, headers: newHeaders, rows: (sc.rows || []).map(r => {
+    const newValues = {};
+    for (const [k, v] of Object.entries(r.values || {})) {
+      const nk = headerMap[k] || translate(k) || k;
+      newValues[nk] = v;
+    }
+    return { ...r, values: newValues };
+  }) };
+  return out;
+}
+
 function main() {
   const args = parseArgs(process.argv);
   console.log(`匹配: overlay[${args.from}] → supabase[${args.to}]`);
@@ -109,24 +127,39 @@ function main() {
   console.log(`  Source 端  : ${ovProducts.length} 件 (${ovProducts.filter(p => p.size_chart).length} 張尺寸表)`);
 
   // 1) 建立 base → size_chart map (從 overlay 取, 每個商品產生多個 base 變體)
+  //    每張 chart 都先強制再翻譯一次, 防止 raw 資料殘留越南文 header
   const chartByBase = {};
+  const galleryByBase = {};   // base → 全套 gallery (用來 overlay 圖片)
   for (const p of ovProducts) {
     const ch = p.size_chart || ovChartsById[p.id];
-    if (!ch) continue;
-    for (const b of baseKeys(p.name)) {
-      if (!chartByBase[b]) chartByBase[b] = ch;
+    if (ch) {
+      const fixed = ensureTranslatedChart(ch);
+      for (const b of baseKeys(p.name)) {
+        if (!chartByBase[b]) chartByBase[b] = fixed;
+      }
+    }
+    const g = (p.images && p.images.gallery) || [];
+    if (g.length) {
+      for (const b of baseKeys(p.name)) {
+        if (!galleryByBase[b] || galleryByBase[b].length < g.length) galleryByBase[b] = g;
+      }
     }
   }
   console.log(`  Overlay 唯一 base 數 (含尺寸): ${Object.keys(chartByBase).length}`);
+  console.log(`  Overlay 唯一 base 數 (含 gallery): ${Object.keys(galleryByBase).length}`);
 
   // 2) 依 base 把 size_chart 映射回 Supabase product id
+  //    並且如果 scrape 端有更多圖, 一起加進 image_overlay
   const newSizeCharts = {};
-  let matched = 0, unmatched = 0;
+  const newImageOverlay = {};   // { product_id: [extra gallery items] }
+  let matched = 0, unmatched = 0, imgPatched = 0;
   const unmatchedExamples = [];
   for (const p of supaProducts) {
-    let ch = null;
+    let ch = null, gal = null;
     for (const b of baseKeys(p.name)) {
-      if (chartByBase[b]) { ch = chartByBase[b]; break; }
+      if (!ch && chartByBase[b]) ch = chartByBase[b];
+      if (!gal && galleryByBase[b]) gal = galleryByBase[b];
+      if (ch && gal) break;
     }
     if (ch) {
       newSizeCharts[p.id] = ch;
@@ -135,18 +168,26 @@ function main() {
       unmatched++;
       if (unmatchedExamples.length < 12) unmatchedExamples.push(p.id + ' | ' + p.name);
     }
+    // 補圖 (僅當 scrape 端比 supabase 端多)
+    const supN = ((p.images || {}).gallery || []).length;
+    if (gal && gal.length > supN) {
+      newImageOverlay[p.id] = gal;
+      imgPatched++;
+    }
   }
   console.log(`  Supabase 商品命中: ${matched} / ${supaProducts.length} (未命中 ${unmatched})`);
+  console.log(`  圖片補強     : ${imgPatched} 件 (scrape 比 supabase 多圖)`);
   if (unmatchedExamples.length) {
     console.log('  未命中示例:');
     unmatchedExamples.forEach(s => console.log('    -', s));
   }
 
-  // 3) 寫回 overlay: 清空 brands/products, 只留 size_charts
+  // 3) 寫回 overlay: 清空 brands/products, 只留 size_charts + image_overlay
   const newOverlay = {
     brands: [],          // 不再加新品牌
     products: [],        // 不再加新商品
-    size_charts: newSizeCharts
+    size_charts: newSizeCharts,
+    image_overlay: newImageOverlay
   };
   fs.writeFileSync(OVERLAY_FILE,
     '/* eslint-disable */\nwindow.DATA_OVERLAY = ' + JSON.stringify(newOverlay) + ';',

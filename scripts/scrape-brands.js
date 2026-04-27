@@ -145,7 +145,7 @@ function collectionHandleFromUrl(url) {
 }
 
 async function fetchHaravanProducts(brandCfg, opts = {}) {
-  const { limit = Infinity, perPage = 50 } = opts;
+  const { limit = Infinity, perPage = 50, deepImages = true } = opts;
   const handle = collectionHandleFromUrl(brandCfg.collection_url);
   const origin = new URL(brandCfg.collection_url).origin;
   const all = [];
@@ -164,7 +164,30 @@ async function fetchHaravanProducts(brandCfg, opts = {}) {
     page++;
     if (page > 60) break; // 安全閥
   }
-  return all.slice(0, limit);
+  const sliced = all.slice(0, limit);
+
+  // 深度抓圖: 用 /products/<handle>.json 拿單品完整資料 (gallery 通常會比批次多)
+  if (deepImages) {
+    console.log(`  深度抓圖: 共 ${sliced.length} 件 ...`);
+    let deepFail = 0;
+    for (let i = 0; i < sliced.length; i++) {
+      const h = sliced[i].handle;
+      if (!h) continue;
+      try {
+        const detail = await getJson(`${origin}/products/${h}.json`);
+        const dp = detail.product;
+        if (dp && Array.isArray(dp.images) && dp.images.length > (sliced[i].images || []).length) {
+          sliced[i].images = dp.images;
+        }
+      } catch (e) {
+        deepFail++;
+      }
+      if ((i + 1) % 25 === 0) process.stdout.write(`    ${i+1}/${sliced.length}\r`);
+    }
+    console.log(`  深度抓圖完成 (失敗 ${deepFail} 件)`);
+  }
+
+  return sliced;
 }
 
 // ─────────────────────────────────────────────────────────────────

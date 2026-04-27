@@ -26,6 +26,7 @@
     const newBrands   = ov.brands || [];
     const newProducts = ov.products || [];
     const sizeMap     = ov.size_charts || {};
+    const imageMap    = ov.image_overlay || {};   // { product_id: [{type,url,original_url}, ...] }
 
     // 1) 新品牌 (僅當 Supabase 沒有此 id 時加入)
     const brandIds = new Set(data.brands.map(b => b.id));
@@ -49,18 +50,32 @@
       }
     }
 
-    // 3) 為「既有商品」補上 size_chart
-    let patched = 0;
+    // 3) 為「既有商品」補上 size_chart 與 多餘的圖片
+    let patchedSize = 0, patchedImg = 0;
     for (const p of data.products) {
       if (sizeMap[p.id] && !p.size_chart) {
         p.size_chart = sizeMap[p.id];
-        patched++;
+        patchedSize++;
+      }
+      // 圖片補強: 若 overlay 提供的 gallery 數量 > 既有, 則覆蓋
+      const ovGallery = imageMap[p.id];
+      if (ovGallery && ovGallery.length) {
+        if (!p.images) p.images = { cover: '', gallery: [] };
+        const cur = p.images.gallery || [];
+        if (ovGallery.length > cur.length) {
+          // 合併: 既有 cover 保留為第一張, 後面附 overlay 中既有沒有的 url
+          const seen = new Set(cur.map(g => g.url));
+          const extra = ovGallery.filter(g => !seen.has(g.url));
+          p.images.gallery = cur.concat(extra);
+          patchedImg++;
+        }
       }
     }
 
     console.log(
       `[overlay] merged: +${addedBrands} brands, +${addedProducts} products, ` +
-      `${patched} size_chart patches (overlay total: ${Object.keys(sizeMap).length})`
+      `${patchedSize} size_chart patches, ${patchedImg} image patches ` +
+      `(overlay: ${Object.keys(sizeMap).length} charts / ${Object.keys(imageMap).length} galleries)`
     );
     return data;
   }
