@@ -273,19 +273,25 @@
     const mask = document.createElement('div');
     mask.className = 'neon-sc-mask';
 
-    const imgPart = sc && sc.image_url
-      ? `<div class="neon-sc-img-wrap"><img src="${escapeHtml(sc.image_url)}" alt="size chart" loading="lazy" onerror="this.parentNode.innerHTML='<div class=\\'neon-sc-img-empty\\'>圖片無法載入</div>'"></div>`
-      : `<div class="neon-sc-img-wrap"><div class="neon-sc-img-empty">📐 尚未提供尺寸示意圖</div></div>`;
+    const hasChart = !!(sc && sc.rows && sc.rows.length);
+    const hasImage = !!(sc && sc.image_url);
 
-    const tablePart = sc && sc.rows && sc.rows.length
-      ? `<div>
-          <div class="neon-sc-section-h">尺寸表 (cm)</div>
-          ${buildTableHTML(sc)}
-        </div>`
-      : `<div class="neon-sc-empty">
-          目前還沒有此商品的尺寸對照資料。<br>
-          可執行 <code style="color:#c084fc">node scripts/translate-vn-sizes.js</code> 從越南文產品頁抓取後自動翻譯。
-        </div>`;
+    let bodyContent;
+    if (!hasChart && !hasImage) {
+      // 完全沒資料 → 單一友善提示, 不暴露任何後台資訊
+      bodyContent = `<div class="neon-sc-empty">📐 暫無提供尺寸數據</div>`;
+    } else {
+      const imgPart = hasImage
+        ? `<div class="neon-sc-img-wrap"><img src="${escapeHtml(sc.image_url)}" alt="size chart" loading="lazy" onerror="this.parentNode.innerHTML='<div class=\\'neon-sc-img-empty\\'>圖片無法載入</div>'"></div>`
+        : '';
+      const tablePart = hasChart
+        ? `<div>
+            <div class="neon-sc-section-h">尺寸表 (cm)</div>
+            ${buildTableHTML(sc)}
+          </div>`
+        : '';
+      bodyContent = imgPart + tablePart;
+    }
 
     mask.innerHTML = `
       <div class="neon-sc-modal" role="dialog" aria-modal="true" aria-label="尺寸表">

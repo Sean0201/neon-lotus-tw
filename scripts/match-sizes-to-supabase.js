@@ -29,13 +29,18 @@ const __dirname  = path.dirname(__filename);
 const ROOT       = path.resolve(__dirname, '..');
 const DATA_FILE    = path.join(ROOT, 'data.js');
 const OVERLAY_FILE = path.join(ROOT, 'data-overlay.js');
+const SCRAPE_DIR   = path.join(__dirname, 'data');   // 原始 scrape 結果存放處
 
 function parseArgs(argv) {
-  const o = { from: '23sptmbr', to: '23september' };
+  const o = {
+    from: '23sptmbr', to: '23september',
+    source: path.join(SCRAPE_DIR, 'sptmbr_scrape.json')
+  };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--from-overlay-brand') o.from = argv[++i];
     else if (a === '--to-supabase-brand') o.to = argv[++i];
+    else if (a === '--source')           o.source = argv[++i];
   }
   return o;
 }
@@ -48,20 +53,36 @@ function readJsAssign(file, varName) {
   return JSON.parse(m[1]);
 }
 
-/** 名稱標準化 → base 字串 (排除顏色 / 變體) */
-function baseName(name) {
-  if (!name) return '';
-  // 拿掉 23' 或 23 開頭的型號前綴
+/** 名稱標準化 → 主 base + 多個寬鬆 base (依序嘗試匹配) */
+function baseKeys(name) {
+  if (!name) return [];
   let s = String(name).toLowerCase();
-  // 統一各種 apostrophe / quote
-  s = s.replace(/[\u2018\u2019\u02bc'`"]/g, '');
-  // 拿掉開頭的 "23"
-  s = s.replace(/^\s*23\s*/, '');
-  // 切第一個 "/" 取左邊 (去除顏色 / 變體後綴)
-  if (s.includes('/')) s = s.split('/')[0];
-  // 拿掉所有非字母數字
-  s = s.replace(/[^a-z0-9]+/g, '');
-  return s;
+  s = s.replace(/[\u2018\u2019\u02bc'`"]/g, '');     // 各種 apostrophe
+  s = s.replace(/^\s*23\s*/, '');                     // 23' 前綴
+  if (s.includes('/')) s = s.split('/')[0];           // 切顏色 / 變體
+  s = s.replace(/\([^)]*\)/g, ' ');                   // 拿掉括號內容 e.g. (Raw Denim)
+
+  const tokens = s.split(/[^a-z0-9]+/i).filter(Boolean);
+  const ROMAN_OR_NUM = /^(i{1,3}|iv|v|vi{0,3}|ix|x|0?\d{1,2})$/;
+
+  // 寬鬆變形: 拿掉結尾的「羅馬數字 / 數字編號」
+  const trimmed = tokens.slice();
+  while (trimmed.length > 1 && ROMAN_OR_NUM.test(trimmed[trimmed.length - 1])) trimmed.pop();
+
+  // 單複數 / 過去分詞 簡單 stem (去結尾 d / ed / s)
+  const stem = (t) => t.replace(/(ed|es|s|d)$/, '');
+  const stemmed = trimmed.map(stem);
+
+  // 產生候選 base (從嚴格到寬鬆), 排重後回傳
+  const out = new Set();
+  out.add(tokens.join(''));        // strict: 全部 tokens
+  out.add(trimmed.join(''));        // no trailing version number
+  out.add(stemmed.join(''));        // stemmed
+  return Array.from(out).filter(Boolean);
+}
+
+function baseName(name) {           // 為了向後相容仍輸出主 base
+  return baseKeys(name)[0] || '';
 }
 
 function main() {
@@ -69,23 +90,32 @@ function main() {
   console.log(`匹配: overlay[${args.from}] → supabase[${args.to}]`);
 
   const data    = readJsAssign(DATA_FILE, 'BRANDS_DATA');
-  const overlay = readJsAssign(OVERLAY_FILE, 'DATA_OVERLAY');
+  // 來源優先序: --source JSON (原始 scrape 結果) → 既有 overlay.products
+  let ovProducts = [];
+  let ovChartsById = {};
+  if (fs.existsSync(args.source)) {
+    const raw = JSON.parse(fs.readFileSync(args.source, 'utf-8'));
+    ovProducts = raw.products || [];
+    console.log(`  來源: ${path.relative(ROOT, args.source)}`);
+  } else {
+    const overlay = readJsAssign(OVERLAY_FILE, 'DATA_OVERLAY');
+    ovProducts = (overlay.products || []).filter(p => p.brand_id === args.from);
+    ovChartsById = overlay.size_charts || {};
+    console.log('  來源: data-overlay.js (no raw scrape file found)');
+  }
 
   const supaProducts = data.products.filter(p => p.brand_id === args.to);
-  const ovProducts   = (overlay.products || []).filter(p => p.brand_id === args.from);
-  const ovChartsById = overlay.size_charts || {};
   console.log(`  Supabase 端: ${supaProducts.length} 件`);
-  console.log(`  Overlay 端 : ${ovProducts.length} 件 (${Object.keys(ovChartsById).length} 張尺寸表)`);
+  console.log(`  Source 端  : ${ovProducts.length} 件 (${ovProducts.filter(p => p.size_chart).length} 張尺寸表)`);
 
-  // 1) 建立 base → size_chart map (從 overlay 取)
+  // 1) 建立 base → size_chart map (從 overlay 取, 每個商品產生多個 base 變體)
   const chartByBase = {};
   for (const p of ovProducts) {
     const ch = p.size_chart || ovChartsById[p.id];
     if (!ch) continue;
-    const b = baseName(p.name);
-    if (!b) continue;
-    // 同 base 多個只留第一個 (它們應該都一樣)
-    if (!chartByBase[b]) chartByBase[b] = ch;
+    for (const b of baseKeys(p.name)) {
+      if (!chartByBase[b]) chartByBase[b] = ch;
+    }
   }
   console.log(`  Overlay 唯一 base 數 (含尺寸): ${Object.keys(chartByBase).length}`);
 
@@ -94,14 +124,16 @@ function main() {
   let matched = 0, unmatched = 0;
   const unmatchedExamples = [];
   for (const p of supaProducts) {
-    const b = baseName(p.name);
-    const ch = chartByBase[b];
+    let ch = null;
+    for (const b of baseKeys(p.name)) {
+      if (chartByBase[b]) { ch = chartByBase[b]; break; }
+    }
     if (ch) {
       newSizeCharts[p.id] = ch;
       matched++;
     } else {
       unmatched++;
-      if (unmatchedExamples.length < 8) unmatchedExamples.push(p.id + ' | ' + p.name);
+      if (unmatchedExamples.length < 12) unmatchedExamples.push(p.id + ' | ' + p.name);
     }
   }
   console.log(`  Supabase 商品命中: ${matched} / ${supaProducts.length} (未命中 ${unmatched})`);
