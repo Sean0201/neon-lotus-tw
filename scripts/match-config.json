@@ -55,6 +55,22 @@
     {
       "source": "scripts/data/firefly_scrape.json",
       "target_brand_id": "firefly"
+    },
+    {
+      "source": "scripts/data/hades_scrape.json",
+      "target_brand_id": "hades"
+    },
+    {
+      "source": "scripts/data/fragile_scrape.json",
+      "target_brand_id": "fragile"
+    },
+    {
+      "source": "scripts/data/latui_scrape.json",
+      "target_brand_id": "latui-atelier"
+    },
+    {
+      "source": "scripts/data/levents_scrape.json",
+      "target_brand_id": "levents"
     }
   ],
   "_comment_brand_overrides": "覆寫 Supabase 端品牌欄位 (e.g. 名稱拼字錯誤). key 是 Supabase brand_id, value 是要覆寫的欄位.",
