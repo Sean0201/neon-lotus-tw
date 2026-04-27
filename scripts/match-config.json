@@ -7,6 +7,10 @@
     {
       "source": "scripts/data/aastu_scrape.json",
       "target_brand_id": "aastu"
+    },
+    {
+      "source": "scripts/data/aesir_scrape.json",
+      "target_brand_id": "aesirstudio"
     }
   ]
 }
