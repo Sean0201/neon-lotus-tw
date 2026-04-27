@@ -303,8 +303,7 @@
           <button class="neon-sc-close" aria-label="關閉">✕</button>
         </div>
         <div class="neon-sc-body">
-          ${imgPart}
-          ${tablePart}
+          ${bodyContent}
         </div>
         <div class="neon-sc-foot">向下滑動可瀏覽完整尺寸 · 點擊外側或按 ESC 關閉</div>
       </div>
