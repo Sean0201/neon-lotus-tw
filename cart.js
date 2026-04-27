@@ -2035,8 +2035,17 @@
   // ─────────────────────────────────────────────────────────────────
 
   function renderAddToCartButton(product) {
-    const hasSC = window.SITE_SETTINGS && (window.SITE_SETTINGS['sizechart_' + product.brand_id] || window.SITE_SETTINGS['sizechart_img_' + product.brand_id]);
-    const scBtn = hasSC ? '<button type="button" class="neon-sizechart-btn" onclick="event.stopPropagation();window.showSizeChart(\x27' + product.brand_id + '\x27,\x27' + (product.tag || product.category || '').replace(/'/g,'') + '\x27)">\ud83d\udccf \u5c3a\u5bf8\u8868</button>' : '';
+    // 顯示尺寸表按鈕的條件:
+    //   1) product.size_chart 存在 (由 scripts/translate-vn-sizes.js 寫入)
+    //   2) 後台 SITE_SETTINGS 為該品牌設定了尺寸表
+    //   3) 否則一律顯示，由 sizechart.js 的 modal 顯示「尚無資料」提示
+    const hasInlineSC = !!(product && product.size_chart);
+    const hasBrandSC  = !!(window.SITE_SETTINGS && (window.SITE_SETTINGS['sizechart_' + product.brand_id] || window.SITE_SETTINGS['sizechart_img_' + product.brand_id]));
+    const showSC      = hasInlineSC || hasBrandSC || true; // 永遠顯示，UX 比較一致
+    const scBtn = showSC
+      ? `<button type="button" class="neon-sizechart-btn"
+           onclick="event.stopPropagation();window.showSizeChart('${product.id}')">\ud83d\udccf \u5c3a\u5bf8\u8868</button>`
+      : '';
     const html = `
       <div class="neon-card-actions">
         ${scBtn}
