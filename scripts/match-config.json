@@ -95,6 +95,22 @@
     {
       "source": "scripts/data/swe_scrape.json",
       "target_brand_id": "swe"
+    },
+    {
+      "source": "scripts/data/tredx_scrape.json",
+      "target_brand_id": "tredx"
+    },
+    {
+      "source": "scripts/data/uniz_scrape.json",
+      "target_brand_id": "uniz-world"
+    },
+    {
+      "source": "scripts/data/whenever_scrape.json",
+      "target_brand_id": "whenever-atelier"
+    },
+    {
+      "source": "scripts/data/stressmama_scrape.json",
+      "target_brand_id": "stressmama"
     }
   ],
   "_comment_brand_overrides": "覆寫 Supabase 端品牌欄位 (e.g. 名稱拼字錯誤). key 是 Supabase brand_id, value 是要覆寫的欄位.",
