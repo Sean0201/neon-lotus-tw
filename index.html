@@ -642,6 +642,97 @@
       .stat-label { font-size:0.58rem; letter-spacing:0.06em; }
     }
 
+    /* ======== SHOPPING GUIDE (Customer Service) ======== */
+    .guide-section {
+      padding: 80px 0 30px;
+      text-align: center;
+      border-top: 1px solid rgba(168,85,247,0.10);
+    }
+    .guide-inner { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+    .guide-title {
+      font-family: var(--font-headline);
+      font-size: clamp(1.5rem, 3.5vw, 2.1rem);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .guide-sub {
+      color: var(--lightgrey);
+      margin-bottom: 36px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .guide-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin: 0 auto;
+    }
+    .guide-card {
+      cursor: pointer;
+      background: rgba(168,85,247,0.04);
+      border: 1px solid rgba(168,85,247,0.22);
+      border-radius: 14px;
+      padding: 28px 22px;
+      transition: all var(--transition-normal);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .guide-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(168,85,247,0.0), rgba(244,114,182,0.0));
+      opacity: 0;
+      transition: opacity var(--transition-normal);
+      pointer-events: none;
+    }
+    .guide-card:hover {
+      border-color: var(--accent);
+      background: rgba(168,85,247,0.10);
+      box-shadow: var(--shadow-soft), var(--neon-purple);
+      transform: translateY(-3px);
+    }
+    .guide-card:hover::before { opacity: 1; }
+    .guide-card-icon {
+      width: 44px; height: 44px;
+      margin: 0 auto 14px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      background: rgba(168,85,247,0.10);
+      border: 1px solid rgba(168,85,247,0.30);
+      color: var(--accent);
+    }
+    .guide-card-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    .guide-card:hover .guide-card-icon {
+      background: rgba(168,85,247,0.18);
+      border-color: rgba(244,114,182,0.55);
+    }
+    .guide-card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: #fff;
+      margin: 0 0 6px 0;
+    }
+    .guide-card-en {
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      color: rgba(244,114,182,0.7);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .guide-card-desc {
+      font-size: 0.78rem;
+      color: var(--lightgrey);
+      line-height: 1.6;
+    }
+    @media (max-width: 700px) {
+      .guide-cards { grid-template-columns: 1fr; gap: 14px; }
+      .guide-section { padding: 60px 0 20px; }
+      .guide-card { padding: 22px 18px; }
+    }
+
     /* ======== CONTACT CTA ======== */
     .contact-section { padding:90px 0;text-align:center; }
     .contact-inner { max-width:580px;margin:0 auto;padding:0 24px; }
@@ -1683,6 +1774,41 @@
     </div>
   </div>
 
+  <!-- ============ CUSTOMER SERVICE / SHOPPING GUIDE ============ -->
+  <section class="guide-section">
+    <div class="guide-inner fade-in">
+      <p class="section-eyebrow" data-en="CUSTOMER SERVICE" data-tw="客戶服務">客戶服務</p>
+      <h2 class="guide-title" data-en="Shopping Guide" data-tw="購物指南">購物指南</h2>
+      <p class="guide-sub" data-en="Please review the following before placing your order. Tap any card for full details." data-tw="下單前請務必詳閱以下購物須知,點擊任一卡片查看完整內容。">下單前請務必詳閱以下購物須知,點擊任一卡片查看完整內容。</p>
+      <div class="guide-cards">
+        <div class="guide-card" onclick="openGuide('purchase')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')openGuide('purchase')">
+          <div class="guide-card-icon">
+            <svg viewBox="0 0 24 24"><path d="M3 6h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/></svg>
+          </div>
+          <p class="guide-card-en">PURCHASE & PAYMENT</p>
+          <h3 class="guide-card-title" data-en="Purchase Guide" data-tw="購買須知">購買須知</h3>
+          <p class="guide-card-desc" data-en="Custom proxy buying terms · Sizing · Payment methods" data-tw="代購性質 · 尺寸建議 · 支付方式">代購性質 · 尺寸建議 · 支付方式</p>
+        </div>
+        <div class="guide-card" onclick="openGuide('shipping')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')openGuide('shipping')">
+          <div class="guide-card-icon">
+            <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <p class="guide-card-en">SHIPPING & DELIVERY</p>
+          <h3 class="guide-card-title" data-en="Shipping" data-tw="運送方式">運送方式</h3>
+          <p class="guide-card-desc" data-en="VN→TW timeline · Weekly cycle · Owner-handled flights" data-tw="越南→台灣 · 每週出貨 · 主理人親帶班機">越南→台灣 · 每週出貨 · 主理人親帶班機</p>
+        </div>
+        <div class="guide-card" onclick="openGuide('returns')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')openGuide('returns')">
+          <div class="guide-card-icon">
+            <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          </div>
+          <p class="guide-card-en">RETURNS & EXCHANGES</p>
+          <h3 class="guide-card-title" data-en="Returns Policy" data-tw="退換貨政策">退換貨政策</h3>
+          <p class="guide-card-desc" data-en="Conditions · Required unboxing video · 5-day window" data-tw="受理條件 · 必備開箱錄影 · 5 天檢查期">受理條件 · 必備開箱錄影 · 5 天檢查期</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="contact-section">
     <div class="contact-inner fade-in">
       <p class="section-eyebrow" data-en="CONTACT US" data-tw="聯繫我們">聯繫我們</p>
@@ -1963,6 +2089,8 @@
 <script src="cart.js?v=2"></script>
 <!-- sizechart.js: 尺寸表 modal (越南文翻譯後的中文資料) -->
 <script src="sizechart.js?v=4"></script>
+<!-- shopping-guide.js: 客戶服務 modal (購買須知/運送/退換貨) -->
+<script src="shopping-guide.js?v=1"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js"></script>
     <script src="main.js?v=44" defer></script>
