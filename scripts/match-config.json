@@ -145,11 +145,34 @@
       "target_brand_id": "sly"
     }
   ],
-  "_comment_brand_overrides": "覆寫 Supabase 端品牌欄位 (e.g. 名稱拼字錯誤). key 是 Supabase brand_id, value 是要覆寫的欄位.",
+  "_comment_brand_overrides": "覆寫 Supabase 端品牌欄位 (e.g. 名稱拼字錯誤、style 標籤). key 是 Supabase brand_id, value 是要覆寫的欄位. style 欄位影響 navbar dropdown filterByStyle() — keyword 必須是 style 子字串才會被選上.",
   "brand_overrides": {
     "dirmior": {
       "name": "DIMOIR"
-    }
+    },
+
+    "_comment_womens": "Women's 篩選: 只有這 8 個品牌. 其中 bunnyhillconcept/ceci/devotus/firefly/tryst 已含 Women, 補 intoeight/laneci/lsoul.",
+    "intoeight": {
+      "style": "Women's, Feminine / Elegant"
+    },
+    "laneci": {
+      "style": "Women's, Minimalist / Effortless Chic"
+    },
+    "lsoul": {
+      "style": "Women's, Modern Feminine / Elegant"
+    },
+
+    "_comment_other_styles": "其餘品牌補上對應的 filter keyword 讓 dropdown 篩選找得到.",
+    "23september":      { "style": "Streetwear, Art / Stage Wear" },
+    "aastu":            { "style": "Streetwear, Visual Experimental" },
+    "badhabits":        { "style": "Streetwear, Graffiti / Hip-Hop" },
+    "blish":            { "style": "Contemporary, Futurism / Gorpcore" },
+    "fragile":          { "style": "Streetwear, Urban Essentials" },
+    "mbi":              { "style": "Streetwear, Silhouette / Layering" },
+    "phonchay":         { "style": "Streetwear, Visual Art / Urban Rebellion" },
+    "tuyen":            { "style": "Streetwear, Casual" },
+    "uniz-world":       { "style": "Avant-Garde, Rebellious Designer" },
+    "whenever-atelier": { "style": "Streetwear, Vintage Americana" }
   },
   "_comment_brand_defaults": "公版尺寸表 (brand-wide default). 當商品名/類別都沒有 match 時, 使用此 image_url. 圖片放在 assets/size-charts-default/ 資料夾.",
   "_comment_brand_defaults_2": "可用 by_category 設定不同品類用不同公版圖. lookup 順序: by_category[<cat>] → image_url. category 名稱用 categoryOf() 的 key (tee, hoodie, pants, shorts, jacket, sweater, tank, longsleeve, polo, jersey, shirt, skirt, dress).",
