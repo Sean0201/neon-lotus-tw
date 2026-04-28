@@ -471,11 +471,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* ── Dropdown hover-delay system ─────────────────────────────
-     Uses JS to add/remove .dropdown-open class with a 300ms
+     Uses JS to add/remove .dropdown-open class with a 800ms
      leave-delay, preventing accidental menu closure.
      ──────────────────────────────────────────────────────────── */
   const navItems = document.querySelectorAll('.nav-item');
-  const HOVER_DELAY = 300; // ms delay before hiding
+  const HOVER_DELAY = 800; // ms delay before hiding
 
   navItems.forEach(item => {
     let hideTimer = null;

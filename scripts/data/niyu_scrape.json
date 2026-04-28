@@ -101,8 +101,8 @@
       "id": "niyu-src-20668189071",
       "brand_id": "niyu",
       "name": "Áo Khoác NIYUN Track Jacket/ 2 Colors",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "JACKETS",
+      "category": "JACKETS",
       "price": {
         "vnd": 210000
       },
@@ -172,8 +172,8 @@
       "id": "niyu-src-11599821549",
       "brand_id": "niyu",
       "name": "Quần Kaki Ngắn NIYUN /Basic Short",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "SHORTS",
+      "category": "SHORTS",
       "price": {
         "vnd": 180000
       },
@@ -322,7 +322,7 @@
       "brand_id": "niyu",
       "name": "Quần Dài Túi Hộp NIYUN/ Ống Loe Nhẹ",
       "tag": "",
-      "category": "BOTTOM",
+      "category": "OTHER",
       "price": {
         "vnd": 225000
       },
@@ -490,8 +490,8 @@
       "id": "niyu-src-45204117977",
       "brand_id": "niyu",
       "name": "Áo Thun Dài Tay NIYUN X Long Sleeve / Đen Wash",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "LONGSLEEVES",
+      "category": "LONGSLEEVES",
       "price": {
         "vnd": 680000
       },
@@ -571,8 +571,8 @@
       "id": "niyu-src-52405246589",
       "brand_id": "niyu",
       "name": "Quần Jeans Ngắn NIYUN Hai Lưng Rách - Super Destroyed Jorts",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 1750000
       },
@@ -811,8 +811,8 @@
       "id": "niyu-src-45756338940",
       "brand_id": "niyu",
       "name": "Quần Jeans NIYUN Distressed Wax",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 922500
       },
@@ -886,8 +886,8 @@
       "id": "niyu-src-41361826903",
       "brand_id": "niyu",
       "name": "Áo Thun Tay Dài NIYUN Vải Giấy / Scribble Long Sleeve - Oatmeal",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "LONGSLEEVES",
+      "category": "LONGSLEEVES",
       "price": {
         "vnd": 560500
       },
@@ -938,7 +938,7 @@
       "brand_id": "niyu",
       "name": "Quần Dù NIYUN Ống Rộng - Quần Dù Túi Hộp",
       "tag": "",
-      "category": "BOTTOM",
+      "category": "OTHER",
       "price": {
         "vnd": 343000
       },
@@ -1018,8 +1018,8 @@
       "id": "niyu-src-54556316013",
       "brand_id": "niyu",
       "name": "Áo Khoác NIYU Multi-Layer Distressed Cotton Washed Hoodie Zip",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "HOODIES",
+      "category": "HOODIES",
       "price": {
         "vnd": 1324000
       },
@@ -1099,8 +1099,8 @@
       "id": "niyu-src-46305962107",
       "brand_id": "niyu",
       "name": "Áo Thun Giấy NIYU Tay Ngắn Cho Nữ -  Form Crop",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "TOPS",
+      "category": "TOPS",
       "price": {
         "vnd": 421200
       },
@@ -1156,7 +1156,7 @@
       "brand_id": "niyu",
       "name": "Quần Tây NIYUN Ống Rộng - 3 Màu",
       "tag": "",
-      "category": "BOTTOM",
+      "category": "OTHER",
       "price": {
         "vnd": 270000
       },

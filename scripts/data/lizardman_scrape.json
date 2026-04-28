@@ -21,8 +21,8 @@
       "id": "lizardman-src-52300945840",
       "brand_id": "lizardman",
       "name": "ÁO PHÔNG \"SEX ENGINE T-shirt\"",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "TEES",
+      "category": "TEES",
       "price": {
         "vnd": 625500
       },
@@ -100,8 +100,8 @@
       "id": "lizardman-src-50655910396",
       "brand_id": "lizardman",
       "name": "QUẦN JEANS \"SCRATCH BAGGY JEANS\"",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 1336000
       },
@@ -189,8 +189,8 @@
       "id": "lizardman-src-51250945552",
       "brand_id": "lizardman",
       "name": "ÁO \"FULLSCREEN Tanktop\"",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "TANKS",
+      "category": "TANKS",
       "price": {
         "vnd": 454500
       },
@@ -278,8 +278,8 @@
       "id": "lizardman-src-40479679333",
       "brand_id": "lizardman",
       "name": "QUẦN SHORT \"LIZARD SKIN SHORT PANTS \"",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "SHORTS",
+      "category": "SHORTS",
       "price": {
         "vnd": 1270000
       },
@@ -368,7 +368,7 @@
       "brand_id": "lizardman",
       "name": "QUẦN \"DESTROYED CRYTAL Jean\"",
       "tag": "",
-      "category": "BOTTOM",
+      "category": "OTHER",
       "price": {
         "vnd": 1100000
       },
@@ -456,8 +456,8 @@
       "id": "lizardman-src-57550940233",
       "brand_id": "lizardman",
       "name": "QUẦN \"RELAX BELT Pants\"",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 882000
       },
@@ -545,8 +545,8 @@
       "id": "lizardman-src-56205203378",
       "brand_id": "lizardman",
       "name": "ÁO LEN CỔ LỌ DÀI \"TYPO LIZARD TURTLENECK LONG SLEEVE\"",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "LONGSLEEVES",
+      "category": "LONGSLEEVES",
       "price": {
         "vnd": 930000
       },
@@ -630,8 +630,8 @@
       "id": "lizardman-src-48909184452",
       "brand_id": "lizardman",
       "name": "QUẦN TÚI HỘP \"LIZARD LARGE CARGO PANTS\"",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 1830000
       },
@@ -710,8 +710,8 @@
       "id": "lizardman-src-48250618459",
       "brand_id": "lizardman",
       "name": "ÁO KHOÁC \"2DENIM Hooded Jacket\"",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "JACKETS",
+      "category": "JACKETS",
       "price": {
         "vnd": 1107500
       },
@@ -791,8 +791,8 @@
       "id": "lizardman-src-48200965555",
       "brand_id": "lizardman",
       "name": "QUẦN GIÓ \"LARGE TRACKSUIT PANTS\"",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 594000
       },
@@ -876,8 +876,8 @@
       "id": "lizardman-src-47857387305",
       "brand_id": "lizardman",
       "name": "QUẦN JEANS 'DESTROYED BLOOD SKIN PANTS'",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 2550000
       },
@@ -950,8 +950,8 @@
       "id": "lizardman-src-45954083763",
       "brand_id": "lizardman",
       "name": "ÁO KHOÁC \"LIZARD FURY HOODIE ZIP\"",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "HOODIES",
+      "category": "HOODIES",
       "price": {
         "vnd": 1238000
       },
@@ -1031,8 +1031,8 @@
       "id": "lizardman-src-45907215439",
       "brand_id": "lizardman",
       "name": "QUẦN JEANS \"T-SHIRT TAIL PANTS\"",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "TEES",
+      "category": "TEES",
       "price": {
         "vnd": 2025000
       },
@@ -1120,8 +1120,8 @@
       "id": "lizardman-src-45801015031",
       "brand_id": "lizardman",
       "name": "MŨ \"ICON LIZARD Cap\"",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "CAPS",
+      "category": "CAPS",
       "price": {
         "vnd": 590750
       },
@@ -1192,8 +1192,8 @@
       "id": "lizardman-src-45555237052",
       "brand_id": "lizardman",
       "name": "ÁO KHOÁC \"OVERSIZE GUY SHIRT\"",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "SHIRTS",
+      "category": "SHIRTS",
       "price": {
         "vnd": 1690000
       },
@@ -1273,8 +1273,8 @@
       "id": "lizardman-src-45050965167",
       "brand_id": "lizardman",
       "name": "QUẦN \"BIKER FLARED Pants\"",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 1516000
       },
@@ -1362,8 +1362,8 @@
       "id": "lizardman-src-44128202399",
       "brand_id": "lizardman",
       "name": "BỘ NỈ HOODIE \" LIZNISTER SET \"",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "HOODIES",
+      "category": "HOODIES",
       "price": {
         "vnd": 975000
       },
@@ -1447,8 +1447,8 @@
       "id": "lizardman-src-43327709876",
       "brand_id": "lizardman",
       "name": "QUẦN JEANS \"LOGO KNEE FLARED PANTS\"",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 1500000
       },
@@ -1536,8 +1536,8 @@
       "id": "lizardman-src-40477718926",
       "brand_id": "lizardman",
       "name": "QUẦN JEANS \"STRAIGHT BIKER PANTS\"",
-      "tag": "",
-      "category": "BOTTOM",
+      "tag": "PANTS",
+      "category": "PANTS",
       "price": {
         "vnd": 1560000
       },
@@ -1600,8 +1600,8 @@
       "id": "lizardman-src-40426218551",
       "brand_id": "lizardman",
       "name": "MŨ \"STONE Cap\"",
-      "tag": "",
-      "category": "OTHER",
+      "tag": "CAPS",
+      "category": "CAPS",
       "price": {
         "vnd": 561000
       },

@@ -173,6 +173,25 @@
       "headers": [],
       "rows": [],
       "raw_vn": ""
+    },
+    "dirmior": {
+      "image_url": "/assets/size-charts-default/dirmior.jpg",
+      "source_url": "",
+      "headers": [],
+      "rows": [],
+      "raw_vn": ""
+    },
+    "lsoul": {
+      "image_url": "",
+      "source_url": "https://lsoul.com",
+      "headers": ["胸圍", "腰圍", "臀圍"],
+      "rows": [
+        { "size": "S",  "values": { "胸圍": "84",  "腰圍": "64", "臀圍": "88"  } },
+        { "size": "M",  "values": { "胸圍": "88",  "腰圍": "68", "臀圍": "92"  } },
+        { "size": "L",  "values": { "胸圍": "92",  "腰圍": "72", "臀圍": "96"  } },
+        { "size": "XL", "values": { "胸圍": "96",  "腰圍": "76", "臀圍": "100" } }
+      ],
+      "raw_vn": "Bust 84/88/92/96 · Waist 64/68/72/76 · Hip 88/92/96/100 (S/M/L/XL)"
     }
   }
 }
