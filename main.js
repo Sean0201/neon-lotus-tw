@@ -16,22 +16,21 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /** Price formula constants — edit here to update all prices */
-const RATE = 1 / 850;         // 1 TWD = 850 VND  (匯率)
+const RATE = 1 / 800;         // 1 TWD = 800 VND  (匯率)
 
-// 國際運費 (VND) — 依品類重量估算, 成本 150,000 VND/kg
+// 國際運費 (VND) — 依品類重量估算, 成本 180,000 VND/kg
 const SHIP_VND = {
-  Top:           60_000,   // 上衣 ~400g  (T恤/襯衫/Polo/Tank/長袖/Hoodie/Sweater)
-  Outerwear:    150_000,   // 外套 ~1000g (Jacket/Coat/Parka)
-  Bottom:       105_000,   // 下身 ~700g  (Pants/Jeans/Shorts/Skirts)
-  Set:          195_000,   // 套裝 ~1300g
-  Accessories:   30_000,   // 配件 ~200g  (Cap/Bag/Belt/Jewelry)
-  _default:      75_000,   // 通用 ~500g
+  Top:           72_000,   // 上衣 ~400g  (T恤/襯衫/Polo/Tank/長袖/Hoodie/Sweater)
+  Outerwear:    180_000,   // 外套 ~1000g (Jacket/Coat/Parka)
+  Bottom:       126_000,   // 下身 ~700g  (Pants/Jeans/Shorts/Skirts)
+  Set:          234_000,   // 套裝 ~1300g
+  Accessories:   36_000,   // 配件 ~200g  (Cap/Bag/Belt/Jewelry)
+  _default:      90_000,   // 通用 ~500g
 };
 
-// 加成倍率: 越便宜倍率越高, 但 10-30萬區間特別墊高 (使用者指定)
+// 加成倍率: 越便宜倍率越高
 const TIERS = [
-  { max:    100_000, mult: 1.5  },   // ≤ 10萬     → x1.5
-  { max:    300_000, mult: 1.8  },   // 10-30萬    → x1.8  (NEW)
+  { max:    300_000, mult: 1.8  },   // 0-30萬     → x1.8  (合併,使用者指定)
   { max:    500_000, mult: 1.5  },   // 30-50萬    → x1.5
   { max:  1_300_000, mult: 1.4  },   // 50-130萬   → x1.4
   { max:  2_500_000, mult: 1.35 },   // 130-250萬  → x1.35
