@@ -28,13 +28,13 @@ const SHIP_VND = {
   _default:      90_000,   // 通用 ~500g
 };
 
-// 加成倍率: 越便宜倍率越高
+// 加成倍率 (含台灣進口關稅 + 營業稅後的合理售價)
 const TIERS = [
-  { max:    300_000, mult: 1.8  },   // 0-30萬     → x1.8  (合併,使用者指定)
-  { max:    500_000, mult: 1.5  },   // 30-50萬    → x1.5
-  { max:  1_300_000, mult: 1.4  },   // 50-130萬   → x1.4
-  { max:  2_500_000, mult: 1.35 },   // 130-250萬  → x1.35
-  { max:  Infinity,  mult: 1.3  },   // > 250萬    → x1.3
+  { max:    300_000, mult: 1.8  },   // 0-30萬      → x1.8
+  { max:    500_000, mult: 1.5  },   // 30-50萬     → x1.5
+  { max:  1_300_000, mult: 1.4  },   // 50-130萬    → x1.4
+  { max:  2_000_000, mult: 1.4  },   // 130-200萬   → x1.4  (使用者指定)
+  { max:  Infinity,  mult: 1.35 },   // > 200萬     → x1.35 (使用者指定)
 ];
 
 /**
@@ -142,15 +142,15 @@ function psychPrice(n) {
 
 /**
  * Recalculate TWD prices for a product.
- * - twd_shipping  (國際配送): 直接四捨五入到整數, 不套心理定價
+ * - twd_shipping  (國際配送): 四捨五入到 10 元 (個位 1-4 → 0, 5-9 → 進位 +0)
  * - twd_carryback (親自運回): 套心理定價 (50/90 結尾)
  */
 function calcPrice(vnd, tag) {
   const est  = SHIP_VND[tag] ?? SHIP_VND._default;
   const mult = getMultiplier(vnd);
   return {
-    twd_shipping:  Math.round((vnd + est) * mult * RATE),  // 國際: 整數直接給
-    twd_carryback: psychPrice(vnd * mult * RATE),          // 親帶: 心理定價
+    twd_shipping:  Math.round((vnd + est) * mult * RATE / 10) * 10,  // 國際: 四捨五入到 10
+    twd_carryback: psychPrice(vnd * mult * RATE),                     // 親帶: 心理定價
   };
 }
 
