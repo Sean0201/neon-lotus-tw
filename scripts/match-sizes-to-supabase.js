@@ -261,11 +261,12 @@ function main() {
   const cfg = loadConfig(args.config);
   const data = readJsAssign(DATA_FILE, 'BRANDS_DATA');
 
-  // overlay 結構: 只保留 by_name (Supabase ID 不可靠) + 品牌欄位覆寫
+  // overlay 結構: 只保留 by_name (Supabase ID 不可靠) + 品牌欄位覆寫 + 公版尺寸表
   const overlay = {
     brands: [], products: [],
     by_name: {},              // { brand_id: { size_charts, image_overlay } }
-    brand_overrides: cfg.brand_overrides || {}   // { brand_id: { name?, color_hex?, ... } }
+    brand_overrides: cfg.brand_overrides || {},  // { brand_id: { name?, color_hex?, ... } }
+    brand_defaults: cfg.brand_defaults || {}     // { brand_id: { image_url, headers, rows, ... } } 公版尺寸表
   };
 
   for (const pair of cfg.pairs) {
@@ -310,6 +311,12 @@ function main() {
     console.log(`  品牌覆寫 (brand_overrides):`);
     for (const [bid, ov] of Object.entries(overlay.brand_overrides)) {
       console.log(`    ${bid}: ${JSON.stringify(ov)}`);
+    }
+  }
+  if (Object.keys(overlay.brand_defaults).length) {
+    console.log(`  公版尺寸表 (brand_defaults):`);
+    for (const [bid, ov] of Object.entries(overlay.brand_defaults)) {
+      console.log(`    ${bid}: ${ov.image_url || '(no image)'}`);
     }
   }
 }

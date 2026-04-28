@@ -118,5 +118,29 @@
     "dirmior": {
       "name": "DIMOIR"
     }
+  },
+  "_comment_brand_defaults": "公版尺寸表 (brand-wide default). 當商品名/類別都沒有 match 時, 使用此 image_url. 圖片放在 assets/size-charts-default/ 資料夾.",
+  "brand_defaults": {
+    "hades": {
+      "image_url": "/assets/size-charts-default/hades.jpg",
+      "source_url": "",
+      "headers": [],
+      "rows": [],
+      "raw_vn": ""
+    },
+    "tuyen": {
+      "image_url": "/assets/size-charts-default/tuyen.jpg",
+      "source_url": "",
+      "headers": [],
+      "rows": [],
+      "raw_vn": ""
+    },
+    "laneci": {
+      "image_url": "/assets/size-charts-default/laneci.jpg",
+      "source_url": "",
+      "headers": [],
+      "rows": [],
+      "raw_vn": ""
+    }
   }
 }

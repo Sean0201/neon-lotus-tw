@@ -144,8 +144,9 @@
     }
 
     // 3) 為「既有商品」依「商品名稱」補上 size_chart 與圖片
-    //    順序: exact name → same category fallback (限制同品牌、且非配件)
-    let patchedExact = 0, patchedCat = 0, patchedImg = 0;
+    //    順序: exact name → same category fallback → brand default (公版) (限制同品牌、且非配件)
+    const brandDefaults = ov.brand_defaults || {};
+    let patchedExact = 0, patchedCat = 0, patchedDefault = 0, patchedImg = 0;
     for (const p of data.products) {
       // -- size_chart: 1) exact name --
       if (!p.size_chart) {
@@ -168,6 +169,17 @@
           if (sizeMapByCat && sizeMapByCat[cat]) {
             p.size_chart = sizeMapByCat[cat];
             patchedCat++;
+          }
+        }
+      }
+      // -- size_chart: 3) brand default 公版尺寸表 (僅當非配件) --
+      if (!p.size_chart) {
+        const cat = categoryOf(p.name);
+        if (!cat || !NO_SIZE_CATS.has(cat)) {
+          const bd = brandDefaults[p.brand_id];
+          if (bd && bd.image_url) {
+            p.size_chart = bd;
+            patchedDefault++;
           }
         }
       }
@@ -195,7 +207,7 @@
     console.log(
       `[overlay] merged: +${addedBrands} brands, +${addedProducts} products, ` +
       `${overriddenBrands} brand overrides | ` +
-      `size_chart: ${patchedExact} exact + ${patchedCat} by-category | image: ${patchedImg}`
+      `size_chart: ${patchedExact} exact + ${patchedCat} by-category + ${patchedDefault} brand-default | image: ${patchedImg}`
     );
     return data;
   }
