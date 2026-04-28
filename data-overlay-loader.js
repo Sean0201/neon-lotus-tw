@@ -173,27 +173,47 @@
         }
       }
       // -- size_chart: 3) brand default 公版尺寸表 (僅當非配件) --
-      //    優先順序: by_category[<cat>] → 通用 image_url / rows
+      //    優先順序: by_keyword (name contains) → by_category[<cat>] → 通用 image_url / rows
       if (!p.size_chart) {
         const cat = categoryOf(p.name);
         if (!cat || !NO_SIZE_CATS.has(cat)) {
           const bd = brandDefaults[p.brand_id];
           if (bd) {
-            const byCat = (bd.by_category || {})[cat];
-            if (byCat && byCat.image_url) {
-              // 對應品類有公版圖
+            const nameLower = String(p.name || '').toLowerCase();
+            // 1) by_keyword: 第一個符合的關鍵字 wins (順序很重要)
+            let kwHit = null;
+            for (const kw of (bd.by_keyword || [])) {
+              if (kw.match && nameLower.includes(String(kw.match).toLowerCase())) {
+                kwHit = kw;
+                break;
+              }
+            }
+            if (kwHit && (kwHit.image_url || (kwHit.rows && kwHit.rows.length))) {
               p.size_chart = {
-                image_url: byCat.image_url,
-                source_url: byCat.source_url || bd.source_url || '',
-                headers: byCat.headers || bd.headers || [],
-                rows: byCat.rows || bd.rows || [],
-                raw_vn: byCat.raw_vn || bd.raw_vn || ''
+                image_url: kwHit.image_url || '',
+                source_url: kwHit.source_url || bd.source_url || '',
+                headers: kwHit.headers || bd.headers || [],
+                rows: kwHit.rows || bd.rows || [],
+                raw_vn: kwHit.raw_vn || bd.raw_vn || ''
               };
               patchedDefault++;
-            } else if (bd.image_url || (bd.rows && bd.rows.length)) {
-              // 沒對應品類圖就走品牌通用公版
-              p.size_chart = bd;
-              patchedDefault++;
+            } else {
+              // 2) by_category[cat]
+              const byCat = (bd.by_category || {})[cat];
+              if (byCat && (byCat.image_url || (byCat.rows && byCat.rows.length))) {
+                p.size_chart = {
+                  image_url: byCat.image_url || '',
+                  source_url: byCat.source_url || bd.source_url || '',
+                  headers: byCat.headers || bd.headers || [],
+                  rows: byCat.rows || bd.rows || [],
+                  raw_vn: byCat.raw_vn || bd.raw_vn || ''
+                };
+                patchedDefault++;
+              } else if (bd.image_url || (bd.rows && bd.rows.length)) {
+                // 3) 通用公版
+                p.size_chart = bd;
+                patchedDefault++;
+              }
             }
           }
         }

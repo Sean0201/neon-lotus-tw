@@ -155,24 +155,32 @@
   "_comment_brand_defaults_2": "可用 by_category 設定不同品類用不同公版圖. lookup 順序: by_category[<cat>] → image_url. category 名稱用 categoryOf() 的 key (tee, hoodie, pants, shorts, jacket, sweater, tank, longsleeve, polo, jersey, shirt, skirt, dress).",
   "brand_defaults": {
     "hades": {
-      "image_url": "/assets/size-charts-default/hades.jpg",
+      "image_url": "",
       "source_url": "",
       "headers": [],
       "rows": [],
       "raw_vn": "",
+      "by_keyword": [
+        { "match": "baby tee",       "image_url": "/assets/size-charts-default/hades_baby%20tee.jpg" },
+        { "match": "flannel",        "image_url": "/assets/size-charts-default/hades_flannel.jpg" },
+        { "match": "leather jacket", "image_url": "/assets/size-charts-default/hades_leather%20jacket.jpg" },
+        { "match": "denim pants",    "image_url": "/assets/size-charts-default/hades_denim%20pants.jpg" },
+        { "match": "sweatpants",     "image_url": "/assets/size-charts-default/hades_sweatpants.jpg" },
+        { "match": "sweat pants",    "image_url": "/assets/size-charts-default/hades_sweatpants.jpg" },
+        { "match": "jeans short",    "image_url": "/assets/size-charts-default/hades_jeans%20short.jpg" },
+        { "match": "denim short",    "image_url": "/assets/size-charts-default/hades_jeans%20short.jpg" },
+        { "match": "sweater knit",   "image_url": "/assets/size-charts-default/hades_sweater%20knit.jpg" },
+        { "match": "tank top",       "image_url": "/assets/size-charts-default/hades_tank%20top.jpg" }
+      ],
       "by_category": {
-        "tee":         { "image_url": "/assets/size-charts-default/hades_tee.jpg" },
-        "longsleeve":  { "image_url": "/assets/size-charts-default/hades_longsleeve.jpg" },
-        "polo":        { "image_url": "/assets/size-charts-default/hades_polo.jpg" },
-        "tank":        { "image_url": "/assets/size-charts-default/hades_tank.jpg" },
-        "jersey":      { "image_url": "/assets/size-charts-default/hades_jersey.jpg" },
-        "shirt":       { "image_url": "/assets/size-charts-default/hades_shirt.jpg" },
-        "hoodie":      { "image_url": "/assets/size-charts-default/hades_hoodie.jpg" },
-        "sweater":     { "image_url": "/assets/size-charts-default/hades_sweater.jpg" },
-        "jacket":      { "image_url": "/assets/size-charts-default/hades_jacket.jpg" },
-        "pants":       { "image_url": "/assets/size-charts-default/hades_pants.jpg" },
-        "shorts":      { "image_url": "/assets/size-charts-default/hades_shorts.jpg" },
-        "skirt":       { "image_url": "/assets/size-charts-default/hades_skirt.jpg" }
+        "tee":     { "image_url": "/assets/size-charts-default/hades_tee.jpg" },
+        "shirt":   { "image_url": "/assets/size-charts-default/hades_shirt.jpg" },
+        "hoodie":  { "image_url": "/assets/size-charts-default/hades_hoddie.jpg" },
+        "sweater": { "image_url": "/assets/size-charts-default/hades_sweater%20knit.jpg" },
+        "jacket":  { "image_url": "/assets/size-charts-default/hades_leather%20jacket.jpg" },
+        "tank":    { "image_url": "/assets/size-charts-default/hades_tank%20top.jpg" },
+        "pants":   { "image_url": "/assets/size-charts-default/hades_denim%20pants.jpg" },
+        "shorts":  { "image_url": "/assets/size-charts-default/hades_jeans%20short.jpg" }
       }
     },
     "tuyen": {
@@ -180,14 +188,32 @@
       "source_url": "",
       "headers": [],
       "rows": [],
-      "raw_vn": ""
+      "raw_vn": "",
+      "by_category": {
+        "pants": {
+          "image_url": "",
+          "source_url": "",
+          "headers": ["腰圍", "褲長"],
+          "rows": [
+            { "size": "0", "values": { "腰圍": "70", "褲長": "100" } },
+            { "size": "1", "values": { "腰圍": "74", "褲長": "100" } },
+            { "size": "2", "values": { "腰圍": "80", "褲長": "100" } },
+            { "size": "3", "values": { "腰圍": "84", "褲長": "100" } }
+          ],
+          "raw_vn": "Size 0: Eo 70 / Dài 100 · Size 1: Eo 74 / Dài 100 · Size 2: Eo 80 / Dài 100 · Size 3: Eo 84 / Dài 100"
+        }
+      }
     },
     "laneci": {
-      "image_url": "/assets/size-charts-default/laneci.jpg",
+      "image_url": "",
       "source_url": "",
-      "headers": [],
-      "rows": [],
-      "raw_vn": ""
+      "headers": ["胸圍", "腰圍", "臀圍"],
+      "rows": [
+        { "size": "S", "values": { "胸圍": "82-84", "腰圍": "62-64", "臀圍": "88-90" } },
+        { "size": "M", "values": { "胸圍": "86-88", "腰圍": "66-68", "臀圍": "92-94" } },
+        { "size": "L", "values": { "胸圍": "90-92", "腰圍": "70-72", "臀圍": "96-98" } }
+      ],
+      "raw_vn": "Size S: Ngực 82-84 · Eo 62-64 · Mông 88-90 | Size M: Ngực 86-88 · Eo 66-68 · Mông 92-94 | Size L: Ngực 90-92 · Eo 70-72 · Mông 96-98"
     },
     "dirmior": {
       "image_url": "/assets/size-charts-default/dirmior.jpg",
