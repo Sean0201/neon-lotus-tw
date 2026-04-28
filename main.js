@@ -16,22 +16,26 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /** Price formula constants — edit here to update all prices */
-const RATE = 0.00125;         // 1 VND → TWD
+const RATE = 1 / 850;         // 1 TWD = 850 VND  (匯率)
 
-const SHIP_VND = {            // Estimated shipping per category (VND)
-  Top:          100_000,
-  Outerwear:    150_000,
-  Bottom:       120_000,
-  Accessories:   80_000,
-  Set:          150_000,
-  _default:     120_000,
+// 國際運費 (VND) — 依品類重量估算, 成本 150,000 VND/kg
+const SHIP_VND = {
+  Top:           60_000,   // 上衣 ~400g  (T恤/襯衫/Polo/Tank/長袖/Hoodie/Sweater)
+  Outerwear:    150_000,   // 外套 ~1000g (Jacket/Coat/Parka)
+  Bottom:       105_000,   // 下身 ~700g  (Pants/Jeans/Shorts/Skirts)
+  Set:          195_000,   // 套裝 ~1300g
+  Accessories:   30_000,   // 配件 ~200g  (Cap/Bag/Belt/Jewelry)
+  _default:      75_000,   // 通用 ~500g
 };
 
-const TIERS = [               // Price multiplier tiers
-  { max:   500_000, mult: 1.5 },   // ≤500k VND  → x1.5
-  { max: 1_300_000, mult: 1.4 },   // 500k–1.3M  → x1.4
-  { max: 2_500_000, mult: 1.35 },   // 1.3M–2.5M  → x1.35
-  { max: Infinity,  mult: 1.3 },   // >2.5M      → x1.3
+// 加成倍率: 越便宜倍率越高, 但 10-30萬區間特別墊高 (使用者指定)
+const TIERS = [
+  { max:    100_000, mult: 1.5  },   // ≤ 10萬     → x1.5
+  { max:    300_000, mult: 1.8  },   // 10-30萬    → x1.8  (NEW)
+  { max:    500_000, mult: 1.5  },   // 30-50萬    → x1.5
+  { max:  1_300_000, mult: 1.4  },   // 50-130萬   → x1.4
+  { max:  2_500_000, mult: 1.35 },   // 130-250萬  → x1.35
+  { max:  Infinity,  mult: 1.3  },   // > 250萬    → x1.3
 ];
 
 /**
@@ -125,30 +129,29 @@ function getMultiplier(vnd) {
 function roundTo50(n) { return Math.round(n / 50) * 50; }
 
 /**
- * Psychological pricing: round to nearest 10, then force tail to 50 or 80.
- *   tail 00–49  →  xx50   (e.g. 2213 → 2210 → 2250)
- *   tail 50     →  unchanged
- *   tail 51–99  →  xx80   (e.g. 2265 → 2270 → 2280)
+ * Psychological pricing — 只用在「親自運回」價:
+ *   tail 00–50  →  xx50   (e.g. 2213 → 2210 → 2250 / 2250 → 2250)
+ *   tail 51–99  →  xx90   (e.g. 2265 → 2270 → 2290)
  */
 function psychPrice(n) {
   if (n == null) return n;
-  const r    = Math.round(n / 10) * 10;   // round to nearest 10
+  const r    = Math.round(n / 10) * 10;   // 先四捨五入到 10
   const tail = r % 100;
-  if (tail === 50) return r;              // already x50 → leave it
-  if (tail <= 49)  return r - tail + 50;  // 00–49 → force to x50
-  return r - tail + 80;                   // 51–99 → force to x80
+  if (tail <= 50) return r - tail + 50;   // 0-50 → 50
+  return r - tail + 90;                    // 51-99 → 90
 }
 
 /**
  * Recalculate TWD prices for a product.
- * Useful if you edit vnd in JSON and want the page to show updated values.
+ * - twd_shipping  (國際配送): 直接四捨五入到整數, 不套心理定價
+ * - twd_carryback (親自運回): 套心理定價 (50/90 結尾)
  */
 function calcPrice(vnd, tag) {
   const est  = SHIP_VND[tag] ?? SHIP_VND._default;
   const mult = getMultiplier(vnd);
   return {
-    twd_shipping:  psychPrice((vnd + est) * mult * RATE),
-    twd_carryback: psychPrice(vnd * mult * RATE),
+    twd_shipping:  Math.round((vnd + est) * mult * RATE),  // 國際: 整數直接給
+    twd_carryback: psychPrice(vnd * mult * RATE),          // 親帶: 心理定價
   };
 }
 
