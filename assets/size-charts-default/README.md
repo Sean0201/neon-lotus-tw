@@ -11,11 +11,18 @@
 
 ## 已設定品牌
 
-| Supabase brand_id | 檔案路徑 |
-|---|---|
-| `hades` | `hades.png` 或 `hades.jpg` |
-| `tuyen` | `tuyen.png` 或 `tuyen.jpg` |
-| `laneci` | `laneci.png` 或 `laneci.jpg` |
+| Supabase brand_id | 檔案路徑 | 備註 |
+|---|---|---|
+| `hades` | `hades.jpg` | 官網無尺寸表 |
+| `tuyen` | `tuyen.jpg` | 官網無尺寸表 |
+| `laneci` | `laneci.jpg` | 官網無尺寸表 |
+| `intoeight` | `intoeight.jpg` | 蝦皮 — 個別 size guide 抓取困難 |
+| `offonoff-club` | `offonoff-club.jpg` | 蝦皮 |
+| `blish` | `blish.jpg` | 蝦皮 |
+| `tryst` | `tryst.jpg` | 蝦皮 |
+| `phonchay` | `phonchay.jpg` | 蝦皮 |
+| `niyu` | `niyu.jpg` | 蝦皮 |
+| `lizardman` | `lizardman.jpg` | 蝦皮 |
 
 ## 使用流程
 
