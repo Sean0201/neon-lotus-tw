@@ -152,13 +152,28 @@
     }
   },
   "_comment_brand_defaults": "公版尺寸表 (brand-wide default). 當商品名/類別都沒有 match 時, 使用此 image_url. 圖片放在 assets/size-charts-default/ 資料夾.",
+  "_comment_brand_defaults_2": "可用 by_category 設定不同品類用不同公版圖. lookup 順序: by_category[<cat>] → image_url. category 名稱用 categoryOf() 的 key (tee, hoodie, pants, shorts, jacket, sweater, tank, longsleeve, polo, jersey, shirt, skirt, dress).",
   "brand_defaults": {
     "hades": {
       "image_url": "/assets/size-charts-default/hades.jpg",
       "source_url": "",
       "headers": [],
       "rows": [],
-      "raw_vn": ""
+      "raw_vn": "",
+      "by_category": {
+        "tee":         { "image_url": "/assets/size-charts-default/hades_tee.jpg" },
+        "longsleeve":  { "image_url": "/assets/size-charts-default/hades_longsleeve.jpg" },
+        "polo":        { "image_url": "/assets/size-charts-default/hades_polo.jpg" },
+        "tank":        { "image_url": "/assets/size-charts-default/hades_tank.jpg" },
+        "jersey":      { "image_url": "/assets/size-charts-default/hades_jersey.jpg" },
+        "shirt":       { "image_url": "/assets/size-charts-default/hades_shirt.jpg" },
+        "hoodie":      { "image_url": "/assets/size-charts-default/hades_hoodie.jpg" },
+        "sweater":     { "image_url": "/assets/size-charts-default/hades_sweater.jpg" },
+        "jacket":      { "image_url": "/assets/size-charts-default/hades_jacket.jpg" },
+        "pants":       { "image_url": "/assets/size-charts-default/hades_pants.jpg" },
+        "shorts":      { "image_url": "/assets/size-charts-default/hades_shorts.jpg" },
+        "skirt":       { "image_url": "/assets/size-charts-default/hades_skirt.jpg" }
+      }
     },
     "tuyen": {
       "image_url": "/assets/size-charts-default/tuyen.jpg",

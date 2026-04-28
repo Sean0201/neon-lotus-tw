@@ -173,13 +173,28 @@
         }
       }
       // -- size_chart: 3) brand default 公版尺寸表 (僅當非配件) --
+      //    優先順序: by_category[<cat>] → 通用 image_url / rows
       if (!p.size_chart) {
         const cat = categoryOf(p.name);
         if (!cat || !NO_SIZE_CATS.has(cat)) {
           const bd = brandDefaults[p.brand_id];
-          if (bd && bd.image_url) {
-            p.size_chart = bd;
-            patchedDefault++;
+          if (bd) {
+            const byCat = (bd.by_category || {})[cat];
+            if (byCat && byCat.image_url) {
+              // 對應品類有公版圖
+              p.size_chart = {
+                image_url: byCat.image_url,
+                source_url: byCat.source_url || bd.source_url || '',
+                headers: byCat.headers || bd.headers || [],
+                rows: byCat.rows || bd.rows || [],
+                raw_vn: byCat.raw_vn || bd.raw_vn || ''
+              };
+              patchedDefault++;
+            } else if (bd.image_url || (bd.rows && bd.rows.length)) {
+              // 沒對應品類圖就走品牌通用公版
+              p.size_chart = bd;
+              patchedDefault++;
+            }
           }
         }
       }
