@@ -985,14 +985,18 @@ function filterByStyle(keyword) {
   setTimeout(() => {
     const grid = document.getElementById('brands-grid');
     if (!grid) return;
+    // BUGFIX: cards are rendered alphabetically (renderBrandsGrid 排序) 但 BRANDS
+    // 不是. 不能用 index alignment, 改用 card.id (e.g. bc-laneci) 反查.
+    const byId = Object.fromEntries(BRANDS.map(b => [b.id, b]));
     const cards = grid.querySelectorAll('.brand-card');
-    const activeBrands = BRANDS.filter(b => b.products.length > 0);
-    cards.forEach((card, i) => {
-      const brand = activeBrands[i];
+    const kw = (keyword || '').toLowerCase();
+    cards.forEach(card => {
+      const id    = (card.id || '').replace(/^bc-/, '');
+      const brand = byId[id];
       if (!brand) return;
       const cat   = (brand.meta_category || '').toLowerCase();
       const style = (brand.style || '').toLowerCase();
-      if (!keyword || cat.includes(keyword.toLowerCase()) || style.includes(keyword.toLowerCase())) {
+      if (!kw || cat.includes(kw) || style.includes(kw)) {
         card.style.display = '';
       } else {
         card.style.display = 'none';
