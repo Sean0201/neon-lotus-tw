@@ -240,14 +240,20 @@ async function loadBrandDetail(brandId) {
     sizesAll.push(...results[i + 1]);
   }
 
+  // ── lsoul URL 修補: 過期 /cache/<hash>/ thumbnail 路徑要剝掉才能載 ──
+  const fixLsoul = (url) => {
+    if (typeof url !== 'string' || !url.includes('lsoul.com/media/catalog/product/cache/')) return url;
+    return url.replace(/\/cache\/[a-f0-9]+\//, '/');
+  };
+
   // ── Index by product_id ─────────────────────────────────────
   const galleryByProduct = {};
   for (const g of galleryAll) {
     if (!galleryByProduct[g.product_id]) galleryByProduct[g.product_id] = [];
     galleryByProduct[g.product_id].push({
       type: g.type,
-      url: g.url,
-      original_url: g.original_url || g.url,
+      url: brandId === 'lsoul' ? fixLsoul(g.url) : g.url,
+      original_url: brandId === 'lsoul' ? fixLsoul(g.original_url || g.url) : (g.original_url || g.url),
     });
   }
 

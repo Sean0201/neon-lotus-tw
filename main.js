@@ -207,11 +207,35 @@ async function loadData() {
   }
 }
 
+/**
+ * Fix lsoul image URLs — Magento /cache/<hash>/ thumbnails are expired,
+ * stripping that prefix loads the original full-size image successfully.
+ */
+function _fixLsoulUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  if (!url.includes('lsoul.com/media/catalog/product/cache/')) return url;
+  return url.replace(/\/cache\/[a-f0-9]+\//, '/');
+}
+function _fixLsoulImages(p) {
+  if (p.brand_id !== 'lsoul') return;
+  if (p.images?.cover) p.images.cover = _fixLsoulUrl(p.images.cover);
+  if (p.original_cover_url) p.original_cover_url = _fixLsoulUrl(p.original_cover_url);
+  if (Array.isArray(p.images?.gallery)) {
+    p.images.gallery = p.images.gallery.map(g => ({
+      ...g,
+      url: _fixLsoulUrl(g.url),
+      original_url: _fixLsoulUrl(g.original_url || g.url),
+    }));
+  }
+}
+
 /** Shared parse logic — called whether data came from data.js or fetch() */
 function _parseData(data) {
   // Group products by brand_id & recalculate TWD prices with current TIERS
   const byBrand = {};
   for (const p of data.products) {
+    _fixLsoulImages(p);   // 修補 lsoul 過期 cache URL
+
     const vnd = p.price?.vnd;
     if (vnd) {
       const tag = p.tag || p.category || '_default';
@@ -291,6 +315,9 @@ function _showFatalError(title, subtitle, bullets = []) {
    ═══════════════════════════════════════════════════════════════ */
 
 function showPage(page, brandId, skipPush) {
+  // 試衣間暫時關閉 (審核金流期間), 任何嘗試訪問都導回首頁
+  if (page === 'tryon') { page = 'home'; brandId = null; }
+
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   const target = document.getElementById(`page-${page}`);
   if (target) target.classList.remove('hidden');

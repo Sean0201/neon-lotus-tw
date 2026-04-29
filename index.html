@@ -1667,7 +1667,8 @@
     <button class="nav-btn" onclick="showPage('contact')">
       <span data-en="CONTACT" data-tw="聯繫我們">聯繫我們</span>
     </button>
-    <button class="nav-btn" onclick="showPage('tryon')" style="background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(99,102,241,0.15));border-color:rgba(168,85,247,0.35)">
+    <!-- 試衣間 (TRY ON) — 暫時隱藏,審核金流期間 -->
+    <button class="nav-btn" onclick="showPage('tryon')" style="display:none;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(99,102,241,0.15));border-color:rgba(168,85,247,0.35)">
       <span data-en="TRY ON" data-tw="試衣間">✨ 試衣間</span>
     </button>
   </div>
@@ -1700,7 +1701,8 @@
   </div>
   <button class="mobile-nav-btn" data-en="ABOUT" data-tw="品牌故事" onclick="showPage('about');closeMobileMenu()">品牌故事</button>
   <button class="mobile-nav-btn" data-en="CONTACT" data-tw="聯繫我們" onclick="showPage('contact');closeMobileMenu()">聯繫我們</button>
-  <button class="mobile-nav-btn" data-en="✨ TRY ON" data-tw="✨ 試衣間" onclick="showPage('tryon');closeMobileMenu()" style="background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(99,102,241,0.2));color:#c084fc">✨ 試衣間</button>
+  <!-- 試衣間 (TRY ON) — 暫時隱藏,審核金流期間 -->
+  <button class="mobile-nav-btn" data-en="✨ TRY ON" data-tw="✨ 試衣間" onclick="showPage('tryon');closeMobileMenu()" style="display:none;background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(99,102,241,0.2));color:#c084fc">✨ 試衣間</button>
   <button class="mobile-lang-switch" id="mobile-lang-switch" onclick="toggleMobileLang()">EN</button>
 </div>
 
@@ -2084,7 +2086,7 @@
 <script src="data-overlay.js?v=25"></script>
 <script src="data-overlay-loader.js?v=18"></script>
 <!-- supabase-client.js: fetches data from Supabase and sets window.BRANDS_DATA -->
-<script src="supabase-client.js?v=2"></script>
+<script src="supabase-client.js?v=3"></script>
 <!-- cart.js: e-commerce cart + checkout system -->
 <script src="cart.js?v=2"></script>
 <!-- sizechart.js: 尺寸表 modal (越南文翻譯後的中文資料) -->
@@ -2093,6 +2095,6 @@
 <script src="shopping-guide.js?v=1"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js"></script>
-    <script src="main.js?v=48" defer></script>
+    <script src="main.js?v=49" defer></script>
 </body>
 </html>
