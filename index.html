@@ -736,17 +736,19 @@
     /* ======== CONTACT CTA ======== */
     .contact-section { padding:90px 0;text-align:center; }
     .contact-inner { max-width:580px;margin:0 auto;padding:0 24px; }
-    .contact-title { font-family:var(--font-headline);font-size:clamp(1.7rem,4vw,2.5rem);margin-bottom:18px;letter-spacing:0.05em;text-transform:uppercase; }
+    .contact-title { font-family:var(--font-headline);font-size:clamp(1.7rem,4vw,2.5rem);margin-bottom:18px;letter-spacing:0.05em; }
     .contact-sub { color:var(--lightgrey);margin-bottom:38px;font-size:0.92rem;line-height:1.6; }
     .contact-links { display:flex;justify-content:center;gap:16px;flex-wrap:wrap; }
     .contact-link {
       display:flex;align-items:center;gap:12px;padding:14px 28px;
       border:1px solid rgba(168,85,247,0.25);border-radius:8px;
-      font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);
+      font-size:0.8rem;letter-spacing:0.06em;text-transform:none;color:var(--accent);
       transition:all var(--transition-normal);
       background: rgba(168,85,247,0.04);
       line-height:1.5;
     }
+    /* 聯絡我們區塊內的 section-eyebrow 也用小寫 */
+    .contact-section .section-eyebrow { text-transform:none; letter-spacing:0.18em; }
     .contact-link:hover { background:rgba(168,85,247,0.1);border-color:var(--accent);box-shadow: var(--shadow-soft), var(--neon-purple); }
     @media (max-width:480px) {
       .contact-links { flex-direction:column;gap:12px;align-items:stretch; }
@@ -1813,13 +1815,13 @@
 
   <section class="contact-section">
     <div class="contact-inner fade-in">
-      <p class="section-eyebrow" data-en="CONTACT US" data-tw="聯繫我們">聯繫我們</p>
+      <p class="section-eyebrow" data-en="contact us" data-tw="聯繫我們">聯繫我們</p>
       <h2 class="contact-title" data-en="Interested in a Style?" data-tw="對哪款風格感興趣？">對哪款風格感興趣？</h2>
       <p class="contact-sub" data-en="Browse our collections and reach out via Line, Instagram, or Email." data-tw="瀏覽我們的精選系列，透過 Line、Instagram 或 Email 聯繫我們。">瀏覽我們的精選系列，透過 Line、Instagram 或 Email 聯繫我們。</p>
       <div class="contact-links">
-        <a href="https://lin.ee/vfA2XU6" class="contact-link" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> LINE: @590eckna</a>
-        <a href="https://www.instagram.com/neon_lotus_select?igsh=MTk5OGphNDRqdmF5YQ%3D%3D&utm_source=qr" class="contact-link" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg> IG: @neon_lotus_select</a>
-        <a href="mailto:hao89824791@gmail.com" class="contact-link" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Email: hao89824791@gmail.com</a>
+        <a href="https://lin.ee/vfA2XU6" class="contact-link" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> line: @590eckna</a>
+        <a href="https://www.instagram.com/neon_lotus_select?igsh=MTk5OGphNDRqdmF5YQ%3D%3D&utm_source=qr" class="contact-link" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg> ig: @neon_lotus_select</a>
+        <a href="mailto:hao89824791@gmail.com" class="contact-link" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> email: hao89824791@gmail.com</a>
       </div>
     </div>
   </section>
