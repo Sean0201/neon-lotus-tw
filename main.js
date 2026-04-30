@@ -330,9 +330,29 @@ function showPage(page, brandId, skipPush) {
 
   // ── Browser history support (back/forward buttons) ──────────
   if (!skipPush) {
-    const hash = brandId ? `#${page}/${brandId}` : `#${page}`;
-    history.pushState({ page, brandId: brandId || null }, '', hash);
+    let url;
+    if (page === 'policy-purchase') url = '/policy/purchase';
+    else if (page === 'policy-shipping') url = '/policy/shipping';
+    else if (page === 'policy-returns') url = '/policy/returns';
+    else if (page === 'home') url = '/';
+    else url = brandId ? `#${page}/${brandId}` : `#${page}`;
+    history.pushState({ page, brandId: brandId || null }, '', url);
   }
+}
+
+// Map clean URL pathname → page id
+function _routeFromPath() {
+  const path = location.pathname.replace(/\/+$/, '');  // strip trailing /
+  if (path === '/policy/purchase') return { page: 'policy-purchase' };
+  if (path === '/policy/shipping') return { page: 'policy-shipping' };
+  if (path === '/policy/returns')  return { page: 'policy-returns' };
+  // Fall through to hash-based routing
+  const hash = location.hash.replace(/^#/, '');
+  if (hash) {
+    const [pg, bid] = hash.split('/');
+    return { page: pg || 'home', brandId: bid || null };
+  }
+  return { page: 'home' };
 }
 
 // ── Listen for browser back/forward buttons ───────────────────
@@ -340,14 +360,9 @@ window.addEventListener('popstate', (e) => {
   if (e.state && e.state.page) {
     showPage(e.state.page, e.state.brandId || null, true);
   } else {
-    // Parse hash as fallback
-    const hash = location.hash.replace('#', '');
-    if (hash) {
-      const [pg, bid] = hash.split('/');
-      showPage(pg || 'home', bid || null, true);
-    } else {
-      showPage('home', null, true);
-    }
+    // Use pathname/hash router (handles /policy/* and #anything)
+    const r = _routeFromPath();
+    showPage(r.page, r.brandId || null, true);
   }
 });
 
@@ -569,6 +584,74 @@ function updateTexts() {
     const txt = el.getAttribute(`data-${currentLang}`);
     if (txt) el.textContent = txt;
   });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   § 5b.  RENDER — HOME: FEATURED PRODUCTS (顯示具體商品+台幣售價)
+   ═══════════════════════════════════════════════════════════════ */
+
+function renderFeatured() {
+  const grid = document.getElementById('featured-grid');
+  if (!grid || !BRANDS.length) return;
+
+  // 從各個品牌挑 1 個有售價跟圖片的商品 (跨品牌多樣化)
+  // 優先順序: 較知名品牌 (有完整資料的)
+  const PREFERRED_BRANDS = ['ceci','dirtycoins','levents','hades','swe','firefly','sly','badrabbit','stressmama','fragile','rich','poison-fang','aesirstudio','latui-atelier'];
+  const picks = [];
+  const seenBrands = new Set();
+  for (const bid of PREFERRED_BRANDS) {
+    if (picks.length >= 8) break;
+    const brand = BRANDS.find(b => b.id === bid);
+    if (!brand || !brand.products?.length) continue;
+    // 找一個有圖且有 TWD 價格的
+    const product = brand.products.find(p =>
+      p.price?.twd_carryback &&
+      ((p.images?.gallery?.[0]?.original_url) || (p.original_cover_url) || (p.images?.cover))
+    );
+    if (product && !seenBrands.has(bid)) {
+      picks.push({ brand, product });
+      seenBrands.add(bid);
+    }
+  }
+  // 還沒滿 8 個的話從其他品牌補
+  if (picks.length < 8) {
+    for (const brand of BRANDS) {
+      if (picks.length >= 8) break;
+      if (seenBrands.has(brand.id) || !brand.products?.length) continue;
+      const product = brand.products.find(p =>
+        p.price?.twd_carryback &&
+        ((p.images?.gallery?.[0]?.original_url) || (p.original_cover_url) || (p.images?.cover))
+      );
+      if (product) {
+        picks.push({ brand, product });
+        seenBrands.add(brand.id);
+      }
+    }
+  }
+
+  if (!picks.length) {
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999;padding:40px">Loading featured products…</p>';
+    return;
+  }
+
+  grid.innerHTML = picks.map(({ brand, product: p }) => {
+    const cover = (p.images?.gallery?.[0]?.original_url) || p.original_cover_url || p.images?.cover || '';
+    const safeName = (p.name || '').replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+    const ship  = p.price?.twd_shipping;
+    const carry = p.price?.twd_carryback;
+    return `
+      <div class="featured-card" onclick="showPage('brand','${brand.id}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')showPage('brand','${brand.id}')">
+        <img class="featured-card-img" src="${cover}" alt="${safeName}" loading="lazy" onerror="this.style.background='linear-gradient(135deg,#1a0520,#16141e)';this.style.opacity=0.4">
+        <div class="featured-card-info">
+          <p class="featured-brand">${brand.name || brand.id}</p>
+          <p class="featured-name">${safeName}</p>
+          <div class="featured-price">
+            ${ship  != null ? `<div class="featured-price-row"><span class="label" data-en="SHIPPING" data-tw="國際送">國際送</span><span class="amount">NT$ ${ship.toLocaleString()}</span></div>` : ''}
+            ${carry != null ? `<div class="featured-price-row"><span class="label" data-en="CARRY-BACK" data-tw="親自帶">親自帶</span><span class="amount carry">NT$ ${carry.toLocaleString()}</span></div>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1246,6 +1329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!BRANDS.length) return;   // error was already shown inside loadData()
 
+  renderFeatured();
   renderBrandsGrid();
   renderDropdown();
   renderBanners();
@@ -1266,17 +1350,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // ── Restore page from URL hash (supports direct links & refresh) ──
-  const initHash = location.hash.replace('#', '');
-  if (initHash && initHash !== 'home') {
-    const [pg, bid] = initHash.split('/');
-    showPage(pg || 'home', bid || null, true);
+  // ── Restore page from URL pathname/hash (supports direct links & refresh) ──
+  // 支援 /policy/purchase 等 clean URL (透過 vercel.json rewrites 都導向 index.html)
+  const initRoute = _routeFromPath();
+  if (initRoute.page && initRoute.page !== 'home') {
+    showPage(initRoute.page, initRoute.brandId || null, true);
   }
-  // Set initial history state
-  history.replaceState(
-    { page: initHash ? initHash.split('/')[0] : 'home', brandId: initHash ? initHash.split('/')[1] || null : null },
-    '', location.hash || '#home'
-  );
+  // Set initial history state (preserve current URL)
+  history.replaceState({ page: initRoute.page, brandId: initRoute.brandId || null }, '', location.pathname + location.hash);
 
   // ── Init Virtual Fitting Room ──────────────────────────────────
   initTryOnRoom();

@@ -642,6 +642,149 @@
       .stat-label { font-size:0.58rem; letter-spacing:0.06em; }
     }
 
+    /* ======== POLICY PAGES (purchase / shipping / returns) ======== */
+    .policy-page { padding: 90px 0 60px; }
+    .policy-container {
+      max-width: 820px; margin: 0 auto; padding: 0 24px;
+      color: #e8e6f0;
+    }
+    .policy-back-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 16px; margin-bottom: 32px;
+      background: rgba(168,85,247,0.06); border: 1px solid rgba(168,85,247,0.25);
+      border-radius: 8px; cursor: pointer; color: var(--accent);
+      font-size: 0.78rem; letter-spacing: 0.1em;
+      transition: all var(--transition-normal);
+    }
+    .policy-back-btn:hover { background: rgba(168,85,247,0.15); border-color: var(--accent); }
+    .policy-back-btn svg { width: 14px; height: 14px; }
+    .policy-eyebrow {
+      font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: rgba(244,114,182,0.85); margin: 0 0 8px 0;
+    }
+    .policy-title {
+      font-family: var(--font-headline);
+      font-size: clamp(1.7rem, 4vw, 2.4rem);
+      font-weight: 600; letter-spacing: 0.04em;
+      margin: 0 0 32px 0; color: #fff;
+    }
+    .policy-body { font-size: 0.94rem; line-height: 1.8; }
+    .policy-body h3 {
+      margin: 28px 0 12px 0; font-size: 1rem; font-weight: 600;
+      letter-spacing: 0.05em; color: #f9d4ff;
+      padding-left: 12px; border-left: 3px solid rgba(244,114,182,0.6);
+    }
+    .policy-body h3:first-child { margin-top: 0; }
+    .policy-body p { margin: 0 0 14px 0; }
+    .policy-body ul { margin: 0 0 16px 0; padding-left: 22px; }
+    .policy-body li { margin: 0 0 8px 0; }
+    .policy-body strong { color: #f9d4ff; font-weight: 600; }
+    .policy-body .accent {
+      color: #fcc4ff; background: rgba(168,85,247,0.10);
+      padding: 2px 8px; border-radius: 4px; font-weight: 500;
+    }
+    .policy-body .warn {
+      background: rgba(244,114,182,0.08);
+      border-left: 3px solid rgba(244,114,182,0.6);
+      padding: 14px 18px; margin: 16px 0;
+      border-radius: 0 8px 8px 0; color: #fce7f3;
+    }
+    .policy-body .lineid {
+      font-family: 'Inter','SF Mono',monospace;
+      background: rgba(168,85,247,0.18);
+      padding: 1px 7px; border-radius: 4px;
+      font-size: 0.85em; color: #fcc4ff;
+    }
+    @media (max-width: 600px) {
+      .policy-page { padding: 60px 0 40px; }
+      .policy-body { font-size: 0.88rem; }
+    }
+
+    /* ======== FOOTER POLICY LINKS ======== */
+    footer { flex-wrap: wrap; gap: 16px; }
+    .footer-policy-links {
+      display: flex; gap: 18px; flex-wrap: wrap; justify-content: center;
+      width: 100%; padding: 12px 0; order: 2;
+      border-top: 1px solid rgba(168,85,247,0.10);
+      border-bottom: 1px solid rgba(168,85,247,0.10);
+      margin: 8px 0;
+    }
+    .footer-policy-link {
+      font-size: 0.74rem; letter-spacing: 0.08em;
+      color: var(--lightgrey); cursor: pointer;
+      background: transparent; border: 0; padding: 4px 8px;
+      transition: color var(--transition-normal);
+      font-family: inherit;
+    }
+    .footer-policy-link:hover { color: var(--accent); }
+    .footer-policy-divider { color: rgba(168,85,247,0.25); font-size: 0.7rem; }
+
+    /* ======== FEATURED PRODUCTS SECTION ======== */
+    .featured-section {
+      padding: 60px 0 30px;
+      background: linear-gradient(180deg, transparent, rgba(168,85,247,0.02));
+    }
+    .featured-inner { max-width: 1300px; margin: 0 auto; padding: 0 24px; }
+    .featured-header { text-align: center; margin-bottom: 36px; }
+    .featured-title {
+      font-family: var(--font-headline);
+      font-size: clamp(1.5rem, 3.5vw, 2.1rem);
+      letter-spacing: 0.05em; text-transform: uppercase;
+      margin: 12px 0 10px;
+    }
+    .featured-sub { color: var(--lightgrey); font-size: 0.9rem; line-height: 1.6; }
+    .featured-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .featured-card {
+      background: rgba(168,85,247,0.04);
+      border: 1px solid rgba(168,85,247,0.18);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+    }
+    .featured-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-soft), var(--neon-purple);
+    }
+    .featured-card-img {
+      width: 100%; aspect-ratio: 3/4; object-fit: cover;
+      background: linear-gradient(135deg, #1a0520, #16141e);
+      display: block;
+    }
+    .featured-card-info { padding: 14px 16px 18px; }
+    .featured-brand {
+      font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: rgba(244,114,182,0.8); margin-bottom: 6px;
+    }
+    .featured-name {
+      font-size: 0.88rem; font-weight: 500; color: #fff;
+      margin-bottom: 12px; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .featured-price {
+      display: flex; flex-direction: column; gap: 3px;
+      font-size: 0.85rem;
+    }
+    .featured-price-row { display: flex; justify-content: space-between; align-items: center; }
+    .featured-price-row .label {
+      font-size: 0.66rem; letter-spacing: 0.1em; color: var(--lightgrey);
+    }
+    .featured-price-row .amount {
+      font-weight: 600; color: var(--accent);
+    }
+    .featured-price-row .amount.carry { color: #ff7eb3; }
+    @media (max-width: 600px) {
+      .featured-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+      .featured-card-info { padding: 10px 12px 14px; }
+      .featured-name { font-size: 0.8rem; }
+    }
+
     /* ======== SHOPPING GUIDE (Customer Service) ======== */
     .guide-section {
       padding: 80px 0 30px;
@@ -1733,6 +1876,20 @@
     <div class="hero-scroll"><span data-en="SCROLL" data-tw="下滑探索">下滑探索</span><div class="scroll-line"></div></div>
   </div>
 
+  <!-- ============ FEATURED HOT PRODUCTS ============ -->
+  <section class="featured-section">
+    <div class="featured-inner">
+      <div class="featured-header fade-in">
+        <p class="section-eyebrow" data-en="FEATURED" data-tw="熱門商品">熱門商品</p>
+        <h2 class="featured-title" data-en="This Week's Picks" data-tw="本週精選">本週精選</h2>
+        <p class="featured-sub" data-en="Hand-picked products with TWD prices — what you'll see at checkout." data-tw="精選新品,直接顯示新台幣售價,讓你下單前一目了然。">精選新品,直接顯示新台幣售價,讓你下單前一目了然。</p>
+      </div>
+      <div class="featured-grid" id="featured-grid">
+        <!-- Rendered by renderFeatured() in main.js -->
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="brands-section">
     <div class="container">
       <div class="section-header fade-in">
@@ -1785,15 +1942,15 @@
       <h2 class="guide-title" data-en="Shopping Guide" data-tw="購物指南">購物指南</h2>
       <p class="guide-sub" data-en="Please review the following before placing your order. Tap any card for full details." data-tw="下單前請務必詳閱以下購物須知,點擊任一卡片查看完整內容。">下單前請務必詳閱以下購物須知,點擊任一卡片查看完整內容。</p>
       <div class="guide-cards">
-        <div class="guide-card" onclick="openGuide('purchase')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')openGuide('purchase')">
+        <div class="guide-card" onclick="showPage('policy-purchase')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')showPage('policy-purchase')">
           <div class="guide-card-icon">
             <svg viewBox="0 0 24 24"><path d="M3 6h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/></svg>
           </div>
           <p class="guide-card-en">PURCHASE & PAYMENT</p>
           <h3 class="guide-card-title" data-en="Purchase Guide" data-tw="購買須知">購買須知</h3>
-          <p class="guide-card-desc" data-en="Custom proxy buying terms · Sizing · Payment methods" data-tw="代購性質 · 尺寸建議 · 支付方式">代購性質 · 尺寸建議 · 支付方式</p>
+          <p class="guide-card-desc" data-en="Selection nature · Sizing · Payment methods" data-tw="商品性質 · 尺寸建議 · 支付方式">商品性質 · 尺寸建議 · 支付方式</p>
         </div>
-        <div class="guide-card" onclick="openGuide('shipping')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')openGuide('shipping')">
+        <div class="guide-card" onclick="showPage('policy-shipping')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')showPage('policy-shipping')">
           <div class="guide-card-icon">
             <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
           </div>
@@ -1801,7 +1958,7 @@
           <h3 class="guide-card-title" data-en="Shipping" data-tw="運送方式">運送方式</h3>
           <p class="guide-card-desc" data-en="VN→TW timeline · Weekly cycle · Owner-handled flights" data-tw="越南→台灣 · 每週出貨 · 主理人親帶班機">越南→台灣 · 每週出貨 · 主理人親帶班機</p>
         </div>
-        <div class="guide-card" onclick="openGuide('returns')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')openGuide('returns')">
+        <div class="guide-card" onclick="showPage('policy-returns')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')showPage('policy-returns')">
           <div class="guide-card-icon">
             <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
           </div>
@@ -1831,6 +1988,15 @@
       <img class="footer-logo-img" src="logo.PNG" alt="NEON LOTUS"
            onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
       <div class="footer-logo" style="display:none">NEON LOTUS</div>
+    </div>
+    <div class="footer-policy-links">
+      <a class="footer-policy-link" href="/policy/purchase" onclick="event.preventDefault(); showPage('policy-purchase');" data-en="Purchase Guide" data-tw="購買須知">購買須知</a>
+      <span class="footer-policy-divider">•</span>
+      <a class="footer-policy-link" href="/policy/shipping" onclick="event.preventDefault(); showPage('policy-shipping');" data-en="Shipping" data-tw="運送方式">運送方式</a>
+      <span class="footer-policy-divider">•</span>
+      <a class="footer-policy-link" href="/policy/returns" onclick="event.preventDefault(); showPage('policy-returns');" data-en="Returns" data-tw="退換貨政策">退換貨政策</a>
+      <span class="footer-policy-divider">•</span>
+      <a class="footer-policy-link" href="#contact" onclick="event.preventDefault(); showPage('contact');" data-en="Contact" data-tw="聯繫我們">聯繫我們</a>
     </div>
     <div data-en="&copy; 2025 NEON LOTUS. Taipei, Taiwan." data-tw="&copy; 2025 NEON LOTUS. 台北，台灣。">&copy; 2025 NEON LOTUS. 台北，台灣。</div>
   </footer>
@@ -2068,6 +2234,120 @@
   </div>
 </div>
 
+<!-- ============ POLICY PAGE: 購買須知 ============ -->
+<div id="page-policy-purchase" class="page hidden policy-page">
+  <div class="policy-container">
+    <button class="policy-back-btn" onclick="showPage('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      <span data-en="BACK TO HOME" data-tw="返回首頁">返回首頁</span>
+    </button>
+    <p class="policy-eyebrow">PURCHASE &amp; PAYMENT</p>
+    <h1 class="policy-title" data-en="Purchase Guide" data-tw="購買須知與支付方式">購買須知與支付方式</h1>
+    <div class="policy-body">
+      <h3>商品性質</h3>
+      <p>NEON LOTUS 提供的是<strong>越南設計師品牌選品</strong>。我們嚴選越南各大設計師品牌的商品,直接從品牌端採購並運送至台灣。</p>
+
+      <h3>尺寸建議</h3>
+      <p>下單前請務必確認尺寸 (可參考商品頁面尺寸表或私訊客服)。商品下單後,
+      除重大瑕疵外,<strong>無法因「尺寸不合」或「個人喜好」提供退換貨</strong>。</p>
+
+      <h3>色差說明</h3>
+      <p>商品照片可能因拍攝光線、個人手機或電腦螢幕顯示器不同而產生微色差,皆以實品顏色為準,
+      微小色差不列入瑕疵退換範圍。</p>
+
+      <h3>支付方式</h3>
+      <p>目前官網支援的訂金付款方式包含:</p>
+      <ul>
+        <li>線上刷卡 (Visa / Mastercard / JCB)</li>
+        <li>Apple Pay</li>
+        <li>銀行轉帳</li>
+      </ul>
+
+      <div class="warn">
+        訂單成立即代表您同意所有購物須知條款。如有任何疑問,
+        歡迎透過 LINE <span class="lineid">@590eckna</span> 私訊客服。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ POLICY PAGE: 運送方式 ============ -->
+<div id="page-policy-shipping" class="page hidden policy-page">
+  <div class="policy-container">
+    <button class="policy-back-btn" onclick="showPage('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      <span data-en="BACK TO HOME" data-tw="返回首頁">返回首頁</span>
+    </button>
+    <p class="policy-eyebrow">SHIPPING &amp; DELIVERY</p>
+    <h1 class="policy-title" data-en="Shipping &amp; Delivery" data-tw="運送方式與出貨說明">運送方式與出貨說明</h1>
+    <div class="policy-body">
+      <h3>越南端嚴格品檢</h3>
+      <p>所有商品在寄出前,皆會由我們的越南團隊進行<strong>初步開箱檢查</strong>,
+      確保商品無重大瑕疵。</p>
+
+      <h3>固定出貨週期</h3>
+      <p>我們<span class="accent">每週日進行結單</span>,並於<span class="accent">每週一統一安排國際出貨</span>。</p>
+
+      <h3>預估天數</h3>
+      <p>商品自越南寄出後,預計約 <strong>5 至 10 個工作天</strong> 抵達台灣。
+      (遇節慶假日或海關查驗可能微幅延遲,敬請見諒)</p>
+
+      <h3>包裝聲明</h3>
+      <p>我們會盡最大努力附上品牌原盒與完整包裝,但國際長途運送過程中,
+      鞋盒或外包裝難免有擠壓破損之情形,無法保證 100% 完美,
+      <strong>完美主義者請斟酌下單</strong>。</p>
+
+      <h3>特別企劃 — 主理人親帶班機</h3>
+      <ul>
+        <li>每兩個月我們將親自從越南帶貨回台,該批次訂單將<strong>免收國際運費</strong>!</li>
+        <li>確切的「下趟回台時間」與收單期限,請密切鎖定 <strong>NEON LOTUS 官方 Instagram</strong> 公告。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============ POLICY PAGE: 退換貨政策 ============ -->
+<div id="page-policy-returns" class="page hidden policy-page">
+  <div class="policy-container">
+    <button class="policy-back-btn" onclick="showPage('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      <span data-en="BACK TO HOME" data-tw="返回首頁">返回首頁</span>
+    </button>
+    <p class="policy-eyebrow">RETURNS &amp; EXCHANGES</p>
+    <h1 class="policy-title" data-en="Returns &amp; Exchanges" data-tw="退換貨政策">退換貨政策</h1>
+    <div class="policy-body">
+      <p>根據行政院消保法規定,<strong>依消費者要求所為之客製化給付</strong> (如專屬選品/預購) 可排除 7 日解除權。
+      因此,預購/選品商品<strong>不提供任何「個人因素」</strong> (如尺寸不合、穿起來不適合、與想像不同) 的退換貨服務。</p>
+
+      <h3>受理退換貨條件</h3>
+      <p>退換貨僅限於以下兩種情況:</p>
+      <ul>
+        <li><strong>寄錯商品</strong> — 款式、顏色或尺寸與您訂單上所載明的不符。</li>
+        <li><strong>重大瑕疵</strong> — 嚴重影響穿著或缺少配件。例如:超過 3cm 的大範圍無法清洗污漬、明顯破洞、鞋底膠合破裂等。</li>
+      </ul>
+
+      <h3>非瑕疵範圍定義</h3>
+      <p>服飾與鞋款於工廠大量製造過程中,難免有做工問題。以下情況屬正常做工範圍,<strong>不列入重大瑕疵且無法退換</strong>:</p>
+      <ul>
+        <li>極小脫線、線頭外露、輕微車線偏移。</li>
+        <li>極小污點 (3cm 以內)、鞋款輕微溢膠。</li>
+        <li>商品本身因染劑或布料產生的氣味。</li>
+        <li>因海關抽驗規定,少部分商品吊牌可能被拆除,但我們保證皆為全新正品。</li>
+      </ul>
+
+      <h3>退換貨必備流程 — 開箱錄影</h3>
+      <div class="warn">
+        為保障雙方權益,<strong>未提供「一鏡到底開箱影片」將不受理任何退換貨申請</strong>!
+      </div>
+      <ul>
+        <li>請於收到包裹 <strong>5 天內</strong> 檢查商品。</li>
+        <li>若發現重大問題,請準備好「<strong>包裹未拆封狀態至取出商品檢查</strong>」的完整錄影檔與照片,聯繫官方客服 (LINE ID: <span class="lineid">@590eckna</span>)。</li>
+        <li>經客服判定符合退換貨資格後,請確保商品保持<strong>全新未拆狀態</strong> (包含配件、吊牌未剪、無下水、無沾染香水或煙味),我們將盡速為您處理。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ LIGHTBOX ═══════════════ -->
 <div id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
   <button id="lb-close" aria-label="Close">&times;</button>
@@ -2094,9 +2374,9 @@
 <!-- sizechart.js: 尺寸表 modal (越南文翻譯後的中文資料) -->
 <script src="sizechart.js?v=4"></script>
 <!-- shopping-guide.js: 客戶服務 modal (購買須知/運送/退換貨) -->
-<script src="shopping-guide.js?v=1"></script>
+<script src="shopping-guide.js?v=2"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js"></script>
-    <script src="main.js?v=49" defer></script>
+    <script src="main.js?v=50" defer></script>
 </body>
 </html>
