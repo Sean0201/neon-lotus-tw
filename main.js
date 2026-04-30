@@ -30,7 +30,7 @@ const SHIP_VND = {
 
 // 加成倍率 (含台灣進口關稅 + 營業稅後的合理售價)
 const TIERS = [
-  { max:    300_000, mult: 1.8  },   // 0-30萬      → x1.8
+  { max:    300_000, mult: 1.75 },   // 0-30萬      → x1.75
   { max:    500_000, mult: 1.5  },   // 30-50萬     → x1.5
   { max:  1_300_000, mult: 1.4  },   // 50-130萬    → x1.4
   { max:  2_000_000, mult: 1.4  },   // 130-200萬   → x1.4  (使用者指定)
@@ -142,16 +142,28 @@ function psychPrice(n) {
 
 /**
  * Recalculate TWD prices for a product.
- * - twd_shipping  (國際配送): 四捨五入到 10 元 (個位 1-4 → 0, 5-9 → 進位 +0)
- * - twd_carryback (親自運回): 套心理定價 (50/90 結尾)
+ * - twd_carryback (親自運回): 四捨五入到 10 元 (尾數 1-4 → 0, 尾數 5-9 → 十位+1、個位=0)
+ * - twd_shipping  (國際配送): 套心理定價 (50/90 結尾)
+ *
+ * Cap rule: twd_shipping − twd_carryback ≤ 200
+ *   國際配送若超過 carryback+200,壓到 carryback+200 並再套一次心理定價;
+ *   若 psychPrice 把它向上推超過上限,退回 100 以維持 ≤200。
  */
 function calcPrice(vnd, tag) {
   const est  = SHIP_VND[tag] ?? SHIP_VND._default;
   const mult = getMultiplier(vnd);
-  return {
-    twd_shipping:  Math.round((vnd + est) * mult * RATE / 10) * 10,  // 國際: 四捨五入到 10
-    twd_carryback: psychPrice(vnd * mult * RATE),                     // 親帶: 心理定價
-  };
+
+  let twd_carryback = Math.round(vnd * mult * RATE / 10) * 10;       // 親帶: 四捨五入到 10
+  let twd_shipping  = psychPrice((vnd + est) * mult * RATE);          // 國際: 心理定價
+
+  // Cap: 國際送 不得超過 親自帶 + 200
+  const ceiling = twd_carryback + 200;
+  if (twd_shipping > ceiling) {
+    twd_shipping = psychPrice(ceiling);                               // 封頂後再套一次 50/90 心理定價
+    if (twd_shipping > ceiling) twd_shipping -= 100;                  // 避免向上跳過上限(如 1600→1650)
+  }
+
+  return { twd_shipping, twd_carryback };
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -623,43 +635,49 @@ function renderFeatured() {
   const grid = document.getElementById('featured-grid');
   if (!grid || !BRANDS.length) return;
 
-  // 從各個品牌挑 1 個有售價跟圖片的商品 (跨品牌多樣化)
-  // 優先順序: 較知名品牌 (有完整資料的)
-  const PREFERRED_BRANDS = ['ceci','dirtycoins','levents','hades','swe','firefly','sly','badrabbit','stressmama','fragile','rich','poison-fang','aesirstudio','latui-atelier'];
-  const picks = [];
-  const seenBrands = new Set();
-  for (const bid of PREFERRED_BRANDS) {
-    if (picks.length >= 8) break;
-    const brand = BRANDS.find(b => b.id === bid);
-    if (!brand || !brand.products?.length) continue;
-    // 找一個有圖且有 TWD 價格的
-    const product = brand.products.find(p =>
-      p.price?.twd_carryback &&
-      ((p.images?.gallery?.[0]?.original_url) || (p.original_cover_url) || (p.images?.cover))
-    );
-    if (product && !seenBrands.has(bid)) {
-      picks.push({ brand, product });
-      seenBrands.add(bid);
-    }
+  // ── Tier 1: 後台設定的 featured_products(window.FEATURED_DATA) ──
+  // 由 supabase-client.js 灌入,已過濾 is_active=true 並按 sort_order 排序
+  const featured = Array.isArray(window.FEATURED_DATA) ? window.FEATURED_DATA : [];
+  let picks = [];
+  for (const f of featured) {
+    const brand = BRANDS.find(b => b.id === f.brand_id);
+    if (!brand) continue;
+    const product = (brand.products || []).find(p => p.id === f.product_id);
+    if (!product) continue;
+    picks.push({ brand, product });
   }
-  // 還沒滿 8 個的話從其他品牌補
-  if (picks.length < 8) {
-    for (const brand of BRANDS) {
+
+  // ── Tier 2: fallback — 後台沒設或被刪光時,沿用舊的 PREFERRED_BRANDS 邏輯 ──
+  if (!picks.length) {
+    const PREFERRED_BRANDS = ['ceci','dirtycoins','levents','hades','swe','firefly','sly','badrabbit','stressmama','fragile','rich','poison-fang','aesirstudio','latui-atelier'];
+    const seenBrands = new Set();
+    const hasCover = (p) =>
+      (p.images?.gallery?.[0]?.original_url) || p.original_cover_url || p.images?.cover;
+    for (const bid of PREFERRED_BRANDS) {
       if (picks.length >= 8) break;
-      if (seenBrands.has(brand.id) || !brand.products?.length) continue;
-      const product = brand.products.find(p =>
-        p.price?.twd_carryback &&
-        ((p.images?.gallery?.[0]?.original_url) || (p.original_cover_url) || (p.images?.cover))
-      );
-      if (product) {
+      const brand = BRANDS.find(b => b.id === bid);
+      if (!brand || !brand.products?.length) continue;
+      const product = brand.products.find(p => p.price?.twd_carryback && hasCover(p));
+      if (product && !seenBrands.has(bid)) {
         picks.push({ brand, product });
-        seenBrands.add(brand.id);
+        seenBrands.add(bid);
+      }
+    }
+    if (picks.length < 8) {
+      for (const brand of BRANDS) {
+        if (picks.length >= 8) break;
+        if (seenBrands.has(brand.id) || !brand.products?.length) continue;
+        const product = brand.products.find(p => p.price?.twd_carryback && hasCover(p));
+        if (product) {
+          picks.push({ brand, product });
+          seenBrands.add(brand.id);
+        }
       }
     }
   }
 
   if (!picks.length) {
-    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999;padding:40px">Loading featured products…</p>';
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999;padding:40px">尚未設定精選商品</p>';
     return;
   }
 

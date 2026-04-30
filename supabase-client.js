@@ -24,8 +24,8 @@ const SUPABASE_ANON = [
 const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Constants ─────────────────────────────────────────────────
-const CACHE_KEY     = 'NEON_LOTUS_TW_V3';
-const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V3_TS';
+const CACHE_KEY     = 'NEON_LOTUS_TW_V4';
+const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V4_TS';
 const CACHE_TTL     = 5 * 60 * 1000;   // 5 minutes
 const PAGE_SIZE     = 1000;             // Supabase max rows per request
 
@@ -71,6 +71,7 @@ async function loadSupabaseData() {
           data.brands.length + ' brands, ' + data.products.length + ' products)');
         window.BRANDS_DATA   = data;
         window.BANNERS_DATA  = data.banners  || [];
+        window.FEATURED_DATA = data.featured || [];
         window.SITE_SETTINGS = data.settings || {};
         return;
       }
@@ -83,7 +84,7 @@ async function loadSupabaseData() {
   const t0 = performance.now();
   console.log('[supabase-client] Fetching core data from Supabase…');
 
-  const [brands, products, banners, settingsRows] = await Promise.all([
+  const [brands, products, banners, featured, settingsRows] = await Promise.all([
     fetchAll('brands'),
     fetchAll('products', {
       filter: q => q.eq('is_active', true),
@@ -92,6 +93,15 @@ async function loadSupabaseData() {
     fetchAll('banners', {
       filter: q => q.eq('is_active', true),
       order: 'sort_order',
+    }),
+    // featured_products may not exist yet on first deploy — swallow errors
+    fetchAll('featured_products', {
+      select: 'id, product_id, brand_id, is_active, sort_order',
+      filter: q => q.eq('is_active', true),
+      order: 'sort_order',
+    }).catch(err => {
+      console.warn('[supabase-client] featured_products not available:', err?.message || err);
+      return [];
     }),
     fetchAll('site_settings'),
   ]);
@@ -157,10 +167,20 @@ async function loadSupabaseData() {
     sort_order: bn.sort_order || 0,
   }));
 
+  // ── Transform featured products ─────────────────────────────
+  const featuredData = (featured || []).map(f => ({
+    id:         f.id,
+    product_id: f.product_id,
+    brand_id:   f.brand_id,
+    is_active:  f.is_active,
+    sort_order: f.sort_order || 0,
+  }));
+
   const data = {
     brands:   brandsData,
     products: productsData,
     banners:  bannersData,
+    featured: featuredData,
     settings: settings,
   };
 
@@ -179,6 +199,7 @@ async function loadSupabaseData() {
 
   window.BRANDS_DATA   = data;
   window.BANNERS_DATA  = bannersData;
+  window.FEATURED_DATA = featuredData;
   window.SITE_SETTINGS = settings;
 }
 

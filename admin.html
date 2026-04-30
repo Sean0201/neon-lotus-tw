@@ -905,6 +905,10 @@
                         <span class="nav-icon">🖼️</span>
                         <span>Banners</span>
                     </div>
+                    <div class="nav-item" data-page="featured">
+                        <span class="nav-icon">★</span>
+                        <span>Featured Products</span>
+                    </div>
                     <div class="nav-item" data-page="orders">
                         <span class="nav-icon">🛒</span>
                         <span>Orders</span>
@@ -1075,6 +1079,35 @@
                                     </tr>
                                 </thead>
                                 <tbody id="bannersTableBody" draggable="true">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Featured Products Page -->
+                    <div id="featured" class="page">
+                        <div class="table-container">
+                            <div class="table-header">
+                                <h2>Featured Products</h2>
+                                <div class="table-controls">
+                                    <button id="addFeaturedBtn" class="btn-primary">+ Add Featured</button>
+                                </div>
+                            </div>
+                            <table id="featuredTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 5%;">⋮</th>
+                                        <th style="width: 8%;">Cover</th>
+                                        <th>Brand</th>
+                                        <th>Product</th>
+                                        <th style="width: 10%;">親自帶</th>
+                                        <th style="width: 10%;">國際送</th>
+                                        <th>Active</th>
+                                        <th>Order</th>
+                                        <th style="width: 10%;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="featuredTableBody" draggable="true">
                                 </tbody>
                             </table>
                         </div>
@@ -1514,6 +1547,62 @@
         </div>
     </div>
 
+    <!-- Featured Modal -->
+    <div id="featuredModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="featuredModalTitle">Add Featured</h2>
+                <button class="modal-close" onclick="closeFeaturedModal()">×</button>
+            </div>
+            <form id="featuredForm">
+                <div class="modal-body">
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label for="featuredBrandId">Brand</label>
+                            <select id="featuredBrandId" required style="width:100%;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;">
+                                <option value="">— 選擇品牌 —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label for="featuredProductId">Product</label>
+                            <select id="featuredProductId" required disabled style="width:100%;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;">
+                                <option value="">— 先選擇品牌 —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label>Preview</label>
+                            <div id="featuredPreview" style="display:flex;gap:1rem;align-items:flex-start;padding:0.75rem;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;min-height:80px;">
+                                <img id="featuredPreviewImg" class="image-preview" style="display:none;width:100px;height:100px;object-fit:cover;border-radius:4px;">
+                                <div id="featuredPreviewMeta" style="flex:1;font-size:13px;color:var(--text-muted);align-self:center;">— 選擇商品後預覽 —</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="featuredActive" checked>
+                                <span class="slider"></span>
+                                Active
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="featuredSortOrder">Sort Order</label>
+                            <input type="number" id="featuredSortOrder" value="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeFeaturedModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Featured</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
@@ -1534,10 +1623,12 @@
         let allBrands = [];
         let allProducts = [];
         let allBanners = [];
+        let allFeatured = [];
         let selectedProductIds = new Set();
         let editingBrandId = null;
         let editingProductId = null;
         let editingBannerId = null;
+        let editingFeaturedId = null;
         let draggedRow = null;
 
         // ============================================================================
@@ -1632,6 +1723,7 @@
             else if (page === 'brands') loadBrands();
             else if (page === 'products') loadProducts();
             else if (page === 'banners') loadBanners();
+            else if (page === 'featured') loadFeatured();
             else if (page === 'orders') loadOrders();
             else if (page === 'settings') loadSettings();
         }
@@ -1642,6 +1734,7 @@
                 'brands': 'Brands Management',
                 'products': 'Products Management',
                 'banners': 'Banners Management',
+                'featured': 'Featured Products Management',
                 'orders': 'Orders Management',
                 'settings': 'SEO & Settings'
             };
@@ -2468,6 +2561,258 @@
                 if (error) throw error;
                 showToast('Banner deleted', 'success');
                 loadBanners();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // ============================================================================
+        // FEATURED PRODUCTS
+        // ============================================================================
+        async function loadFeatured() {
+            try {
+                const { data, error } = await sb.from('featured_products')
+                    .select('*, products(id, name, cover_image, original_cover_url, price_vnd, tag, category), brands(id, name)')
+                    .order('sort_order', { ascending: true });
+                if (error) throw error;
+                allFeatured = data || [];
+                renderFeaturedTable();
+            } catch (error) {
+                showToast('Error loading featured products', 'error');
+                console.error(error);
+            }
+        }
+
+        // Mirrors main.js price calc — keep in sync
+        const FEATURED_RATE = 1 / 800;
+        const FEATURED_SHIP_VND = { Top: 72000, Outerwear: 180000, Bottom: 126000, Set: 234000, Accessories: 36000, _default: 90000 };
+        const FEATURED_TIERS = [
+            { max: 300000,  mult: 1.75 },
+            { max: 500000,  mult: 1.5  },
+            { max: 1300000, mult: 1.4  },
+            { max: 2000000, mult: 1.4  },
+            { max: Infinity, mult: 1.35 },
+        ];
+        function _featuredMult(vnd) {
+            for (const t of FEATURED_TIERS) if (vnd <= t.max) return t.mult;
+            return FEATURED_TIERS[FEATURED_TIERS.length - 1].mult;
+        }
+        function _featuredPsych(n) {
+            if (n == null) return n;
+            const r = Math.round(n / 10) * 10;
+            const tail = r % 100;
+            return tail <= 50 ? r - tail + 50 : r - tail + 90;
+        }
+        function _featuredCalc(vnd, tag) {
+            if (!vnd) return { carry: null, ship: null };
+            const est = FEATURED_SHIP_VND[tag] ?? FEATURED_SHIP_VND._default;
+            const mult = _featuredMult(vnd);
+            let carry = Math.round(vnd * mult * FEATURED_RATE / 10) * 10;
+            let ship = _featuredPsych((vnd + est) * mult * FEATURED_RATE);
+            const ceiling = carry + 200;
+            if (ship > ceiling) {
+                ship = _featuredPsych(ceiling);
+                if (ship > ceiling) ship -= 100;
+            }
+            return { carry, ship };
+        }
+
+        function renderFeaturedTable() {
+            const tbody = document.getElementById('featuredTableBody');
+            tbody.innerHTML = '';
+
+            allFeatured.forEach(f => {
+                const tr = document.createElement('tr');
+                tr.draggable = true;
+                tr.dataset.id = f.id;
+
+                const product = f.products || {};
+                const brand = f.brands || {};
+                const cover = product.cover_image || product.original_cover_url || '';
+                const img = cover
+                    ? `<img src="${cover}" class="image-preview" style="width: 60px; height: 60px; border-radius: 4px; object-fit: cover;">`
+                    : '<span style="opacity:0.4;font-size:11px">no image</span>';
+
+                const { carry, ship } = _featuredCalc(product.price_vnd, product.tag || product.category || '');
+                const carryStr = carry != null ? `NT$ ${carry.toLocaleString()}` : '-';
+                const shipStr  = ship  != null ? `NT$ ${ship.toLocaleString()}`  : '-';
+
+                tr.innerHTML = `
+                    <td style="cursor: move; text-align: center;">⋮</td>
+                    <td>${img}</td>
+                    <td>${brand.name || '-'}</td>
+                    <td>${product.name || '<span style="opacity:0.5">(missing)</span>'}</td>
+                    <td>${carryStr}</td>
+                    <td>${shipStr}</td>
+                    <td>
+                        <label class="toggle-switch">
+                            <input type="checkbox" ${f.is_active ? 'checked' : ''} onchange="updateFeaturedActive('${f.id}', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td>${f.sort_order}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn-icon" onclick="editFeatured('${f.id}')">✏️</button>
+                            <button class="btn-icon delete" onclick="deleteFeatured('${f.id}')">🗑️</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            setupDragDrop('featuredTableBody', 'featured_products');
+        }
+
+        async function populateFeaturedBrandSelect(selectedId) {
+            const sel = document.getElementById('featuredBrandId');
+            sel.innerHTML = '<option value="">— 選擇品牌 —</option>';
+            try {
+                const { data: brands } = await sb.from('brands').select('id, name').order('name');
+                (brands || []).forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = b.name;
+                    if (b.id === selectedId) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            } catch (e) { console.error('Failed to load brands for featured selector:', e); }
+        }
+
+        async function populateFeaturedProductSelect(brandId, selectedId) {
+            const sel = document.getElementById('featuredProductId');
+            if (!brandId) {
+                sel.disabled = true;
+                sel.innerHTML = '<option value="">— 先選擇品牌 —</option>';
+                return;
+            }
+            try {
+                const { data: products } = await sb.from('products')
+                    .select('id, name, cover_image, original_cover_url, price_vnd, tag, category')
+                    .eq('brand_id', brandId)
+                    .eq('is_active', true)
+                    .order('name');
+                sel.disabled = false;
+                sel.innerHTML = '<option value="">— 選擇商品 —</option>' +
+                    (products || []).map(p => {
+                        const { carry } = _featuredCalc(p.price_vnd, p.tag || p.category || '');
+                        const priceLabel = carry != null ? ` — NT$${carry.toLocaleString()}` : '';
+                        const sel2 = p.id === selectedId ? 'selected' : '';
+                        const safeName = (p.name || '').replace(/"/g, '&quot;');
+                        return `<option value="${p.id}" ${sel2} data-cover="${(p.cover_image || p.original_cover_url || '').replace(/"/g, '&quot;')}" data-price-vnd="${p.price_vnd || 0}" data-tag="${(p.tag || p.category || '').replace(/"/g, '&quot;')}">${safeName}${priceLabel}</option>`;
+                    }).join('');
+            } catch (e) { console.error('Failed to load products for featured selector:', e); }
+        }
+
+        function _updateFeaturedPreview() {
+            const sel = document.getElementById('featuredProductId');
+            const opt = sel.options[sel.selectedIndex];
+            const img = document.getElementById('featuredPreviewImg');
+            const meta = document.getElementById('featuredPreviewMeta');
+            if (!opt || !opt.value) {
+                img.style.display = 'none';
+                meta.textContent = '— 選擇商品後預覽 —';
+                return;
+            }
+            const cover = opt.dataset.cover || '';
+            const vnd = +opt.dataset.priceVnd || 0;
+            const tag = opt.dataset.tag || '';
+            const { carry, ship } = _featuredCalc(vnd, tag);
+            if (cover) {
+                img.src = cover;
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+            meta.innerHTML = `
+                <div style="font-weight:600;color:var(--text);margin-bottom:4px;">${opt.textContent.split(' — ')[0]}</div>
+                <div>VND: ${vnd ? vnd.toLocaleString() : '-'} (${tag || '_default'})</div>
+                <div>親自帶: ${carry != null ? 'NT$ ' + carry.toLocaleString() : '-'} / 國際送: ${ship != null ? 'NT$ ' + ship.toLocaleString() : '-'}</div>
+            `;
+        }
+
+        document.getElementById('featuredBrandId').addEventListener('change', async (e) => {
+            await populateFeaturedProductSelect(e.target.value, '');
+            _updateFeaturedPreview();
+        });
+
+        document.getElementById('featuredProductId').addEventListener('change', _updateFeaturedPreview);
+
+        document.getElementById('addFeaturedBtn').addEventListener('click', async () => {
+            editingFeaturedId = null;
+            document.getElementById('featuredModalTitle').textContent = 'Add Featured';
+            document.getElementById('featuredForm').reset();
+            document.getElementById('featuredActive').checked = true;
+            document.getElementById('featuredPreviewImg').style.display = 'none';
+            document.getElementById('featuredPreviewMeta').textContent = '— 選擇商品後預覽 —';
+            await populateFeaturedBrandSelect('');
+            await populateFeaturedProductSelect('', '');
+            document.getElementById('featuredModal').classList.add('active');
+        });
+
+        async function editFeatured(id) {
+            editingFeaturedId = id;
+            const f = allFeatured.find(x => x.id === id);
+            if (!f) return;
+            document.getElementById('featuredModalTitle').textContent = 'Edit Featured';
+            document.getElementById('featuredActive').checked = f.is_active !== false;
+            document.getElementById('featuredSortOrder').value = f.sort_order || 0;
+            await populateFeaturedBrandSelect(f.brand_id || '');
+            await populateFeaturedProductSelect(f.brand_id || '', f.product_id || '');
+            _updateFeaturedPreview();
+            document.getElementById('featuredModal').classList.add('active');
+        }
+
+        function closeFeaturedModal() {
+            document.getElementById('featuredModal').classList.remove('active');
+            editingFeaturedId = null;
+        }
+
+        document.getElementById('featuredForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                brand_id:   document.getElementById('featuredBrandId').value,
+                product_id: document.getElementById('featuredProductId').value,
+                is_active:  document.getElementById('featuredActive').checked,
+                sort_order: parseInt(document.getElementById('featuredSortOrder').value) || 0,
+            };
+            if (!payload.brand_id || !payload.product_id) {
+                showToast('Please pick brand & product', 'error');
+                return;
+            }
+            try {
+                let result;
+                if (editingFeaturedId) {
+                    result = await sb.from('featured_products').update(payload).eq('id', editingFeaturedId);
+                    if (result.error) throw result.error;
+                    showToast('Featured updated', 'success');
+                } else {
+                    result = await sb.from('featured_products').insert([payload]);
+                    if (result.error) throw result.error;
+                    showToast('Featured created', 'success');
+                }
+                closeFeaturedModal();
+                loadFeatured();
+            } catch (error) {
+                showToast(error.message || 'Save failed', 'error');
+            }
+        });
+
+        async function updateFeaturedActive(id, value) {
+            try {
+                await sb.from('featured_products').update({ is_active: value }).eq('id', id);
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function deleteFeatured(id) {
+            if (!confirm('Are you sure you want to remove this from featured?')) return;
+            try {
+                const { error } = await sb.from('featured_products').delete().eq('id', id);
+                if (error) throw error;
+                showToast('Featured removed', 'success');
+                loadFeatured();
             } catch (error) {
                 showToast(error.message, 'error');
             }
