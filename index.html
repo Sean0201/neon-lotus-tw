@@ -2011,7 +2011,7 @@
     <div class="brand-hero-bg" id="brand-hero-bg"></div>
     <div class="brand-hero-overlay"></div>
     <div class="brand-hero-content">
-      <button class="brand-back-btn" onclick="showPage('home')"><svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> <span data-en="ALL BRANDS" data-tw="全部品牌">全部品牌</span></button>
+      <button class="brand-back-btn" onclick="goBack('home')"><svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> <span data-en="BACK" data-tw="返回上一頁">返回上一頁</span></button>
       <p class="brand-hero-label" id="brand-hero-label"></p>
       <h1 class="brand-hero-name" id="brand-hero-name"></h1>
     </div>
@@ -2237,9 +2237,9 @@
 <!-- ============ POLICY PAGE: 購買須知 ============ -->
 <div id="page-policy-purchase" class="page hidden policy-page">
   <div class="policy-container">
-    <button class="policy-back-btn" onclick="showPage('home')">
+    <button class="policy-back-btn" onclick="goBack('home')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      <span data-en="BACK TO HOME" data-tw="返回首頁">返回首頁</span>
+      <span data-en="BACK" data-tw="返回上一頁">返回上一頁</span>
     </button>
     <p class="policy-eyebrow">PURCHASE &amp; PAYMENT</p>
     <h1 class="policy-title" data-en="Purchase Guide" data-tw="購買須知與支付方式">購買須知與支付方式</h1>
@@ -2274,9 +2274,9 @@
 <!-- ============ POLICY PAGE: 運送方式 ============ -->
 <div id="page-policy-shipping" class="page hidden policy-page">
   <div class="policy-container">
-    <button class="policy-back-btn" onclick="showPage('home')">
+    <button class="policy-back-btn" onclick="goBack('home')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      <span data-en="BACK TO HOME" data-tw="返回首頁">返回首頁</span>
+      <span data-en="BACK" data-tw="返回上一頁">返回上一頁</span>
     </button>
     <p class="policy-eyebrow">SHIPPING &amp; DELIVERY</p>
     <h1 class="policy-title" data-en="Shipping &amp; Delivery" data-tw="運送方式與出貨說明">運送方式與出貨說明</h1>
@@ -2309,9 +2309,9 @@
 <!-- ============ POLICY PAGE: 退換貨政策 ============ -->
 <div id="page-policy-returns" class="page hidden policy-page">
   <div class="policy-container">
-    <button class="policy-back-btn" onclick="showPage('home')">
+    <button class="policy-back-btn" onclick="goBack('home')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      <span data-en="BACK TO HOME" data-tw="返回首頁">返回首頁</span>
+      <span data-en="BACK" data-tw="返回上一頁">返回上一頁</span>
     </button>
     <p class="policy-eyebrow">RETURNS &amp; EXCHANGES</p>
     <h1 class="policy-title" data-en="Returns &amp; Exchanges" data-tw="退換貨政策">退換貨政策</h1>
@@ -2377,6 +2377,6 @@
 <script src="shopping-guide.js?v=2"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js"></script>
-    <script src="main.js?v=50" defer></script>
+    <script src="main.js?v=51" defer></script>
 </body>
 </html>

@@ -314,15 +314,32 @@ function _showFatalError(title, subtitle, bullets = []) {
    § 4.  PAGE NAVIGATION
    ═══════════════════════════════════════════════════════════════ */
 
-function showPage(page, brandId, skipPush) {
+function showPage(page, brandId, skipPush, restoreScrollY) {
   // 試衣間暫時關閉 (審核金流期間), 任何嘗試訪問都導回首頁
   if (page === 'tryon') { page = 'home'; brandId = null; }
+
+  // 在進新頁面之前, 把目前頁的 scrollY 寫入「現有」history state,
+  // 這樣使用者按瀏覽器返回鍵時會知道之前停在哪
+  if (!skipPush) {
+    const curState = history.state || {};
+    history.replaceState({ ...curState, scrollY: window.scrollY }, '', location.pathname + location.hash);
+  }
 
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   const target = document.getElementById(`page-${page}`);
   if (target) target.classList.remove('hidden');
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // 滑動策略:
+  //   restoreScrollY 有值 → 從返回鍵 / 「返回首頁」按鈕回來, 還原原位置
+  //   沒有值 → 新導航, 滑到頂端
+  if (typeof restoreScrollY === 'number') {
+    // 等下一個 frame + 50ms (確保 DOM 已 render) 再還原 scroll
+    requestAnimationFrame(() => {
+      setTimeout(() => window.scrollTo({ top: restoreScrollY, behavior: 'auto' }), 50);
+    });
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   if (page === 'brand' && brandId) renderBrandPage(brandId);
   if (page === 'home') setTimeout(observeFadeIns, 80);
@@ -336,9 +353,20 @@ function showPage(page, brandId, skipPush) {
     else if (page === 'policy-returns') url = '/policy/returns';
     else if (page === 'home') url = '/';
     else url = brandId ? `#${page}/${brandId}` : `#${page}`;
-    history.pushState({ page, brandId: brandId || null }, '', url);
+    history.pushState({ page, brandId: brandId || null, scrollY: 0 }, '', url);
   }
 }
+
+// 「返回上一頁」helper — 一律用瀏覽器歷史, 才能還原 scroll 位置
+function goBack(fallbackPage) {
+  // 如果有上一頁就走 history.back, 沒有就 fallback (e.g. 直接打 /policy/* 進來的)
+  if (window.history.length > 1 && history.state && history.state.page) {
+    window.history.back();
+  } else {
+    showPage(fallbackPage || 'home');
+  }
+}
+window.goBack = goBack;
 
 // Map clean URL pathname → page id
 function _routeFromPath() {
@@ -358,7 +386,8 @@ function _routeFromPath() {
 // ── Listen for browser back/forward buttons ───────────────────
 window.addEventListener('popstate', (e) => {
   if (e.state && e.state.page) {
-    showPage(e.state.page, e.state.brandId || null, true);
+    // 還原到該 state 之前儲存的 scrollY
+    showPage(e.state.page, e.state.brandId || null, true, e.state.scrollY);
   } else {
     // Use pathname/hash router (handles /policy/* and #anything)
     const r = _routeFromPath();
