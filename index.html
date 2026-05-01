@@ -1018,6 +1018,86 @@
       color: rgba(156,163,175,0.7);
       margin: 14px 0 0; letter-spacing: 0.04em;
     }
+    /* ── 圖片上傳 dropzone ── */
+    .hunt-image-zone {
+      border: 1px dashed rgba(168,85,247,0.30);
+      border-radius: 6px;
+      padding: 20px 16px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(7,4,12,0.4);
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .hunt-image-zone:hover,
+    .hunt-image-zone:focus,
+    .hunt-image-zone.dragover {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(168,85,247,0.05);
+      box-shadow: 0 0 0 3px rgba(168,85,247,0.10);
+    }
+    .hunt-image-zone-icon { font-size: 1.6rem; line-height: 1; margin-bottom: 6px; }
+    .hunt-image-zone-main {
+      font-size: 0.86rem; color: rgba(192,132,252,0.85); letter-spacing: 0.04em;
+    }
+    .hunt-image-zone-hint {
+      font-size: 0.7rem; color: var(--lightgrey); margin-top: 4px; letter-spacing: 0.1em;
+    }
+    .hunt-image-previews {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+      empty-cells: hide;
+    }
+    .hunt-image-previews:empty { display: none; }
+    .hunt-image-preview {
+      position: relative;
+      aspect-ratio: 1;
+      background: rgba(7,4,12,0.6);
+      border: 1px solid rgba(168,85,247,0.20);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .hunt-image-preview img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .hunt-image-preview-remove {
+      position: absolute; top: 4px; right: 4px;
+      width: 22px; height: 22px;
+      background: rgba(0,0,0,0.7); border: none; color: #fff;
+      border-radius: 50%; cursor: pointer;
+      font-size: 14px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0;
+    }
+    .hunt-image-preview-remove:hover { background: rgba(248,113,113,0.9); }
+    .hunt-image-preview.uploading::after {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(7,4,12,0.65);
+      backdrop-filter: blur(2px);
+    }
+    .hunt-image-preview.uploading::before {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      width: 22px; height: 22px;
+      margin: -11px 0 0 -11px;
+      border: 2px solid rgba(168,85,247,0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: huntSpin 0.7s linear infinite;
+      z-index: 2;
+    }
+    @keyframes huntSpin { to { transform: rotate(360deg); } }
+    .hunt-form-error {
+      margin: 8px 0 0;
+      padding: 10px 14px;
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 6px;
+      color: #f87171;
+      font-size: 0.82rem;
+      letter-spacing: 0.02em;
+    }
     /* Success state — submit 完按鈕變綠 5 秒 */
     .hunt-submit.success {
       background: linear-gradient(135deg, #4ade80, #22c55e);
@@ -2097,6 +2177,19 @@
           <textarea id="huntNotes" name="notes" rows="3" maxlength="800"
                     placeholder="Size M / 顏色不指定 / 月底前到手最好…"></textarea>
         </div>
+        <div class="hunt-field">
+          <label data-en="IMAGES (OPTIONAL · MAX 5 · 5MB EACH)" data-tw="圖片 (選填 · 最多 5 張 · 每張 ≤5MB)">圖片 (選填 · 最多 5 張 · 每張 ≤5MB)</label>
+          <div class="hunt-image-zone" id="huntImageZone" tabindex="0" role="button" aria-label="Upload images">
+            <input type="file" id="huntImageFiles" accept="image/jpeg,image/png,image/webp,image/gif,image/heic" multiple hidden>
+            <div class="hunt-image-zone-text">
+              <div class="hunt-image-zone-icon">📸</div>
+              <div class="hunt-image-zone-main" data-en="Click or drag images here" data-tw="點擊或拖曳圖片到這裡">點擊或拖曳圖片到這裡</div>
+              <div class="hunt-image-zone-hint">JPG / PNG / WebP / GIF · 最多 5 張</div>
+            </div>
+          </div>
+          <div class="hunt-image-previews" id="huntImagePreviews"></div>
+        </div>
+        <p class="hunt-form-error" id="huntFormError" style="display:none;"></p>
         <button type="submit" class="hunt-submit">
           <span class="hunt-pulse" aria-hidden="true"></span>
           <span class="hunt-submit-text" data-en="TRANSMIT SIGNAL" data-tw="發送訊號 · TRANSMIT SIGNAL">發送訊號 · TRANSMIT SIGNAL</span>
@@ -2105,34 +2198,178 @@
       </form>
     </div>
     <script>
-      /* ── 獵物雷達 表單提交 → /api/hunt → Telegram bot ── */
+      /* ════════════════════════════════════════════════════════════
+         獵物雷達 表單:URL 白名單 + 圖片上傳到 Supabase Storage
+                       + POST 到 /api/hunt → Telegram bot
+         ════════════════════════════════════════════════════════════ */
       (function () {
         const form = document.getElementById('huntForm');
         if (!form) return;
+
+        // ── 共用 Supabase 客戶端 (anon key,跟 supabase-client.js 同一把) ──
+        const HUNT_SB_URL  = 'https://epemuyojkprepknuzuzc.supabase.co';
+        const HUNT_SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZW11eW9qa3ByZXBrbnV6dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDMwMTAsImV4cCI6MjA5MTM3OTAxMH0.nTv7W1_ndzzAQGNgVzSKSkruvsnEgt6N7PbnRK31l0M';
+        const huntSb = (window.supabase && window.supabase.createClient)
+          ? window.supabase.createClient(HUNT_SB_URL, HUNT_SB_ANON)
+          : null;
+
+        // ── URL 白名單 (跟 api/hunt.js 一致;防垃圾連結) ──
+        const ALLOWED_REF_DOMAINS = [
+          'facebook.com','fb.com','fb.me','messenger.com',
+          'instagram.com',
+          'threads.net','threads.com',
+          'tiktok.com','vt.tiktok.com','douyin.com',
+          'xiaohongshu.com','xhslink.com',
+          'twitter.com','x.com',
+          'shopee.tw','shopee.vn','shopee.com.tw','shopee.com','shopee.sg','shopee.my','shopee.ph',
+          'ruten.com.tw','goods.ruten.com.tw',
+          'carousell.tw','carousell.com',
+          'pinkoi.com',
+          'lazada.vn','lazada.com.tw',
+          'tiki.vn',
+          'line.me','shop.line.me',
+        ];
+        function isAllowedRefUrl(url) {
+          if (!url || !String(url).trim()) return true;
+          try {
+            const u = new URL(String(url).trim());
+            if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+            const host = u.hostname.toLowerCase().replace(/^www\./, '');
+            return ALLOWED_REF_DOMAINS.some(d => host === d || host.endsWith('.' + d));
+          } catch { return false; }
+        }
+
+        // ── 圖片上傳 ──────────────────────────────────────────────
+        const MAX_IMAGES = 5;
+        const MAX_BYTES = 5 * 1024 * 1024;
+        const zone   = document.getElementById('huntImageZone');
+        const input  = document.getElementById('huntImageFiles');
+        const grid   = document.getElementById('huntImagePreviews');
+        const errBox = document.getElementById('huntFormError');
+        let uploaded = []; // [{ url, path, previewEl }]
+
+        function showError(msg) {
+          errBox.textContent = msg;
+          errBox.style.display = 'block';
+          clearTimeout(showError._t);
+          showError._t = setTimeout(() => { errBox.style.display = 'none'; }, 6000);
+        }
+        function hideError() { errBox.style.display = 'none'; }
+
+        zone.addEventListener('click', () => input.click());
+        zone.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+        });
+        ['dragover','dragenter'].forEach(ev => zone.addEventListener(ev, (e) => {
+          e.preventDefault(); zone.classList.add('dragover');
+        }));
+        ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, () => zone.classList.remove('dragover')));
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          handleFiles(e.dataTransfer && e.dataTransfer.files);
+        });
+        input.addEventListener('change', (e) => {
+          handleFiles(e.target.files);
+          e.target.value = '';
+        });
+
+        async function handleFiles(files) {
+          if (!files || !files.length) return;
+          if (!huntSb) { showError('Supabase 客戶端未就緒,稍後再試'); return; }
+          hideError();
+          const remaining = MAX_IMAGES - uploaded.length;
+          if (remaining <= 0) { showError(`最多只能上傳 ${MAX_IMAGES} 張圖片`); return; }
+
+          const list = Array.from(files).slice(0, remaining);
+          for (const file of list) {
+            if (!file.type.startsWith('image/')) { showError(`${file.name} 不是圖片`); continue; }
+            if (file.size > MAX_BYTES) { showError(`${file.name} 超過 5MB`); continue; }
+            await uploadOne(file);
+          }
+        }
+
+        async function uploadOne(file) {
+          // 立刻顯示縮圖 (loading 狀態)
+          const previewEl = document.createElement('div');
+          previewEl.className = 'hunt-image-preview uploading';
+          const img = document.createElement('img');
+          img.alt = '';
+          previewEl.appendChild(img);
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'hunt-image-preview-remove';
+          removeBtn.textContent = '×';
+          removeBtn.title = '移除';
+          previewEl.appendChild(removeBtn);
+          grid.appendChild(previewEl);
+
+          // 預覽縮圖 (用 FileReader 即時顯示,不用等上傳完)
+          const reader = new FileReader();
+          reader.onload = (e) => { img.src = e.target.result; };
+          reader.readAsDataURL(file);
+
+          // 上傳到 Supabase Storage
+          try {
+            const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const path = `hunt/${Date.now()}-${Math.random().toString(36).slice(2,10)}.${ext || 'jpg'}`;
+            const { error } = await huntSb.storage.from('hunt-uploads').upload(path, file, {
+              cacheControl: '3600', upsert: false, contentType: file.type,
+            });
+            if (error) throw error;
+            const { data: { publicUrl } } = huntSb.storage.from('hunt-uploads').getPublicUrl(path);
+            uploaded.push({ url: publicUrl, path, previewEl });
+            previewEl.classList.remove('uploading');
+            removeBtn.addEventListener('click', () => removeOne(path));
+          } catch (err) {
+            console.warn('[hunt upload]', err);
+            previewEl.remove();
+            showError('圖片上傳失敗: ' + (err.message || err));
+          }
+        }
+
+        async function removeOne(path) {
+          const idx = uploaded.findIndex(u => u.path === path);
+          if (idx < 0) return;
+          const u = uploaded[idx];
+          u.previewEl.remove();
+          uploaded.splice(idx, 1);
+          // 嘗試從 Storage 刪 (失敗也不阻擋,反正 RLS 限制 anon 可能不准刪)
+          try { await huntSb.storage.from('hunt-uploads').remove([path]); } catch (_) {}
+        }
+
+        // ── 表單提交 ──────────────────────────────────────────────
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
+          hideError();
+
           const fd = new FormData(form);
           const payload = Object.fromEntries(fd.entries());
+
+          // 客戶端 URL 白名單檢查 (即時友善 UI)
+          if (!isAllowedRefUrl(payload.ref_url)) {
+            showError('參考連結僅接受 Facebook / Instagram / Threads / 蝦皮 / TikTok / 小紅書 / 露天 / Pinkoi / Carousell / LINE Shopping / Lazada / Tiki 等社群和拍賣平台。');
+            document.getElementById('huntRefUrl')?.focus();
+            return;
+          }
+
           payload.submitted_at = new Date().toISOString();
           payload.user_agent   = navigator.userAgent.slice(0, 200);
           payload.referrer     = (document.referrer || '').slice(0, 200);
+          payload.image_urls   = uploaded.map(u => u.url);
 
           const btn  = form.querySelector('.hunt-submit');
           const text = btn.querySelector('.hunt-submit-text');
           const original = text.textContent;
-
-          // Loading state
           btn.disabled = true;
           text.textContent = '訊號傳送中…';
 
-          // 不論 API 成功與否,先 backup 到 localStorage(防資料遺失)
+          // 先 backup localStorage 防 API 掉線
           try {
             const queue = JSON.parse(localStorage.getItem('huntQueue') || '[]');
             queue.push(payload);
             localStorage.setItem('huntQueue', JSON.stringify(queue.slice(-50)));
           } catch (_) {}
 
-          // POST 到 Vercel serverless function → Telegram bot
           let apiOk = false;
           try {
             const res = await fetch('/api/hunt', {
@@ -2144,17 +2381,20 @@
             if (!apiOk) {
               const errBody = await res.json().catch(() => ({}));
               console.warn('[hunt] API error:', res.status, errBody);
+              if (errBody && errBody.message) showError(errBody.message);
             }
           } catch (err) {
             console.warn('[hunt] API submit failed:', err);
           }
 
-          // UI feedback — 即使 API 失敗也顯示成功 (資料已在 localStorage)
           btn.classList.add('success');
           text.textContent = apiOk
             ? '✓ 訊號已送出 — 24 小時內聯繫你'
             : '✓ 訊號已暫存 — 我們會盡快聯繫你';
           form.reset();
+          // 清掉已上傳的圖
+          uploaded.forEach(u => u.previewEl.remove());
+          uploaded = [];
           setTimeout(() => {
             btn.classList.remove('success');
             btn.disabled = false;

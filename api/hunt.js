@@ -15,6 +15,39 @@
 const TG_TOKEN = "8573719490:AAE0VQM7LndIvJKXkTuqGn0JEQPV_wzGoLg";
 const TG_CHAT  = "7083254563";
 
+// ── Reference URL 白名單 (防垃圾連結) ───────────────────────────────────
+// 只接受社群平台、台越東南亞常見的二手/拍賣站、IG/FB/蝦皮等。
+// 如果想新增就加進這個 array。空字串/無 URL 一律放行。
+const ALLOWED_REF_DOMAINS = [
+  // Social
+  "facebook.com", "fb.com", "fb.me", "messenger.com",
+  "instagram.com",
+  "threads.net", "threads.com",
+  "tiktok.com", "vt.tiktok.com", "douyin.com",
+  "xiaohongshu.com", "xhslink.com",
+  "twitter.com", "x.com",
+  // Marketplace
+  "shopee.tw", "shopee.vn", "shopee.com.tw", "shopee.com", "shopee.sg", "shopee.my", "shopee.ph",
+  "ruten.com.tw", "goods.ruten.com.tw",
+  "carousell.tw", "carousell.com",
+  "pinkoi.com",
+  "lazada.vn", "lazada.com.tw",
+  "tiki.vn",
+  "line.me", "shop.line.me",
+];
+
+function _isAllowedRefUrl(url) {
+  if (!url || !String(url).trim()) return true;             // 空值放行
+  try {
+    const u = new URL(String(url).trim());
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    const host = u.hostname.toLowerCase().replace(/^www\./, "");
+    return ALLOWED_REF_DOMAINS.some((d) => host === d || host.endsWith("." + d));
+  } catch {
+    return false;                                           // 連 URL 都 parse 不出來
+  }
+}
+
 // PLAN B (Supabase) — 之後啟用時把下面三行解開,加上 hunt_requests table migration 即可
 // import { createClient } from '@supabase/supabase-js';
 // const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -32,6 +65,7 @@ export default async function handler(req, res) {
       price_range,   // 預期價格範圍
       contact,       // 聯絡方式  (必填)
       notes,         // 備註
+      image_urls,    // 圖片 URL array (上傳到 Supabase Storage 後的公開 URL)
       submitted_at,  // 前端 ISO 時間戳
       user_agent,    // 用戶 UA
       referrer,      // 來源頁面
@@ -46,6 +80,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Field too long" });
     }
 
+    // ── ref_url 白名單檢查 (前端應該已經擋,後端再驗一次防繞過) ──
+    if (!_isAllowedRefUrl(ref_url)) {
+      return res.status(400).json({
+        error: "Reference URL not allowed",
+        message: "參考連結僅接受 Facebook / Instagram / Shopee / Threads / TikTok / 小紅書 / 露天 / 蝦皮 / Pinkoi / Carousell / LINE Shopping / Lazada / Tiki 等社群和拍賣平台。",
+      });
+    }
+
+    // ── 圖片 URL 列表清理 (最多 5 張,只接受 Supabase Storage host) ──
+    const safeImages = Array.isArray(image_urls)
+      ? image_urls
+          .filter((u) => typeof u === "string")
+          .filter((u) => /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\//i.test(u))
+          .slice(0, 5)
+      : [];
+
     // ── 組 Telegram 訊息 ────────────────────────────────────
     const ts = (submitted_at ? new Date(submitted_at) : new Date())
       .toLocaleString("zh-TW", { timeZone: "Asia/Taipei" });
@@ -58,6 +108,7 @@ export default async function handler(req, res) {
     if (price_range) lines.push("\ud83d\udcb0 \u9810\u671f\u50f9\u683c: " + price_range); // 💰 預期價格
     lines.push("\ud83d\udcde \u806f\u7d61: " + contact);                                // 📞 聯絡
     if (notes) lines.push("", "\ud83d\udcdd \u5099\u8a3b:", notes);                     // 📝 備註
+    if (safeImages.length > 0) lines.push("", "\ud83d\uddbc \u5716\u7247: " + safeImages.length + " \u5f35"); // 🖼 圖片
     lines.push("", "\u23f0 \u9001\u51fa\u6642\u9593: " + ts);                          // ⏰ 送出時間
     if (referrer)   lines.push("\ud83c\udf10 \u4f86\u6e90: " + String(referrer).slice(0, 120));  // 🌐 來源
     const msg = lines.join("\n");
@@ -72,15 +123,31 @@ export default async function handler(req, res) {
       });
       const tgData = await tgRes.json();
       tgOk = !!tgData.ok;
-      if (!tgOk) console.error("[hunt] Telegram error:", tgData);
+      if (!tgOk) console.error("[hunt] Telegram sendMessage error:", tgData);
     } catch (e) {
-      console.error("[hunt] Telegram fetch failed:", e);
+      console.error("[hunt] Telegram sendMessage failed:", e);
+    }
+
+    // ── 把圖片每張用 sendPhoto 推到 Telegram (URL 模式,Telegram 直接抓 Supabase 公開 URL) ──
+    for (const photoUrl of safeImages) {
+      try {
+        const photoRes = await fetch("https://api.telegram.org/bot" + TG_TOKEN + "/sendPhoto", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: TG_CHAT, photo: photoUrl }),
+        });
+        const photoData = await photoRes.json();
+        if (!photoData.ok) console.error("[hunt] Telegram sendPhoto error:", photoData);
+      } catch (e) {
+        console.error("[hunt] Telegram sendPhoto failed:", e);
+      }
     }
 
     // ── PLAN B (Supabase) — 之後想啟用的時候解開 ──────────────
     // const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     // const { error: dbErr } = await sb.from("hunt_requests").insert({
     //   target, ref_url, price_range, contact, notes,
+    //   image_urls: safeImages,
     //   user_agent, referrer,
     //   status: "pending",
     // });
