@@ -6,10 +6,12 @@
 -- ============================================================================
 
 -- 1) 主表
+-- 注意: products.id 與 brands.id 在這個 schema 是 text(例如 'ceci'),不是 uuid。
+-- 因此 product_id / brand_id 用 text 才能對得上 FK。
 create table if not exists public.featured_products (
   id           uuid primary key default gen_random_uuid(),
-  product_id   uuid not null references public.products(id) on delete cascade,
-  brand_id     uuid not null references public.brands(id)   on delete cascade,
+  product_id   text not null references public.products(id) on delete cascade,
+  brand_id     text not null references public.brands(id)   on delete cascade,
   is_active    boolean not null default true,
   sort_order   int     not null default 0,
   created_at   timestamptz not null default now(),

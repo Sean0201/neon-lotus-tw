@@ -73,6 +73,9 @@ async function loadSupabaseData() {
         window.BANNERS_DATA  = data.banners  || [];
         window.FEATURED_DATA = data.featured || [];
         window.SITE_SETTINGS = data.settings || {};
+        // featured_products 是小表 (通常 <20 筆) 而且 admin 改完要立刻反映,
+        // 所以即使 brands/products 走 5 分鐘快取,featured 還是每次拉新版。
+        _refreshFeaturedFromServer();
         return;
       }
     }
@@ -298,6 +301,46 @@ async function loadBrandDetail(brandId) {
   const ms = Math.round(performance.now() - t0);
   console.log(`[supabase-client] Brand "${brandId}" detail loaded in ${ms}ms — ` +
     `${galleryAll.length} gallery images, ${sizesAll.length} sizes`);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Featured products — always-fresh refresh
+   (brands/products 走 5 分鐘 cache,但 featured 永遠拉新版)
+   ═══════════════════════════════════════════════════════════════ */
+async function _refreshFeaturedFromServer() {
+  try {
+    const rows = await fetchAll('featured_products', {
+      select: 'id, product_id, brand_id, is_active, sort_order',
+      filter: q => q.eq('is_active', true),
+      order: 'sort_order',
+    });
+    const next = (rows || []).map(f => ({
+      id:         f.id,
+      product_id: f.product_id,
+      brand_id:   f.brand_id,
+      is_active:  f.is_active,
+      sort_order: f.sort_order || 0,
+    }));
+    const prevJson = JSON.stringify(window.FEATURED_DATA || []);
+    window.FEATURED_DATA = next;
+
+    // 同步把 cache payload 裡的 featured 也更新,
+    // 這樣下次重整(就算 cache 還沒過期)也能看到最新 featured。
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (cached) {
+        cached.featured = next;
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cached));
+      }
+    } catch (_) {}
+
+    // 如果 main.js 已經 render 過了,FEATURED_DATA 變了就重 render 一次
+    if (prevJson !== JSON.stringify(next) && typeof window.renderFeatured === 'function') {
+      window.renderFeatured();
+    }
+  } catch (err) {
+    console.warn('[supabase-client] featured refresh failed:', err?.message || err);
+  }
 }
 
 // Expose loadBrandDetail globally for main.js
