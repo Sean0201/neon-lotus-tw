@@ -156,6 +156,12 @@ async function loadSupabaseData() {
     sold_out:           p.sold_out || false,
     needs_review:       p.needs_review || false,
     original_cover_url: p.original_cover_url || p.cover_image || '',
+    // 多語描述 (migration 20260501);schema 還沒更新時對應 column 會是 undefined
+    description: {
+      zh: p.description_zh || '',
+      en: p.description_en || '',
+      th: p.description_th || '',
+    },
   }));
 
   // ── Transform banners ───────────────────────────────────────

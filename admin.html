@@ -1578,6 +1578,28 @@
                         </div>
                     </div>
 
+                    <!-- 多語描述 (中文 / 英文 / 泰文) -->
+                    <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+                    <h3 style="margin-bottom: 1rem;">商品描述(中英泰)</h3>
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label for="productDescZh">描述(中文)</label>
+                            <textarea id="productDescZh" placeholder="商品介紹、材質、設計理念…"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label for="productDescEn">Description (English)</label>
+                            <textarea id="productDescEn" placeholder="Product description, materials, design notes…"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label for="productDescTh">คำอธิบาย (Thai)</label>
+                            <textarea id="productDescTh" placeholder="คำอธิบายสินค้า…"></textarea>
+                        </div>
+                    </div>
+
                     <!-- 尺寸 -->
                     <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
                     <h3 style="margin-bottom: 1rem;">尺寸</h3>
@@ -2414,9 +2436,13 @@
             document.getElementById('productModalTitle').textContent = '新增商品';
             document.getElementById('productForm').reset();
             document.getElementById('productId').disabled = false;
-            // reset cover preview + 自動產生 ID hint
+            // reset cover preview
             const cp = document.getElementById('productCoverPreview');
             if (cp) cp.style.display = 'none';
+            // reset multilingual descriptions (form.reset() 對 textarea 已生效,但保險)
+            ['productDescZh','productDescEn','productDescTh'].forEach(id => {
+                const el = document.getElementById(id); if (el) el.value = '';
+            });
             clearProductSizes();
             clearProductGallery();
             document.getElementById('productModal').classList.add('active');
@@ -2490,6 +2516,10 @@
             document.getElementById('productSoldOut').checked = product.sold_out || false;
             document.getElementById('productNeedsReview').checked = product.needs_review || false;
             document.getElementById('productSortOrder').value = product.sort_order || 0;
+            // 多語描述
+            document.getElementById('productDescZh').value = product.description_zh || '';
+            document.getElementById('productDescEn').value = product.description_en || '';
+            document.getElementById('productDescTh').value = product.description_th || '';
 
             clearProductSizes();
             const { data: sizes } = await sb.from('product_sizes').select('*').eq('product_id', id).order('sort_order', { ascending: true });
@@ -2576,6 +2606,10 @@
                 sold_out: document.getElementById('productSoldOut').checked,
                 needs_review: document.getElementById('productNeedsReview').checked,
                 sort_order: parseInt(document.getElementById('productSortOrder').value) || 0,
+                // 多語描述 (Migration 20260501 後新增)
+                description_zh: document.getElementById('productDescZh').value || null,
+                description_en: document.getElementById('productDescEn').value || null,
+                description_th: document.getElementById('productDescTh').value || null,
                 updated_at: new Date().toISOString()
             };
             // 自動產生 ID:留空時用 brand-randomhash 格式 (新增模式)
@@ -2585,9 +2619,23 @@
                 document.getElementById('productId').value = `${brand}-${hash}`;
             }
 
+            // 把可能還沒在 schema 裡的多語描述欄位拆出來,失敗時可 fallback 拿掉重試
+            const _retryWithoutDesc = async (op) => {
+                const stripped = { ...data };
+                delete stripped.description_zh;
+                delete stripped.description_en;
+                delete stripped.description_th;
+                return op(stripped);
+            };
+
             try {
                 if (editingProductId) {
-                    const { error } = await sb.from('products').update(data).eq('id', editingProductId);
+                    let { error } = await sb.from('products').update(data).eq('id', editingProductId);
+                    // 如果 description_* 欄位還沒 migrate,移除這 3 欄重試
+                    if (error && error.code === 'PGRST204' && /description_/.test(error.message)) {
+                        ({ error } = await _retryWithoutDesc(d => sb.from('products').update(d).eq('id', editingProductId)));
+                        if (!error) showToast('已存(描述欄位需先在 Supabase 跑 migration)', 'success');
+                    }
                     if (error) throw error;
 
                     await sb.from('product_sizes').delete().eq('product_id', editingProductId);
@@ -2621,7 +2669,11 @@
                     data.id = document.getElementById('productId').value;
                     data.created_at = new Date().toISOString();
 
-                    const { error } = await sb.from('products').insert([data]);
+                    let { error } = await sb.from('products').insert([data]);
+                    if (error && error.code === 'PGRST204' && /description_/.test(error.message)) {
+                        ({ error } = await _retryWithoutDesc(d => sb.from('products').insert([d])));
+                        if (!error) showToast('已存(描述欄位需先在 Supabase 跑 migration)', 'success');
+                    }
                     if (error) throw error;
 
                     const sizes = [];
