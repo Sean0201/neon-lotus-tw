@@ -704,10 +704,9 @@
     footer { flex-wrap: wrap; gap: 16px; }
     .footer-policy-links {
       display: flex; gap: 18px; flex-wrap: wrap; justify-content: center;
-      width: 100%; padding: 12px 0; order: 2;
-      border-top: 1px solid rgba(168,85,247,0.10);
-      border-bottom: 1px solid rgba(168,85,247,0.10);
-      margin: 8px 0;
+      /* 桌面 (>768px):logo / links / copyright 三段同一列。
+         flex:1 + min-width:0 讓中間連結區自動撐滿剩餘空間並置中。 */
+      flex: 1; min-width: 0;
     }
     .footer-policy-link {
       font-size: 0.74rem; letter-spacing: 0.08em;
