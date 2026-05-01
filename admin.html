@@ -330,7 +330,8 @@
             background-color: var(--bg-secondary);
             border: 1px solid var(--border);
             border-radius: 8px;
-            overflow: hidden;
+            overflow-x: auto;          /* 表格比容器寬時允許水平捲動,避免 Actions 欄被切掉 */
+            overflow-y: hidden;        /* 垂直維持隱藏以保留圓角外觀 */
             box-shadow: var(--shadow);
         }
 
