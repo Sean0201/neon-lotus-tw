@@ -874,6 +874,163 @@
       .guide-card { padding: 22px 18px; }
     }
 
+    /* ======== 獵物雷達 / TARGET RADAR (代尋委託表單) ======== */
+    .hunt-section {
+      padding: 100px 0 60px;
+      border-top: 1px solid rgba(168,85,247,0.10);
+      background:
+        radial-gradient(circle at 50% 0%, rgba(168,85,247,0.06), transparent 55%),
+        radial-gradient(circle at 80% 90%, rgba(244,114,182,0.04), transparent 50%);
+      position: relative;
+      overflow: hidden;
+    }
+    .hunt-section::before {
+      /* 微弱的 scanline 紋理增強工業感 */
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(168,85,247,0) 0,
+        rgba(168,85,247,0) 3px,
+        rgba(168,85,247,0.015) 3px,
+        rgba(168,85,247,0.015) 4px
+      );
+    }
+    .hunt-inner {
+      max-width: 720px; margin: 0 auto; padding: 0 24px;
+      text-align: center; position: relative; z-index: 1;
+    }
+    .hunt-title {
+      font-family: var(--font-headline);
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      margin: 12px 0 0;
+      background: var(--gradient-main);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: var(--neon-purple);
+    }
+    .hunt-lede {
+      color: #f9d4ff; font-size: 1.05rem; letter-spacing: 0.04em;
+      margin: 0 0 8px;
+    }
+    .hunt-desc {
+      color: var(--lightgrey); font-size: 0.92rem; line-height: 1.7;
+      margin: 0 auto 18px; max-width: 560px;
+    }
+    .hunt-disclaimer {
+      display: inline-block;
+      font-size: 0.74rem; line-height: 1.5;
+      color: rgba(192,132,252,0.75);
+      border: 1px dashed rgba(192,132,252,0.25);
+      padding: 8px 16px; border-radius: 4px;
+      margin-bottom: 36px; letter-spacing: 0.04em;
+      max-width: 560px;
+    }
+    .hunt-form {
+      text-align: left;
+      background: rgba(22,20,30,0.65);
+      border: 1px solid rgba(168,85,247,0.20);
+      border-radius: 12px;
+      padding: 32px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow:
+        0 8px 40px rgba(168,85,247,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .hunt-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .hunt-field { margin-bottom: 18px; }
+    .hunt-field label {
+      display: block;
+      font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: rgba(192,132,252,0.85);
+      margin-bottom: 8px; font-weight: 600;
+    }
+    .hunt-field input,
+    .hunt-field textarea {
+      width: 100%; box-sizing: border-box;
+      background: rgba(7,4,12,0.6);
+      border: 1px solid rgba(168,85,247,0.22);
+      border-radius: 6px;
+      padding: 12px 14px;
+      color: #f0e6ff;
+      font-size: 0.92rem; font-family: inherit;
+      letter-spacing: 0.02em;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .hunt-field input::placeholder,
+    .hunt-field textarea::placeholder {
+      color: rgba(156,163,175,0.5); font-style: italic;
+    }
+    .hunt-field input:focus,
+    .hunt-field textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(7,4,12,0.85);
+      box-shadow: 0 0 0 3px rgba(168,85,247,0.12), var(--neon-purple);
+    }
+    .hunt-field textarea { resize: vertical; min-height: 80px; }
+    .hunt-submit {
+      display: flex; align-items: center; justify-content: center; gap: 14px;
+      width: 100%; margin-top: 8px;
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #a855f7, #c084fc 60%, #f472b6);
+      border: none; border-radius: 8px;
+      color: white; font-family: inherit;
+      font-size: 0.86rem; font-weight: 700;
+      letter-spacing: 0.20em; text-transform: uppercase;
+      cursor: pointer; position: relative;
+      transition: transform 0.2s, box-shadow 0.3s;
+      box-shadow: 0 4px 24px rgba(168,85,247,0.30), var(--neon-purple);
+    }
+    .hunt-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 40px rgba(168,85,247,0.50), var(--neon-purple);
+    }
+    .hunt-submit:active { transform: translateY(0); }
+    .hunt-submit:disabled {
+      cursor: not-allowed; transform: none;
+      filter: saturate(0.6);
+    }
+    .hunt-pulse {
+      position: relative;
+      width: 8px; height: 8px;
+      background: #f9d4ff; border-radius: 50%;
+      box-shadow: 0 0 8px rgba(249,212,255,0.9);
+      flex-shrink: 0;
+    }
+    .hunt-pulse::before {
+      content: ''; position: absolute; inset: 0;
+      border-radius: 50%;
+      animation: huntPulse 1.6s infinite ease-out;
+    }
+    @keyframes huntPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(249,212,255,0.7); }
+      70%  { box-shadow: 0 0 0 12px rgba(249,212,255,0); }
+      100% { box-shadow: 0 0 0 0 rgba(249,212,255,0); }
+    }
+    .hunt-form-hint {
+      text-align: center; font-size: 0.74rem;
+      color: rgba(156,163,175,0.7);
+      margin: 14px 0 0; letter-spacing: 0.04em;
+    }
+    /* Success state — submit 完按鈕變綠 5 秒 */
+    .hunt-submit.success {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      box-shadow: 0 4px 24px rgba(74,222,128,0.30), 0 0 20px rgba(74,222,128,0.4);
+    }
+    .hunt-submit.success .hunt-pulse { background: #ffffff; box-shadow: 0 0 8px rgba(255,255,255,0.9); }
+
+    @media (max-width: 768px) {
+      .hunt-section { padding: 70px 0 40px; }
+      .hunt-form { padding: 22px 18px; }
+      .hunt-row { grid-template-columns: 1fr; gap: 0; }
+    }
+
     /* ======== CONTACT CTA ======== */
     .contact-section { padding:90px 0;text-align:center; }
     .contact-inner { max-width:580px;margin:0 auto;padding:0 24px; }
@@ -1896,6 +2053,95 @@
       </div>
       <div class="brands-grid" id="brands-grid"></div>
     </div>
+  </section>
+
+  <!-- ============ 獵物雷達 / TARGET RADAR (代尋委託表單) ============ -->
+  <section class="hunt-section">
+    <div class="hunt-inner fade-in">
+      <p class="section-eyebrow" data-en="TARGET RADAR · SUBMIT A HUNT" data-tw="獵物雷達 · 委託代尋">獵物雷達 · 委託代尋</p>
+      <h2 class="hunt-title" data-en="Target Radar" data-tw="獵物雷達">獵物雷達</h2>
+      <div class="section-line" style="margin-bottom: 26px;"></div>
+      <p class="hunt-lede" data-en="Didn't see your prey on the shelf? Tell us." data-tw="沒有在架上看到你的獵物?告訴我們。">沒有在架上看到你的獵物?告訴我們。</p>
+      <p class="hunt-desc" data-en="The NEON LOTUS buyer team will infiltrate the alleys of Saigon and Hanoi to unlock your hidden code." data-tw="NEON LOTUS 的買手團隊將潛入胡志明與河內的巷弄,為你解鎖隱藏代碼。">NEON LOTUS 的買手團隊將潛入胡志明與河內的巷弄,為你解鎖隱藏代碼。</p>
+      <p class="hunt-disclaimer" data-en="Note: We only accept commissions for designer labels and streetwear. We reserve the right to decline mediocre design." data-tw="註:我們僅接受設計師品牌與街頭服飾之委託。我們保留拒絕平庸設計的權利。">註:我們僅接受設計師品牌與街頭服飾之委託。我們保留拒絕平庸設計的權利。</p>
+
+      <form id="huntForm" class="hunt-form" autocomplete="off">
+        <div class="hunt-field">
+          <label for="huntTarget" data-en="ITEM NAME / BRAND" data-tw="獵物名稱 / 品牌">獵物名稱 / 品牌</label>
+          <input type="text" id="huntTarget" name="target" required maxlength="200"
+                 placeholder="e.g. Levents archive jacket / dirtycoins SS24 hoodie">
+        </div>
+        <div class="hunt-field">
+          <label for="huntRefUrl" data-en="REFERENCE LINK (FACEBOOK / IG / WEBSITE)" data-tw="參考連結 (Facebook 社團 / IG / 品牌官網)">參考連結 (Facebook 社團 / IG / 品牌官網)</label>
+          <input type="url" id="huntRefUrl" name="ref_url" maxlength="500"
+                 placeholder="https://...">
+        </div>
+        <div class="hunt-row">
+          <div class="hunt-field">
+            <label for="huntPriceRange" data-en="EXPECTED PRICE RANGE (NTD)" data-tw="預期價格範圍 (NTD)">預期價格範圍 (NTD)</label>
+            <input type="text" id="huntPriceRange" name="price_range" maxlength="60"
+                   placeholder="e.g. 1500-3000">
+          </div>
+          <div class="hunt-field">
+            <label for="huntContact" data-en="YOUR CONTACT (LINE / IG / EMAIL)" data-tw="你的聯絡方式 (LINE / IG / Email)">你的聯絡方式 (LINE / IG / Email)</label>
+            <input type="text" id="huntContact" name="contact" required maxlength="120"
+                   placeholder="@yourid 或 your@email.com">
+          </div>
+        </div>
+        <div class="hunt-field">
+          <label for="huntNotes" data-en="NOTES (SIZE / COLOR / URGENCY…)" data-tw="備註 (尺寸/顏色/急迫程度…)">備註 (尺寸/顏色/急迫程度…)</label>
+          <textarea id="huntNotes" name="notes" rows="3" maxlength="800"
+                    placeholder="Size M / 顏色不指定 / 月底前到手最好…"></textarea>
+        </div>
+        <button type="submit" class="hunt-submit">
+          <span class="hunt-pulse" aria-hidden="true"></span>
+          <span class="hunt-submit-text" data-en="TRANSMIT SIGNAL" data-tw="發送訊號 · TRANSMIT SIGNAL">發送訊號 · TRANSMIT SIGNAL</span>
+        </button>
+        <p class="hunt-form-hint" data-en="We typically respond within 24 hours via the contact you provided." data-tw="收到請求後,我們會在 24 小時內透過你提供的聯絡方式回覆。">收到請求後,我們會在 24 小時內透過你提供的聯絡方式回覆。</p>
+      </form>
+    </div>
+    <script>
+      /* ── 獵物雷達 表單提交 (暫存 localStorage,等待後端整合) ── */
+      (function () {
+        const form = document.getElementById('huntForm');
+        if (!form) return;
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const fd = new FormData(form);
+          const payload = Object.fromEntries(fd.entries());
+          payload.submitted_at = new Date().toISOString();
+          payload.user_agent   = navigator.userAgent.slice(0, 200);
+          payload.referrer     = (document.referrer || '').slice(0, 200);
+
+          // Console + localStorage queue (整合後端前的暫存)
+          console.log('[hunt request]', payload);
+          try {
+            const queue = JSON.parse(localStorage.getItem('huntQueue') || '[]');
+            queue.push(payload);
+            localStorage.setItem('huntQueue', JSON.stringify(queue.slice(-50)));
+          } catch (_) { /* localStorage full / disabled */ }
+
+          // TODO(integration): 把 payload POST 到後端
+          // 1) Supabase: await sb.from('hunt_requests').insert([payload])
+          // 2) Vercel API: await fetch('/api/hunt', { method:'POST', body: JSON.stringify(payload) })
+          // 3) Discord/LINE/Slack webhook: await fetch(webhookURL, ...)
+
+          // UI feedback
+          const btn = form.querySelector('.hunt-submit');
+          const text = btn.querySelector('.hunt-submit-text');
+          const original = text.textContent;
+          btn.classList.add('success');
+          btn.disabled = true;
+          text.textContent = '✓ 訊號已送出 — 24 小時內聯繫你';
+          form.reset();
+          setTimeout(() => {
+            btn.classList.remove('success');
+            btn.disabled = false;
+            text.textContent = original;
+          }, 5000);
+        });
+      })();
+    </script>
   </section>
 
   <div class="about-strip">
