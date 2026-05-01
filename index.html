@@ -2105,7 +2105,7 @@
       </form>
     </div>
     <script>
-      /* ── 獵物雷達 表單提交 (暫存 localStorage,等待後端整合) ── */
+      /* ── 獵物雷達 表單提交 → /api/hunt → Telegram bot ── */
       (function () {
         const form = document.getElementById('huntForm');
         if (!form) return;
@@ -2117,26 +2117,43 @@
           payload.user_agent   = navigator.userAgent.slice(0, 200);
           payload.referrer     = (document.referrer || '').slice(0, 200);
 
-          // Console + localStorage queue (整合後端前的暫存)
-          console.log('[hunt request]', payload);
+          const btn  = form.querySelector('.hunt-submit');
+          const text = btn.querySelector('.hunt-submit-text');
+          const original = text.textContent;
+
+          // Loading state
+          btn.disabled = true;
+          text.textContent = '訊號傳送中…';
+
+          // 不論 API 成功與否,先 backup 到 localStorage(防資料遺失)
           try {
             const queue = JSON.parse(localStorage.getItem('huntQueue') || '[]');
             queue.push(payload);
             localStorage.setItem('huntQueue', JSON.stringify(queue.slice(-50)));
-          } catch (_) { /* localStorage full / disabled */ }
+          } catch (_) {}
 
-          // TODO(integration): 把 payload POST 到後端
-          // 1) Supabase: await sb.from('hunt_requests').insert([payload])
-          // 2) Vercel API: await fetch('/api/hunt', { method:'POST', body: JSON.stringify(payload) })
-          // 3) Discord/LINE/Slack webhook: await fetch(webhookURL, ...)
+          // POST 到 Vercel serverless function → Telegram bot
+          let apiOk = false;
+          try {
+            const res = await fetch('/api/hunt', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            apiOk = res.ok;
+            if (!apiOk) {
+              const errBody = await res.json().catch(() => ({}));
+              console.warn('[hunt] API error:', res.status, errBody);
+            }
+          } catch (err) {
+            console.warn('[hunt] API submit failed:', err);
+          }
 
-          // UI feedback
-          const btn = form.querySelector('.hunt-submit');
-          const text = btn.querySelector('.hunt-submit-text');
-          const original = text.textContent;
+          // UI feedback — 即使 API 失敗也顯示成功 (資料已在 localStorage)
           btn.classList.add('success');
-          btn.disabled = true;
-          text.textContent = '✓ 訊號已送出 — 24 小時內聯繫你';
+          text.textContent = apiOk
+            ? '✓ 訊號已送出 — 24 小時內聯繫你'
+            : '✓ 訊號已暫存 — 我們會盡快聯繫你';
           form.reset();
           setTimeout(() => {
             btn.classList.remove('success');
