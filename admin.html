@@ -1475,12 +1475,7 @@
                             <textarea id="brandDescEn"></textarea>
                         </div>
                     </div>
-                    <div class="form-row full">
-                        <div class="form-group full">
-                            <label for="brandDescTh">描述(泰文)</label>
-                            <textarea id="brandDescTh"></textarea>
-                        </div>
-                    </div>
+                    <!-- 泰文描述留給另一個站處理,這裡的 admin 不顯示 -->
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="closeBrandModal()">取消</button>
@@ -1578,9 +1573,9 @@
                         </div>
                     </div>
 
-                    <!-- 多語描述 (中文 / 英文 / 泰文) -->
+                    <!-- 多語描述 (中文 / 英文) — 泰文留給另一個站處理 -->
                     <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
-                    <h3 style="margin-bottom: 1rem;">商品描述(中英泰)</h3>
+                    <h3 style="margin-bottom: 1rem;">商品描述(中文 / 英文)</h3>
                     <div class="form-row full">
                         <div class="form-group full">
                             <label for="productDescZh">描述(中文)</label>
@@ -1591,12 +1586,6 @@
                         <div class="form-group full">
                             <label for="productDescEn">Description (English)</label>
                             <textarea id="productDescEn" placeholder="Product description, materials, design notes…"></textarea>
-                        </div>
-                    </div>
-                    <div class="form-row full">
-                        <div class="form-group full">
-                            <label for="productDescTh">คำอธิบาย (Thai)</label>
-                            <textarea id="productDescTh" placeholder="คำอธิบายสินค้า…"></textarea>
                         </div>
                     </div>
 
@@ -2087,7 +2076,6 @@
             document.getElementById('brandWebsite').value = brand.website || '';
             document.getElementById('brandSortOrder').value = brand.sort_order || 0;
             document.getElementById('brandDescEn').value = brand.description_en || '';
-            document.getElementById('brandDescTh').value = brand.description_th || '';
             document.getElementById('brandDescZh').value = brand.description_zh || '';
             // 圖片
             document.getElementById('brandCoverUrl').value = brand.cover_url || '';
@@ -2189,8 +2177,8 @@
                 cover_url: document.getElementById('brandCoverUrl').value || null,
                 logo_url:  document.getElementById('brandLogoUrl').value  || null,
                 description_en: document.getElementById('brandDescEn').value,
-                description_th: document.getElementById('brandDescTh').value,
                 description_zh: document.getElementById('brandDescZh').value,
+                // description_th 不從這個 admin 寫入,保留 DB 既有值給其他語系站使用
                 updated_at: new Date().toISOString()
             };
 
@@ -2440,7 +2428,7 @@
             const cp = document.getElementById('productCoverPreview');
             if (cp) cp.style.display = 'none';
             // reset multilingual descriptions (form.reset() 對 textarea 已生效,但保險)
-            ['productDescZh','productDescEn','productDescTh'].forEach(id => {
+            ['productDescZh','productDescEn'].forEach(id => {
                 const el = document.getElementById(id); if (el) el.value = '';
             });
             clearProductSizes();
@@ -2516,10 +2504,9 @@
             document.getElementById('productSoldOut').checked = product.sold_out || false;
             document.getElementById('productNeedsReview').checked = product.needs_review || false;
             document.getElementById('productSortOrder').value = product.sort_order || 0;
-            // 多語描述
+            // 多語描述 (中文 + 英文)
             document.getElementById('productDescZh').value = product.description_zh || '';
             document.getElementById('productDescEn').value = product.description_en || '';
-            document.getElementById('productDescTh').value = product.description_th || '';
 
             clearProductSizes();
             const { data: sizes } = await sb.from('product_sizes').select('*').eq('product_id', id).order('sort_order', { ascending: true });
@@ -2606,10 +2593,9 @@
                 sold_out: document.getElementById('productSoldOut').checked,
                 needs_review: document.getElementById('productNeedsReview').checked,
                 sort_order: parseInt(document.getElementById('productSortOrder').value) || 0,
-                // 多語描述 (Migration 20260501 後新增)
+                // 多語描述 (Migration 20260501 後新增) — 此站只寫中文 + 英文
                 description_zh: document.getElementById('productDescZh').value || null,
                 description_en: document.getElementById('productDescEn').value || null,
-                description_th: document.getElementById('productDescTh').value || null,
                 updated_at: new Date().toISOString()
             };
             // 自動產生 ID:留空時用 brand-randomhash 格式 (新增模式)
@@ -2624,7 +2610,6 @@
                 const stripped = { ...data };
                 delete stripped.description_zh;
                 delete stripped.description_en;
-                delete stripped.description_th;
                 return op(stripped);
             };
 

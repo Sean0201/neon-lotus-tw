@@ -1,17 +1,14 @@
 -- ============================================================================
--- NEON LOTUS TW — 商品多語描述欄位
+-- NEON LOTUS TW — 商品多語描述欄位 (中文 + 英文)
 -- File:    migrations/20260501_product_descriptions.sql
 -- Date:    2026-05-01
--- Purpose: 在 products 表新增中英泰三語描述欄位,跟 brands 表一致。
---          品牌(brands)早就有 description_en/th/zh 三欄,
---          這次補上 products 同樣三欄。
+-- Purpose: 在 products 表新增中、英兩個語系的描述欄位。
+--          此站 (TW) 不需要泰文;泰文版屬於另一個站,後續再單獨處理。
 -- ============================================================================
 
 alter table public.products
   add column if not exists description_zh text,
-  add column if not exists description_en text,
-  add column if not exists description_th text;
+  add column if not exists description_en text;
 
--- 為了讓 admin 看得到欄位、前端能讀到內容,RLS policy 已經是 select * 不用動。
 -- 確認:
-select 'products multilingual description columns added ✓' as status;
+select 'products multilingual description columns added (zh, en) ✓' as status;

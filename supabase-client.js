@@ -121,10 +121,10 @@ async function loadSupabaseData() {
     color_hex:   b.color_hex || '#0a0a1a',
     logo_url:    b.logo_url || '',
     cover_url:   b.cover_url || '',
+    // 此站 (TW) 只用中文 + 英文;泰文留給另一個站
     description: {
-      en: b.description_en || '',
-      th: b.description_th || '',
       zh: b.description_zh || '',
+      en: b.description_en || '',
     },
     meta: {
       category: b.category || '',
@@ -156,11 +156,10 @@ async function loadSupabaseData() {
     sold_out:           p.sold_out || false,
     needs_review:       p.needs_review || false,
     original_cover_url: p.original_cover_url || p.cover_image || '',
-    // 多語描述 (migration 20260501);schema 還沒更新時對應 column 會是 undefined
+    // 多語描述 (migration 20260501);此站只用中文 + 英文,泰文另站處理
     description: {
       zh: p.description_zh || '',
       en: p.description_en || '',
-      th: p.description_th || '',
     },
   }));
 
