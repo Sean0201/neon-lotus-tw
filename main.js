@@ -363,6 +363,7 @@ function showPage(page, brandId, skipPush, restoreScrollY) {
     if (page === 'policy-purchase') url = '/policy/purchase';
     else if (page === 'policy-shipping') url = '/policy/shipping';
     else if (page === 'policy-returns') url = '/policy/returns';
+    else if (page === 'policy-privacy') url = '/policy/privacy';
     else if (page === 'home') url = '/';
     else url = brandId ? `#${page}/${brandId}` : `#${page}`;
     history.pushState({ page, brandId: brandId || null, scrollY: 0 }, '', url);
@@ -386,6 +387,7 @@ function _routeFromPath() {
   if (path === '/policy/purchase') return { page: 'policy-purchase' };
   if (path === '/policy/shipping') return { page: 'policy-shipping' };
   if (path === '/policy/returns')  return { page: 'policy-returns' };
+  if (path === '/policy/privacy')  return { page: 'policy-privacy' };
   // Fall through to hash-based routing
   const hash = location.hash.replace(/^#/, '');
   if (hash) {
