@@ -2209,9 +2209,19 @@
         // ── 共用 Supabase 客戶端 (anon key,跟 supabase-client.js 同一把) ──
         const HUNT_SB_URL  = 'https://epemuyojkprepknuzuzc.supabase.co';
         const HUNT_SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZW11eW9qa3ByZXBrbnV6dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDMwMTAsImV4cCI6MjA5MTM3OTAxMH0.nTv7W1_ndzzAQGNgVzSKSkruvsnEgt6N7PbnRK31l0M';
-        const huntSb = (window.supabase && window.supabase.createClient)
-          ? window.supabase.createClient(HUNT_SB_URL, HUNT_SB_ANON)
-          : null;
+        // ── Lazy init: SDK 是 body 底部才載入,當下 window.supabase 還不存在 ──
+        let _huntSbCache = null;
+        async function getHuntSb() {
+          if (_huntSbCache) return _huntSbCache;
+          // 等 SDK 載入,最多 3 秒 (30 × 100ms)
+          for (let i = 0; i < 30; i++) {
+            if (window.supabase && window.supabase.createClient) break;
+            await new Promise(r => setTimeout(r, 100));
+          }
+          if (!window.supabase || !window.supabase.createClient) return null;
+          _huntSbCache = window.supabase.createClient(HUNT_SB_URL, HUNT_SB_ANON);
+          return _huntSbCache;
+        }
 
         // ── URL 白名單 (跟 api/hunt.js 一致;防垃圾連結) ──
         const ALLOWED_REF_DOMAINS = [
@@ -2275,8 +2285,9 @@
 
         async function handleFiles(files) {
           if (!files || !files.length) return;
-          if (!huntSb) { showError('Supabase 客戶端未就緒,稍後再試'); return; }
           hideError();
+          const sb = await getHuntSb();
+          if (!sb) { showError('Supabase 客戶端載入失敗,請重整頁面'); return; }
           const remaining = MAX_IMAGES - uploaded.length;
           if (remaining <= 0) { showError(`最多只能上傳 ${MAX_IMAGES} 張圖片`); return; }
 
@@ -2284,11 +2295,11 @@
           for (const file of list) {
             if (!file.type.startsWith('image/')) { showError(`${file.name} 不是圖片`); continue; }
             if (file.size > MAX_BYTES) { showError(`${file.name} 超過 5MB`); continue; }
-            await uploadOne(file);
+            await uploadOne(file, sb);
           }
         }
 
-        async function uploadOne(file) {
+        async function uploadOne(file, sb) {
           // 立刻顯示縮圖 (loading 狀態)
           const previewEl = document.createElement('div');
           previewEl.className = 'hunt-image-preview uploading';
@@ -2312,11 +2323,11 @@
           try {
             const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
             const path = `hunt/${Date.now()}-${Math.random().toString(36).slice(2,10)}.${ext || 'jpg'}`;
-            const { error } = await huntSb.storage.from('hunt-uploads').upload(path, file, {
+            const { error } = await sb.storage.from('hunt-uploads').upload(path, file, {
               cacheControl: '3600', upsert: false, contentType: file.type,
             });
             if (error) throw error;
-            const { data: { publicUrl } } = huntSb.storage.from('hunt-uploads').getPublicUrl(path);
+            const { data: { publicUrl } } = sb.storage.from('hunt-uploads').getPublicUrl(path);
             uploaded.push({ url: publicUrl, path, previewEl });
             previewEl.classList.remove('uploading');
             removeBtn.addEventListener('click', () => removeOne(path));
@@ -2334,7 +2345,10 @@
           u.previewEl.remove();
           uploaded.splice(idx, 1);
           // 嘗試從 Storage 刪 (失敗也不阻擋,反正 RLS 限制 anon 可能不准刪)
-          try { await huntSb.storage.from('hunt-uploads').remove([path]); } catch (_) {}
+          try {
+            const sb = await getHuntSb();
+            if (sb) await sb.storage.from('hunt-uploads').remove([path]);
+          } catch (_) {}
         }
 
         // ── 表單提交 ──────────────────────────────────────────────
