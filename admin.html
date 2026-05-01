@@ -195,8 +195,10 @@
 
         .sidebar-logo {
             font-weight: bold;
-            font-size: 1.2rem;
-            background: linear-gradient(135deg, #e94560, #f39c12);
+            font-size: 1.35rem;
+            letter-spacing: 0.02em;
+            /* 紫色漸層,跟 admin1 的 Neon Lotus 一致 */
+            background: linear-gradient(135deg, #c084fc, #a855f7, #8b5cf6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -403,6 +405,80 @@
             display: flex;
             gap: 0.5rem;
         }
+
+        /* ── 直排操作鈕 (admin1 風格) ── */
+        .table-actions-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            align-items: center;
+        }
+        .table-actions-vertical .btn-link {
+            background: transparent;
+            border: none;
+            padding: 2px 4px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .table-actions-vertical .btn-link.edit  { color: #60a5fa; }
+        .table-actions-vertical .btn-link.del   { color: #f87171; }
+        .table-actions-vertical .btn-link:hover { text-decoration: underline; }
+
+        /* ── 表格內縮圖 (品牌首圖 / 商品封面) ── */
+        .table-thumb {
+            width: 80px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            display: block;
+        }
+        .table-thumb-empty {
+            width: 80px;
+            height: 60px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px dashed var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+        }
+
+        /* ── 色塊 swatch (品牌主色預覽) ── */
+        .color-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            display: inline-block;
+        }
+
+        /* ── monospace ID (品牌/商品識別碼) ── */
+        .mono-id {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
+        /* ── 狀態 badge (待審/已售完/上架中) ── */
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .status-badge.review   { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .status-badge.soldout  { background: rgba(248,113,113,0.15); color: #f87171; }
+        .status-badge.active   { background: rgba(74,222,128,0.15);  color: #4ade80; }
+        .status-badge.inactive { background: rgba(148,163,184,0.15); color: #94a3b8; }
 
         .btn-small {
             padding: 0.5rem 1rem;
@@ -886,48 +962,52 @@
             <!-- Sidebar -->
             <aside class="sidebar">
                 <div class="sidebar-header">
-                    <div class="sidebar-logo">🌸 NEON LOTUS</div>
+                    <div class="sidebar-logo">🌸 Neon Lotus</div>
                     <div class="sidebar-subtitle">Admin Panel</div>
                 </div>
                 <nav class="nav-menu">
                     <div class="nav-item active" data-page="dashboard">
                         <span class="nav-icon">📊</span>
-                        <span>Dashboard</span>
+                        <span>儀表板</span>
                     </div>
                     <div class="nav-item" data-page="brands">
                         <span class="nav-icon">🏷️</span>
-                        <span>Brands</span>
+                        <span>品牌管理</span>
                     </div>
                     <div class="nav-item" data-page="products">
-                        <span class="nav-icon">📦</span>
-                        <span>Products</span>
+                        <span class="nav-icon">👕</span>
+                        <span>商品管理</span>
                     </div>
                     <div class="nav-item" data-page="banners">
                         <span class="nav-icon">🖼️</span>
-                        <span>Banners</span>
+                        <span>Banner 管理</span>
                     </div>
                     <div class="nav-item" data-page="featured">
                         <span class="nav-icon">★</span>
-                        <span>Featured Products</span>
+                        <span>本週精選</span>
                     </div>
                     <div class="nav-item" data-page="orders">
                         <span class="nav-icon">🛒</span>
-                        <span>Orders</span>
+                        <span>訂單管理</span>
                     </div>
                     <div class="nav-item" data-page="settings">
                         <span class="nav-icon">⚙️</span>
-                        <span>SEO & Settings</span>
+                        <span>SEO 設定</span>
+                    </div>
+                    <div class="nav-item" data-page="deploy">
+                        <span class="nav-icon">🚀</span>
+                        <span>發布部署</span>
                     </div>
                 </nav>
                 <div class="sidebar-footer">
-                    <button id="logoutBtn" class="logout-btn">Logout</button>
+                    <button id="logoutBtn" class="logout-btn">登出</button>
                 </div>
             </aside>
 
             <!-- Main Content -->
             <main class="main-content">
                 <header class="header">
-                    <h1 id="pageTitle">Dashboard</h1>
+                    <h1 id="pageTitle">儀表板</h1>
                     <div class="header-info">
                         <div id="userEmail"></div>
                     </div>
@@ -985,23 +1065,25 @@
                     <div id="brands" class="page">
                         <div class="table-container">
                             <div class="table-header">
-                                <h2>Brands</h2>
+                                <h2>品牌管理</h2>
                                 <div class="table-controls">
-                                    <input type="text" class="search-input" id="brandsSearch" placeholder="Search brands...">
-                                    <button id="addBrandBtn" class="btn-primary">+ Add Brand</button>
+                                    <input type="text" class="search-input" id="brandsSearch" placeholder="搜尋品牌...">
+                                    <button id="addBrandBtn" class="btn-primary">+ 新增品牌</button>
                                 </div>
                             </div>
                             <table id="brandsTable">
                                 <thead>
                                     <tr>
-                                        <th style="width: 5%;">⋮</th>
-                                        <th>Name</th>
-                                        <th>Style</th>
-                                        <th>Category</th>
-                                        <th>Location</th>
-                                        <th>Products</th>
-                                        <th>Order</th>
-                                        <th style="width: 10%;">Actions</th>
+                                        <th style="width: 4%;">⋮</th>
+                                        <th style="width: 100px;">首圖</th>
+                                        <th style="width: 60px;">色塊</th>
+                                        <th>ID</th>
+                                        <th>名稱</th>
+                                        <th>風格</th>
+                                        <th>分類</th>
+                                        <th style="width: 80px; text-align: center;">商品數</th>
+                                        <th style="width: 60px; text-align: center;">排序</th>
+                                        <th style="width: 80px; white-space: nowrap;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="brandsTableBody" draggable="true">
@@ -1014,41 +1096,44 @@
                     <div id="products" class="page">
                         <div class="table-container">
                             <div class="table-header">
-                                <h2>Products</h2>
+                                <h2>商品管理</h2>
                                 <div class="table-controls">
-                                    <input type="text" class="search-input" id="productsSearch" placeholder="Search products...">
+                                    <input type="text" class="search-input" id="productsSearch" placeholder="搜尋商品名稱…">
                                     <select class="filter-select" id="brandFilter">
-                                        <option value="">All Brands</option>
+                                        <option value="">所有品牌</option>
+                                    </select>
+                                    <select class="filter-select" id="categoryFilter">
+                                        <option value="">所有分類</option>
                                     </select>
                                     <div id="batchActionsContainer" class="batch-actions" style="display: none;">
                                         <span class="batch-info" id="batchInfo"></span>
                                         <select id="batchActionSelect">
-                                            <option value="">Batch Action</option>
-                                            <option value="activate">Activate</option>
-                                            <option value="deactivate">Deactivate</option>
-                                            <option value="sold-out">Mark Sold Out</option>
-                                            <option value="clear-sold">Clear Sold Out</option>
-                                            <option value="delete">Delete Selected</option>
+                                            <option value="">批次操作</option>
+                                            <option value="activate">啟用</option>
+                                            <option value="deactivate">停用</option>
+                                            <option value="sold-out">標記為已售完</option>
+                                            <option value="clear-sold">取消已售完</option>
+                                            <option value="delete">刪除所選</option>
                                         </select>
-                                        <button id="batchApplyBtn" class="btn-small">Apply</button>
+                                        <button id="batchApplyBtn" class="btn-small">套用</button>
                                     </div>
-                                    <button id="addProductBtn" class="btn-primary">+ Add Product</button>
+                                    <button id="addProductBtn" class="btn-primary">+ 新增商品</button>
                                 </div>
                             </div>
                             <table id="productsTable">
                                 <thead>
                                     <tr>
-                                        <th style="width: 3%;"><input type="checkbox" id="selectAllCheckbox"></th>
-                                        <th style="width: 5%;">⋮</th>
-                                        <th style="width: 8%;">Image</th>
-                                        <th>Name</th>
-                                        <th>Brand</th>
-                                        <th>Category</th>
-                                        <th>Price (VND)</th>
-                                        <th>Sold Out</th>
-                                        <th>Active</th>
-                                        <th>Order</th>
-                                        <th style="width: 10%;">Actions</th>
+                                        <th style="width: 32px;"><input type="checkbox" id="selectAllCheckbox"></th>
+                                        <th style="width: 32px;">⋮</th>
+                                        <th style="width: 80px;">封面</th>
+                                        <th style="width: 200px;">ID</th>
+                                        <th>名稱</th>
+                                        <th>品牌</th>
+                                        <th>分類</th>
+                                        <th style="width: 110px;">VND</th>
+                                        <th style="width: 90px;">狀態</th>
+                                        <th style="width: 60px; text-align:center;">排序</th>
+                                        <th style="width: 80px; white-space: nowrap;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="productsTableBody" draggable="true">
@@ -1226,6 +1311,58 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Deploy Page -->
+                    <div id="deploy" class="page">
+                        <div class="table-container" style="padding: 1.5rem;">
+                            <div class="table-header" style="border:none; padding:0 0 1rem;">
+                                <h2>發布部署</h2>
+                            </div>
+
+                            <!-- 說明卡 -->
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+                                <h3 style="margin: 0 0 0.5rem; font-size: 1rem;">部署說明</h3>
+                                <p style="margin: 0; color: var(--text-secondary); line-height: 1.6; font-size: 0.85rem;">
+                                    平常在 admin 修改品牌、商品、Banner、本週精選後,前端會在 5 分鐘內自動更新(走快取重新整理)。
+                                    若需要<b style="color:var(--text);">立刻</b>讓 Vercel 重新建置部署,可在這裡按下方按鈕觸發 deploy hook。
+                                    第一次使用前,請先在 Vercel 專案設定 → Git → Deploy Hooks 建立一個 hook 並把 URL 貼進下面欄位。
+                                </p>
+                            </div>
+
+                            <!-- Deploy hook 設定 -->
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+                                <h3 style="margin: 0 0 1rem; font-size: 1rem;">🔧 Deploy Hook 設定</h3>
+                                <div class="form-group full">
+                                    <label for="deployHookTw">中文站 Deploy Hook URL</label>
+                                    <input type="url" id="deployHookTw" placeholder="https://api.vercel.com/v1/integrations/deploy/...">
+                                </div>
+                                <div class="form-group full">
+                                    <label for="deployHookTh">泰文站 Deploy Hook URL(若有)</label>
+                                    <input type="url" id="deployHookTh" placeholder="https://api.vercel.com/v1/integrations/deploy/...">
+                                </div>
+                                <button id="saveDeployHooksBtn" class="btn-primary">儲存 Hook URL</button>
+                            </div>
+
+                            <!-- 部署按鈕 -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem;">
+                                    <h3 style="margin: 0 0 0.5rem; font-size: 1rem;">🇹🇼 中文站</h3>
+                                    <p style="margin: 0 0 1rem; color: var(--text-secondary); font-size: 0.8rem;">部署到中文版 Vercel 專案</p>
+                                    <button id="deployTwBtn" class="btn-primary" style="width: 100%; background: #3b82f6;" disabled>部署中文站</button>
+                                    <div id="deployTwStatus" style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary);"></div>
+                                </div>
+                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem;">
+                                    <h3 style="margin: 0 0 0.5rem; font-size: 1rem;">🇹🇭 泰文站</h3>
+                                    <p style="margin: 0 0 1rem; color: var(--text-secondary); font-size: 0.8rem;">部署到泰文版 Vercel 專案</p>
+                                    <button id="deployThBtn" class="btn-primary" style="width: 100%; background: #22c55e;" disabled>部署泰文站</button>
+                                    <div id="deployThStatus" style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary);"></div>
+                                </div>
+                            </div>
+
+                            <button id="deployAllBtn" class="btn-primary" style="width: 100%; background: linear-gradient(135deg, #a855f7, #8b5cf6); padding: 1rem; font-size: 1rem;" disabled>🚀 一鍵部署全部站點</button>
+                        </div>
+                    </div>
+
                 </div>
             </main>
         </div>
@@ -1236,79 +1373,118 @@
     <div id="brandModal" class="modal-overlay">
         <div class="modal">
             <div class="modal-header">
-                <h2 id="brandModalTitle">Add Brand</h2>
+                <h2 id="brandModalTitle">新增品牌</h2>
                 <button class="modal-close" onclick="closeBrandModal()">×</button>
             </div>
             <form id="brandForm">
                 <div class="modal-body">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="brandId">Brand ID *</label>
-                            <input type="text" id="brandId" required>
+                            <label for="brandId">品牌 ID(英文小寫)*</label>
+                            <input type="text" id="brandId" required placeholder="e.g. blish">
                         </div>
                         <div class="form-group">
-                            <label for="brandName">Name *</label>
-                            <input type="text" id="brandName" required>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="brandStyle">Style</label>
-                            <input type="text" id="brandStyle">
-                        </div>
-                        <div class="form-group">
-                            <label for="brandColor">Color</label>
-                            <input type="color" id="brandColor" value="#0a0a1a">
+                            <label for="brandName">品牌名稱 *</label>
+                            <input type="text" id="brandName" required placeholder="e.g. BLISH">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="brandCategory">Category</label>
-                            <input type="text" id="brandCategory">
+                            <label for="brandStyle">風格</label>
+                            <input type="text" id="brandStyle" placeholder="e.g. Futurism / Gorpcore">
                         </div>
                         <div class="form-group">
-                            <label for="brandLocation">Location</label>
-                            <input type="text" id="brandLocation">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="brandFounded">Founded</label>
-                            <input type="text" id="brandFounded">
-                        </div>
-                        <div class="form-group">
-                            <label for="brandWebsite">Website</label>
-                            <input type="url" id="brandWebsite">
+                            <label>品牌主色 (HEX)</label>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <input type="color" id="brandColor" value="#0a0a1a" style="width:50px; height:40px; padding:2px;">
+                                <input type="text" id="brandColorHex" value="#0a0a1a" placeholder="#0a0a1a" style="flex:1; font-family:ui-monospace, monospace;">
+                            </div>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="brandSortOrder">Sort Order</label>
+                            <label for="brandCategory">分類</label>
+                            <input type="text" id="brandCategory" placeholder="e.g. Contemporary">
+                        </div>
+                        <div class="form-group">
+                            <label for="brandWebsite">官網</label>
+                            <input type="url" id="brandWebsite" placeholder="https://...">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="brandLocation">地點</label>
+                            <input type="text" id="brandLocation" placeholder="e.g. Hanoi, Vietnam">
+                        </div>
+                        <div class="form-group">
+                            <label for="brandFounded">成立年份</label>
+                            <input type="text" id="brandFounded" placeholder="e.g. 2020">
+                        </div>
+                    </div>
+
+                    <!-- 圖片區: 首圖 + Logo -->
+                    <hr style="border:none; border-top:1px solid var(--border); margin: 1.5rem 0 1rem;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>品牌首圖(卡片背景圖)</label>
+                            <div style="display:flex; gap:1rem; align-items:flex-start;">
+                                <div style="flex:1;">
+                                    <input type="text" id="brandCoverUrl" placeholder="或貼上圖片 URL">
+                                    <div style="margin-top:0.5rem;">
+                                        <input type="file" id="brandCoverFile" accept="image/*" style="display:none;">
+                                        <button type="button" class="btn-small" onclick="document.getElementById('brandCoverFile').click()">上傳首圖</button>
+                                        <span id="brandCoverHint" style="font-size:0.75rem; color:#f59e0b; margin-left:0.5rem;">請先填寫品牌 ID</span>
+                                    </div>
+                                </div>
+                                <img id="brandCoverPreview" class="image-preview" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>品牌 Logo(卡片中央 Logo)</label>
+                            <div style="display:flex; gap:1rem; align-items:flex-start;">
+                                <div style="flex:1;">
+                                    <input type="text" id="brandLogoUrl" placeholder="或貼上 Logo URL">
+                                    <div style="margin-top:0.5rem;">
+                                        <input type="file" id="brandLogoFile" accept="image/*" style="display:none;">
+                                        <button type="button" class="btn-small" onclick="document.getElementById('brandLogoFile').click()">上傳 Logo</button>
+                                        <span id="brandLogoHint" style="font-size:0.75rem; color:#f59e0b; margin-left:0.5rem;">請先填寫品牌 ID</span>
+                                    </div>
+                                </div>
+                                <img id="brandLogoPreview" class="image-preview" style="display:none;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="brandSortOrder">排序</label>
                             <input type="number" id="brandSortOrder" value="0">
+                        </div>
+                    </div>
+
+                    <hr style="border:none; border-top:1px solid var(--border); margin: 1.5rem 0 1rem;">
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label for="brandDescZh">描述(中文)</label>
+                            <textarea id="brandDescZh"></textarea>
                         </div>
                     </div>
                     <div class="form-row full">
                         <div class="form-group full">
-                            <label for="brandDescEn">Description (English)</label>
+                            <label for="brandDescEn">描述(英文)</label>
                             <textarea id="brandDescEn"></textarea>
                         </div>
                     </div>
                     <div class="form-row full">
                         <div class="form-group full">
-                            <label for="brandDescTh">Description (Thai)</label>
+                            <label for="brandDescTh">描述(泰文)</label>
                             <textarea id="brandDescTh"></textarea>
-                        </div>
-                    </div>
-                    <div class="form-row full">
-                        <div class="form-group full">
-                            <label for="brandDescZh">Description (Chinese)</label>
-                            <textarea id="brandDescZh"></textarea>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="closeBrandModal()">Cancel</button>
-                    <button type="submit" class="btn-primary">Save Brand</button>
+                    <button type="button" class="btn-secondary" onclick="closeBrandModal()">取消</button>
+                    <button type="submit" class="btn-primary">儲存品牌</button>
                 </div>
             </form>
         </div>
@@ -1318,124 +1494,120 @@
     <div id="productModal" class="modal-overlay">
         <div class="modal">
             <div class="modal-header">
-                <h2 id="productModalTitle">Add Product</h2>
+                <h2 id="productModalTitle">新增商品</h2>
                 <button class="modal-close" onclick="closeProductModal()">×</button>
             </div>
             <form id="productForm">
                 <div class="modal-body">
-                    <!-- Basic Info -->
+                    <!-- 基本資訊 -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="productId">Product ID *</label>
-                            <input type="text" id="productId" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="productName">Product Name *</label>
-                            <input type="text" id="productName" required>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="productBrand">Brand *</label>
+                            <label for="productBrand">品牌 *</label>
                             <select id="productBrand" required>
-                                <option value="">Select a brand</option>
+                                <option value="">選擇品牌</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="productTag">Tag</label>
-                            <input type="text" id="productTag">
+                            <label for="productName">商品名稱 *</label>
+                            <input type="text" id="productName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="productId">商品 ID(自動產生或手動輸入)*</label>
+                            <input type="text" id="productId" required placeholder="留空自動產生">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
+                            <label for="productTag">Tag</label>
+                            <input type="text" id="productTag" placeholder="選擇">
+                        </div>
+                        <div class="form-group">
                             <label for="productCategory">Category</label>
-                            <input type="text" id="productCategory">
+                            <input type="text" id="productCategory" placeholder="選擇">
                         </div>
                         <div class="form-group">
                             <label for="productSeason">Season</label>
-                            <input type="text" id="productSeason">
+                            <input type="text" id="productSeason" placeholder="e.g. SS26">
                         </div>
                     </div>
 
-                    <!-- Pricing -->
+                    <!-- 價格 -->
                     <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
-                    <h3 style="margin-bottom: 1rem;">Pricing</h3>
+                    <h3 style="margin-bottom: 1rem;">價格</h3>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="productPriceVnd">Price VND</label>
+                            <label for="productPriceVnd">VND 原價</label>
                             <input type="number" id="productPriceVnd">
                         </div>
                         <div class="form-group">
-                            <label for="productPriceVndEst">Price VND (Estimated)</label>
+                            <label for="productPriceVndEst">VND 預估價</label>
                             <input type="number" id="productPriceVndEst">
                         </div>
-                    </div>
-                    <div class="form-row">
                         <div class="form-group">
-                            <label for="productPriceThbShip">Price THB (Shipping)</label>
+                            <label for="productPriceThbShip">THB(含運)</label>
                             <input type="number" id="productPriceThbShip">
                         </div>
                         <div class="form-group">
-                            <label for="productPriceThbCarry">Price THB (Carry Back)</label>
+                            <label for="productPriceThbCarry">THB(自取)</label>
                             <input type="number" id="productPriceThbCarry">
                         </div>
                     </div>
                     <div class="form-row full">
                         <div class="form-group full">
-                            <label for="productPriceNote">Price Note</label>
+                            <label for="productPriceNote">價格備註</label>
                             <textarea id="productPriceNote" style="min-height: 60px;"></textarea>
                         </div>
                     </div>
 
-                    <!-- Images -->
+                    <!-- 圖片 -->
                     <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
-                    <h3 style="margin-bottom: 1rem;">Images</h3>
-                    <div class="form-row full">
-                        <div class="form-group full">
-                            <label>Cover Image</label>
-                            <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                                <div style="flex: 1;">
-                                    <input type="text" id="productCoverUrl" placeholder="Image URL or upload below">
-                                    <div style="margin-top: 0.5rem;">
-                                        <input type="file" id="productCoverFile" accept="image/*" style="display: none;">
-                                        <button type="button" class="btn-small" onclick="document.getElementById('productCoverFile').click()">Upload Image</button>
-                                    </div>
-                                </div>
-                                <img id="productCoverPreview" class="image-preview" style="display: none;">
+                    <h3 style="margin-bottom: 1rem;">圖片</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="productCoverUrl">封面圖路徑</label>
+                            <input type="text" id="productCoverUrl" placeholder="images/products/brand/product-id/cover.jpg">
+                            <div style="margin-top: 0.5rem;">
+                                <input type="file" id="productCoverFile" accept="image/*" style="display: none;">
+                                <button type="button" class="btn-small" onclick="document.getElementById('productCoverFile').click()">上傳封面</button>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="productOriginalCoverUrl">原始封面 URL</label>
+                            <input type="text" id="productOriginalCoverUrl" placeholder="https://...">
+                            <img id="productCoverPreview" class="image-preview" style="display: none; margin-top: 0.5rem; max-width: 120px;">
                         </div>
                     </div>
 
-                    <!-- Sizes -->
+                    <!-- 尺寸 -->
                     <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
-                    <h3 style="margin-bottom: 1rem;">Sizes</h3>
+                    <h3 style="margin-bottom: 1rem;">尺寸</h3>
                     <div class="dynamic-list" id="sizesList">
                     </div>
-                    <button type="button" class="btn-add-item" onclick="addSizeField()">+ Add Size</button>
+                    <button type="button" class="btn-add-item" onclick="addSizeField()">+ 新增尺寸</button>
 
-                    <!-- Gallery -->
+                    <!-- 相簿 -->
                     <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
-                    <h3 style="margin-bottom: 1rem;">Gallery</h3>
+                    <h3 style="margin-bottom: 1rem;">相簿</h3>
                     <div class="dynamic-list" id="galleryList">
                     </div>
-                    <button type="button" class="btn-add-item" onclick="addGalleryField()">+ Add Gallery Item</button>
+                    <button type="button" class="btn-add-item" onclick="addGalleryField()">+ 新增相片</button>
 
-                    <!-- Flags -->
+                    <!-- 狀態 -->
                     <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
-                    <h3 style="margin-bottom: 1rem;">Status</h3>
+                    <h3 style="margin-bottom: 1rem;">狀態</h3>
                     <div class="form-row">
                         <div class="form-group">
                             <label class="toggle-switch">
                                 <input type="checkbox" id="productActive" checked>
                                 <span class="slider"></span>
-                                Active
+                                上架中
                             </label>
                         </div>
                         <div class="form-group">
                             <label class="toggle-switch">
                                 <input type="checkbox" id="productSoldOut">
                                 <span class="slider"></span>
-                                Sold Out
+                                已售完
                             </label>
                         </div>
                         <div class="form-group">
@@ -1454,8 +1626,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="closeProductModal()">Cancel</button>
-                    <button type="submit" class="btn-primary">Save Product</button>
+                    <button type="button" class="btn-secondary" onclick="closeProductModal()">取消</button>
+                    <button type="submit" class="btn-primary">儲存商品</button>
                 </div>
             </form>
         </div>
@@ -1727,17 +1899,19 @@
             else if (page === 'featured') loadFeatured();
             else if (page === 'orders') loadOrders();
             else if (page === 'settings') loadSettings();
+            else if (page === 'deploy') loadDeploy();
         }
 
         function updatePageTitle(page) {
             const titles = {
-                'dashboard': 'Dashboard',
-                'brands': 'Brands Management',
-                'products': 'Products Management',
-                'banners': 'Banners Management',
-                'featured': 'Featured Products Management',
-                'orders': 'Orders Management',
-                'settings': 'SEO & Settings'
+                'dashboard': '儀表板',
+                'brands': '品牌管理',
+                'products': '商品管理',
+                'banners': 'Banner 管理',
+                'featured': '本週精選',
+                'orders': '訂單管理',
+                'settings': 'SEO 設定',
+                'deploy':   '發布部署'
             };
             document.getElementById('pageTitle').textContent = titles[page] || page;
         }
@@ -1808,22 +1982,39 @@
             const tbody = document.getElementById('brandsTableBody');
             tbody.innerHTML = '';
 
-            allBrands.forEach(brand => {
+            // 篩選 (搜尋框)
+            const q = (document.getElementById('brandsSearch')?.value || '').trim().toLowerCase();
+            const list = q
+                ? allBrands.filter(b => (b.id || '').toLowerCase().includes(q)
+                                     || (b.name || '').toLowerCase().includes(q)
+                                     || (b.style || '').toLowerCase().includes(q)
+                                     || (b.category || '').toLowerCase().includes(q))
+                : allBrands;
+
+            list.forEach(brand => {
                 const tr = document.createElement('tr');
                 tr.draggable = true;
                 tr.dataset.id = brand.id;
+                const cover = brand.cover_url || '';
+                const thumb = cover
+                    ? `<img class="table-thumb" src="${cover.replace(/"/g,'&quot;')}" alt="" onerror="this.outerHTML='<div class=\\'table-thumb-empty\\'>無圖</div>'">`
+                    : `<div class="table-thumb-empty">無圖</div>`;
+                const swatch = `<span class="color-swatch" style="background:${brand.color_hex || '#0a0a1a'}"></span>`;
+                const safeId = (brand.id || '').replace(/'/g, "\\'");
                 tr.innerHTML = `
                     <td style="cursor: move; text-align: center;">⋮</td>
-                    <td>${brand.name}</td>
-                    <td>${brand.style || '-'}</td>
+                    <td>${thumb}</td>
+                    <td style="text-align: center;">${swatch}</td>
+                    <td><span class="mono-id">${brand.id || ''}</span></td>
+                    <td style="font-weight:600; letter-spacing:0.02em;">${(brand.name || '').toUpperCase()}</td>
+                    <td style="color:var(--text-secondary);">${brand.style || '-'}</td>
                     <td>${brand.category || '-'}</td>
-                    <td>${brand.location || '-'}</td>
-                    <td id="brand-count-${brand.id}">0</td>
-                    <td>${brand.sort_order}</td>
+                    <td id="brand-count-${brand.id}" style="text-align:center;">0</td>
+                    <td style="text-align:center;">${brand.sort_order}</td>
                     <td>
-                        <div class="table-actions">
-                            <button class="btn-icon" onclick="editBrand('${brand.id}')">✏️</button>
-                            <button class="btn-icon delete" onclick="deleteBrand('${brand.id}')">🗑️</button>
+                        <div class="table-actions-vertical">
+                            <button class="btn-link edit" onclick="editBrand('${safeId}')">編輯</button>
+                            <button class="btn-link del"  onclick="deleteBrand('${safeId}')">刪除</button>
                         </div>
                     </td>
                 `;
@@ -1838,23 +2029,36 @@
             setupDragDrop('brandsTableBody', 'brands');
         }
 
+        // 搜尋框即時 filter
+        document.getElementById('brandsSearch')?.addEventListener('input', () => renderBrandsTable());
+
+        // ── 開新增 modal ─────────────────────────────────────────
         document.getElementById('addBrandBtn').addEventListener('click', () => {
             editingBrandId = null;
-            document.getElementById('brandModalTitle').textContent = 'Add Brand';
+            document.getElementById('brandModalTitle').textContent = '新增品牌';
             document.getElementById('brandForm').reset();
             document.getElementById('brandId').disabled = false;
+            // 重設 color 跟 cover/logo 預覽
+            document.getElementById('brandColor').value = '#0a0a1a';
+            document.getElementById('brandColorHex').value = '#0a0a1a';
+            document.getElementById('brandCoverPreview').style.display = 'none';
+            document.getElementById('brandLogoPreview').style.display = 'none';
+            _updateBrandUploadHints();
             document.getElementById('brandModal').classList.add('active');
         });
 
+        // ── 編輯既有 brand ───────────────────────────────────────
         async function editBrand(id) {
             editingBrandId = id;
             const brand = allBrands.find(b => b.id === id);
-            document.getElementById('brandModalTitle').textContent = 'Edit Brand';
+            document.getElementById('brandModalTitle').textContent = '編輯品牌';
             document.getElementById('brandId').disabled = true;
             document.getElementById('brandId').value = brand.id;
             document.getElementById('brandName').value = brand.name || '';
             document.getElementById('brandStyle').value = brand.style || '';
-            document.getElementById('brandColor').value = brand.color_hex || '#0a0a1a';
+            const color = brand.color_hex || '#0a0a1a';
+            document.getElementById('brandColor').value = color;
+            document.getElementById('brandColorHex').value = color;
             document.getElementById('brandCategory').value = brand.category || '';
             document.getElementById('brandLocation').value = brand.location || '';
             document.getElementById('brandFounded').value = brand.founded || '';
@@ -1863,6 +2067,16 @@
             document.getElementById('brandDescEn').value = brand.description_en || '';
             document.getElementById('brandDescTh').value = brand.description_th || '';
             document.getElementById('brandDescZh').value = brand.description_zh || '';
+            // 圖片
+            document.getElementById('brandCoverUrl').value = brand.cover_url || '';
+            document.getElementById('brandLogoUrl').value  = brand.logo_url  || '';
+            const coverImg = document.getElementById('brandCoverPreview');
+            if (brand.cover_url) { coverImg.src = brand.cover_url; coverImg.style.display = 'block'; }
+            else                 { coverImg.style.display = 'none'; }
+            const logoImg = document.getElementById('brandLogoPreview');
+            if (brand.logo_url)  { logoImg.src = brand.logo_url; logoImg.style.display = 'block'; }
+            else                 { logoImg.style.display = 'none'; }
+            _updateBrandUploadHints();
             document.getElementById('brandModal').classList.add('active');
         }
 
@@ -1871,6 +2085,74 @@
             editingBrandId = null;
         }
 
+        // ── color picker <-> hex 同步 ─────────────────────────
+        document.getElementById('brandColor').addEventListener('input', e => {
+            document.getElementById('brandColorHex').value = e.target.value;
+        });
+        document.getElementById('brandColorHex').addEventListener('input', e => {
+            const v = e.target.value.trim();
+            if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+                document.getElementById('brandColor').value = v;
+            }
+        });
+
+        // ── 上傳提示 (沒填 ID 不能傳) ────────────────────────
+        function _updateBrandUploadHints() {
+            const hasId = !!document.getElementById('brandId').value.trim();
+            document.getElementById('brandCoverHint').style.display = hasId ? 'none' : '';
+            document.getElementById('brandLogoHint').style.display  = hasId ? 'none' : '';
+        }
+        document.getElementById('brandId').addEventListener('input', _updateBrandUploadHints);
+
+        // ── 上傳首圖 ────────────────────────────────────────
+        document.getElementById('brandCoverFile').addEventListener('change', async e => {
+            const file = e.target.files[0]; if (!file) return;
+            const id = document.getElementById('brandId').value.trim();
+            if (!id) { showToast('請先填寫品牌 ID', 'error'); e.target.value = ''; return; }
+            try {
+                const path = `brands/${id}/cover-${Date.now()}-${file.name}`;
+                const { error } = await sb.storage.from('product-images').upload(path, file);
+                if (error) throw error;
+                const { data: { publicUrl } } = sb.storage.from('product-images').getPublicUrl(path);
+                document.getElementById('brandCoverUrl').value = publicUrl;
+                document.getElementById('brandCoverPreview').src = publicUrl;
+                document.getElementById('brandCoverPreview').style.display = 'block';
+                showToast('首圖已上傳', 'success');
+            } catch (err) { showToast(err.message || '上傳失敗', 'error'); }
+        });
+
+        // ── 上傳 Logo ───────────────────────────────────────
+        document.getElementById('brandLogoFile').addEventListener('change', async e => {
+            const file = e.target.files[0]; if (!file) return;
+            const id = document.getElementById('brandId').value.trim();
+            if (!id) { showToast('請先填寫品牌 ID', 'error'); e.target.value = ''; return; }
+            try {
+                const path = `brands/${id}/logo-${Date.now()}-${file.name}`;
+                const { error } = await sb.storage.from('product-images').upload(path, file);
+                if (error) throw error;
+                const { data: { publicUrl } } = sb.storage.from('product-images').getPublicUrl(path);
+                document.getElementById('brandLogoUrl').value = publicUrl;
+                document.getElementById('brandLogoPreview').src = publicUrl;
+                document.getElementById('brandLogoPreview').style.display = 'block';
+                showToast('Logo 已上傳', 'success');
+            } catch (err) { showToast(err.message || '上傳失敗', 'error'); }
+        });
+
+        // 貼上 URL 時也即時更新預覽
+        document.getElementById('brandCoverUrl').addEventListener('input', e => {
+            const url = e.target.value.trim();
+            const img = document.getElementById('brandCoverPreview');
+            if (url) { img.src = url; img.style.display = 'block'; }
+            else     { img.style.display = 'none'; }
+        });
+        document.getElementById('brandLogoUrl').addEventListener('input', e => {
+            const url = e.target.value.trim();
+            const img = document.getElementById('brandLogoPreview');
+            if (url) { img.src = url; img.style.display = 'block'; }
+            else     { img.style.display = 'none'; }
+        });
+
+        // ── 儲存表單 ─────────────────────────────────────────
         document.getElementById('brandForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const data = {
@@ -1882,6 +2164,8 @@
                 founded: document.getElementById('brandFounded').value,
                 website: document.getElementById('brandWebsite').value,
                 sort_order: parseInt(document.getElementById('brandSortOrder').value) || 0,
+                cover_url: document.getElementById('brandCoverUrl').value || null,
+                logo_url:  document.getElementById('brandLogoUrl').value  || null,
                 description_en: document.getElementById('brandDescEn').value,
                 description_th: document.getElementById('brandDescTh').value,
                 description_zh: document.getElementById('brandDescZh').value,
@@ -1890,14 +2174,23 @@
 
             try {
                 if (editingBrandId) {
-                    const { error } = await sb.from('brands').update(data).eq('id', editingBrandId);
+                    let { error } = await sb.from('brands').update(data).eq('id', editingBrandId);
+                    // 如果 cover_url / logo_url 還沒在 schema 裡,移除這兩欄重試
+                    if (error && error.code === 'PGRST204' && /cover_url|logo_url/.test(error.message)) {
+                        delete data.cover_url; delete data.logo_url;
+                        ({ error } = await sb.from('brands').update(data).eq('id', editingBrandId));
+                    }
                     if (error) throw error;
-                    showToast('Brand updated', 'success');
+                    showToast('品牌已更新', 'success');
                 } else {
                     data.id = document.getElementById('brandId').value;
-                    const { error } = await sb.from('brands').insert([data]);
+                    let { error } = await sb.from('brands').insert([data]);
+                    if (error && error.code === 'PGRST204' && /cover_url|logo_url/.test(error.message)) {
+                        delete data.cover_url; delete data.logo_url;
+                        ({ error } = await sb.from('brands').insert([data]));
+                    }
                     if (error) throw error;
-                    showToast('Brand created', 'success');
+                    showToast('品牌已建立', 'success');
                 }
                 closeBrandModal();
                 loadBrands();
@@ -1907,11 +2200,11 @@
         });
 
         async function deleteBrand(id) {
-            if (!confirm('Are you sure you want to delete this brand?')) return;
+            if (!confirm(`確定要刪除品牌「${id}」嗎?該品牌下所有商品也會被刪掉。`)) return;
             try {
                 const { error } = await sb.from('brands').delete().eq('id', id);
                 if (error) throw error;
-                showToast('Brand deleted', 'success');
+                showToast('品牌已刪除', 'success');
                 loadBrands();
             } catch (error) {
                 showToast(error.message, 'error');
@@ -1936,16 +2229,24 @@
                 allProducts = data || [];
 
                 const brandsSelect = document.getElementById('productBrand');
-                brandsSelect.innerHTML = '<option value="">Select a brand</option>';
+                brandsSelect.innerHTML = '<option value="">選擇品牌</option>';
                 brandsSelect.innerHTML += allBrands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
 
                 const brandFilter = document.getElementById('brandFilter');
-                brandFilter.innerHTML = '<option value="">All Brands</option>';
+                brandFilter.innerHTML = '<option value="">所有品牌</option>';
                 brandFilter.innerHTML += allBrands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+
+                // 分類下拉:從 products 抓所有不同的 category
+                const categoryFilter = document.getElementById('categoryFilter');
+                if (categoryFilter) {
+                    const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+                    categoryFilter.innerHTML = '<option value="">所有分類</option>'
+                        + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+                }
 
                 renderProductsTable();
             } catch (error) {
-                showToast('Error loading products', 'error');
+                showToast('載入商品失敗', 'error');
                 console.error(error);
             }
         }
@@ -1955,7 +2256,17 @@
             tbody.innerHTML = '';
             selectedProductIds.clear();
 
-            allProducts.forEach(product => {
+            // 套用篩選條件
+            const q  = (document.getElementById('productsSearch')?.value || '').trim().toLowerCase();
+            const bf = document.getElementById('brandFilter')?.value || '';
+            const cf = document.getElementById('categoryFilter')?.value || '';
+            const list = allProducts.filter(p =>
+                (!bf || p.brand_id === bf) &&
+                (!cf || p.category === cf) &&
+                (!q  || (p.name || '').toLowerCase().includes(q) || (p.id || '').toLowerCase().includes(q))
+            );
+
+            list.forEach(product => {
                 const brand = allBrands.find(b => b.id === product.brand_id);
                 const tr = document.createElement('tr');
                 tr.draggable = true;
@@ -1973,33 +2284,36 @@
                     updateBatchActionsUI();
                 });
 
-                const img = product.cover_image ? `<img src="${product.cover_image}" class="image-preview" style="width: 50px; height: 50px; border-radius: 4px; object-fit: cover;">` : '-';
+                // 封面圖優先用 original_cover_url(外部 URL),fallback 才用 cover_image(站內路徑)
+                const cover = product.original_cover_url || product.cover_image || '';
+                const img = cover
+                    ? `<img class="table-thumb" style="width:60px;height:60px;" src="${cover.replace(/"/g,'&quot;')}" alt="" onerror="this.outerHTML='<div class=\\'table-thumb-empty\\' style=\\'width:60px;height:60px;\\'>無圖</div>'">`
+                    : `<div class="table-thumb-empty" style="width:60px;height:60px;">無圖</div>`;
+
+                // 狀態 badge:優先 needs_review > sold_out > is_active
+                let badge;
+                if (product.needs_review) badge = `<span class="status-badge review">待審</span>`;
+                else if (product.sold_out) badge = `<span class="status-badge soldout">已售完</span>`;
+                else if (product.is_active) badge = `<span class="status-badge active">上架中</span>`;
+                else badge = `<span class="status-badge inactive">已下架</span>`;
+
+                const safeId = (product.id || '').replace(/'/g, "\\'");
 
                 tr.innerHTML = `
-                    <td style="width: 3%;" style="text-align: center;"></td>
+                    <td style="text-align:center;"></td>
                     <td style="cursor: move; text-align: center;">⋮</td>
-                    <td style="width: 8%;">${img}</td>
-                    <td>${product.name}</td>
-                    <td>${brand?.name || 'N/A'}</td>
-                    <td>${product.category || '-'}</td>
-                    <td>${product.price_vnd ? product.price_vnd.toLocaleString() : '-'}</td>
+                    <td>${img}</td>
+                    <td><span class="mono-id">${product.id || ''}</span></td>
+                    <td>${product.name || ''}</td>
+                    <td>${(brand?.name || 'N/A').toUpperCase()}</td>
+                    <td style="color:var(--text-secondary);">${product.category || '-'}</td>
+                    <td>${product.price_vnd ? product.price_vnd.toLocaleString() + ' ₫' : '-'}</td>
+                    <td>${badge}</td>
+                    <td style="text-align:center;">${product.sort_order ?? 0}</td>
                     <td>
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${product.sold_out ? 'checked' : ''} onchange="updateProductSoldOut('${product.id}', this.checked)">
-                            <span class="slider"></span>
-                        </label>
-                    </td>
-                    <td>
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${product.is_active ? 'checked' : ''} onchange="updateProductActive('${product.id}', this.checked)">
-                            <span class="slider"></span>
-                        </label>
-                    </td>
-                    <td>${product.sort_order}</td>
-                    <td>
-                        <div class="table-actions">
-                            <button class="btn-icon" onclick="editProduct('${product.id}')">✏️</button>
-                            <button class="btn-icon delete" onclick="deleteProduct('${product.id}')">🗑️</button>
+                        <div class="table-actions-vertical">
+                            <button class="btn-link edit" onclick="editProduct('${safeId}')">編輯</button>
+                            <button class="btn-link del"  onclick="deleteProduct('${safeId}')">刪除</button>
                         </div>
                     </td>
                 `;
@@ -2017,7 +2331,7 @@
             const count = selectedProductIds.size;
             if (count > 0) {
                 container.style.display = 'flex';
-                document.getElementById('batchInfo').textContent = `${count} selected`;
+                document.getElementById('batchInfo').textContent = `已選 ${count} 筆`;
             } else {
                 container.style.display = 'none';
             }
@@ -2090,30 +2404,19 @@
             }
         }
 
-        document.getElementById('brandFilter').addEventListener('change', (e) => {
-            const brand = e.target.value;
-            document.querySelectorAll('#productsTableBody tr').forEach(row => {
-                if (!brand || row.textContent.includes(allBrands.find(b => b.id === brand)?.name || '')) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        });
-
-        document.getElementById('productsSearch').addEventListener('input', (e) => {
-            const search = e.target.value.toLowerCase();
-            document.querySelectorAll('#productsTableBody tr').forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(search) ? '' : 'none';
-            });
-        });
+        // 篩選 (品牌 / 分類 / 搜尋) — 改用 data-driven re-render,順便能搜 ID
+        document.getElementById('brandFilter').addEventListener('change', () => renderProductsTable());
+        document.getElementById('categoryFilter')?.addEventListener('change', () => renderProductsTable());
+        document.getElementById('productsSearch').addEventListener('input', () => renderProductsTable());
 
         document.getElementById('addProductBtn').addEventListener('click', () => {
             editingProductId = null;
-            document.getElementById('productModalTitle').textContent = 'Add Product';
+            document.getElementById('productModalTitle').textContent = '新增商品';
             document.getElementById('productForm').reset();
             document.getElementById('productId').disabled = false;
+            // reset cover preview + 自動產生 ID hint
+            const cp = document.getElementById('productCoverPreview');
+            if (cp) cp.style.display = 'none';
             clearProductSizes();
             clearProductGallery();
             document.getElementById('productModal').classList.add('active');
@@ -2162,7 +2465,7 @@
             const product = allProducts.find(p => p.id === id);
             const brand = allBrands.find(b => b.id === product.brand_id);
 
-            document.getElementById('productModalTitle').textContent = 'Edit Product';
+            document.getElementById('productModalTitle').textContent = '編輯商品';
             document.getElementById('productId').disabled = true;
             document.getElementById('productId').value = product.id;
             document.getElementById('productName').value = product.name || '';
@@ -2176,10 +2479,13 @@
             document.getElementById('productPriceThbCarry').value = product.price_thb_carryback || '';
             document.getElementById('productPriceNote').value = product.price_note || '';
             document.getElementById('productCoverUrl').value = product.cover_image || '';
-            if (product.cover_image) {
-                document.getElementById('productCoverPreview').src = product.cover_image;
-                document.getElementById('productCoverPreview').style.display = 'block';
-            }
+            const ocuEl = document.getElementById('productOriginalCoverUrl');
+            if (ocuEl) ocuEl.value = product.original_cover_url || '';
+            // 預覽優先用 original_cover_url 才看得到外部圖
+            const previewSrc = product.original_cover_url || product.cover_image || '';
+            const cp = document.getElementById('productCoverPreview');
+            if (previewSrc) { cp.src = previewSrc; cp.style.display = 'block'; }
+            else            { cp.style.display = 'none'; }
             document.getElementById('productActive').checked = product.is_active !== false;
             document.getElementById('productSoldOut').checked = product.sold_out || false;
             document.getElementById('productNeedsReview').checked = product.needs_review || false;
@@ -2265,12 +2571,19 @@
                 price_thb_carryback: parseInt(document.getElementById('productPriceThbCarry').value) || null,
                 price_note: document.getElementById('productPriceNote').value,
                 cover_image: document.getElementById('productCoverUrl').value,
+                original_cover_url: document.getElementById('productOriginalCoverUrl')?.value || null,
                 is_active: document.getElementById('productActive').checked,
                 sold_out: document.getElementById('productSoldOut').checked,
                 needs_review: document.getElementById('productNeedsReview').checked,
                 sort_order: parseInt(document.getElementById('productSortOrder').value) || 0,
                 updated_at: new Date().toISOString()
             };
+            // 自動產生 ID:留空時用 brand-randomhash 格式 (新增模式)
+            if (!editingProductId && !document.getElementById('productId').value.trim()) {
+                const brand = data.brand_id || 'product';
+                const hash = Math.random().toString(16).slice(2, 10);
+                document.getElementById('productId').value = `${brand}-${hash}`;
+            }
 
             try {
                 if (editingProductId) {
@@ -2303,7 +2616,7 @@
                         await sb.from('product_gallery').insert(gallery);
                     }
 
-                    showToast('Product updated', 'success');
+                    showToast('商品已更新', 'success');
                 } else {
                     data.id = document.getElementById('productId').value;
                     data.created_at = new Date().toISOString();
@@ -2335,7 +2648,7 @@
                         await sb.from('product_gallery').insert(gallery);
                     }
 
-                    showToast('Product created', 'success');
+                    showToast('商品已建立', 'success');
                 }
                 closeProductModal();
                 loadProducts();
@@ -2345,13 +2658,13 @@
         });
 
         async function deleteProduct(id) {
-            if (!confirm('Are you sure you want to delete this product?')) return;
+            if (!confirm(`確定要刪除商品「${id}」嗎?`)) return;
             try {
                 await sb.from('product_sizes').delete().eq('product_id', id);
                 await sb.from('product_gallery').delete().eq('product_id', id);
                 const { error } = await sb.from('products').delete().eq('id', id);
                 if (error) throw error;
-                showToast('Product deleted', 'success');
+                showToast('商品已刪除', 'success');
                 loadProducts();
             } catch (error) {
                 showToast(error.message, 'error');
@@ -3075,6 +3388,104 @@
             } catch (error) {
                 showToast(error.message, 'error');
             }
+        });
+
+        // ============================================================================
+        // 發布部署 (DEPLOY)
+        // ============================================================================
+        let _deployHooks = { tw: '', th: '' };
+
+        async function loadDeploy() {
+            try {
+                // 從 site_settings 取出 deploy hook URL
+                const { data, error } = await sb.from('site_settings')
+                    .select('key, value')
+                    .in('key', ['deploy_hook_tw', 'deploy_hook_th']);
+                if (error) throw error;
+                _deployHooks = { tw: '', th: '' };
+                (data || []).forEach(row => {
+                    if (row.key === 'deploy_hook_tw') _deployHooks.tw = row.value || '';
+                    if (row.key === 'deploy_hook_th') _deployHooks.th = row.value || '';
+                });
+                document.getElementById('deployHookTw').value = _deployHooks.tw;
+                document.getElementById('deployHookTh').value = _deployHooks.th;
+                _refreshDeployButtons();
+                _refreshDeployStatus();
+            } catch (err) {
+                showToast('載入部署設定失敗', 'error');
+                console.error(err);
+            }
+        }
+
+        function _refreshDeployButtons() {
+            document.getElementById('deployTwBtn').disabled  = !_deployHooks.tw;
+            document.getElementById('deployThBtn').disabled  = !_deployHooks.th;
+            document.getElementById('deployAllBtn').disabled = !_deployHooks.tw && !_deployHooks.th;
+        }
+
+        function _refreshDeployStatus() {
+            const fmt = (key) => {
+                const ts = localStorage.getItem('lastDeploy_' + key);
+                if (!ts) return '尚未部署過';
+                const d = new Date(parseInt(ts, 10));
+                return '上次部署: ' + d.toLocaleString('zh-TW');
+            };
+            document.getElementById('deployTwStatus').textContent = fmt('tw');
+            document.getElementById('deployThStatus').textContent = fmt('th');
+        }
+
+        document.getElementById('saveDeployHooksBtn').addEventListener('click', async () => {
+            const tw = document.getElementById('deployHookTw').value.trim();
+            const th = document.getElementById('deployHookTh').value.trim();
+            try {
+                const updates = [
+                    { key: 'deploy_hook_tw', value: tw, updated_at: new Date().toISOString() },
+                    { key: 'deploy_hook_th', value: th, updated_at: new Date().toISOString() },
+                ];
+                for (const u of updates) {
+                    const { error } = await sb.from('site_settings').upsert(u);
+                    if (error) throw error;
+                }
+                _deployHooks = { tw, th };
+                _refreshDeployButtons();
+                showToast('Deploy hook 設定已儲存', 'success');
+            } catch (err) {
+                showToast(err.message || '儲存失敗', 'error');
+            }
+        });
+
+        async function _triggerDeploy(key) {
+            const url = _deployHooks[key];
+            if (!url) { showToast('尚未設定該站的 deploy hook URL', 'error'); return; }
+            const btn  = document.getElementById('deploy' + key.charAt(0).toUpperCase() + key.slice(1) + 'Btn');
+            const stat = document.getElementById('deploy' + key.charAt(0).toUpperCase() + key.slice(1) + 'Status');
+            const original = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '部署中…';
+            try {
+                // Vercel deploy hook 是 POST,不需要 body
+                const res = await fetch(url, { method: 'POST' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                localStorage.setItem('lastDeploy_' + key, String(Date.now()));
+                stat.textContent = '✓ 部署觸發成功,等 Vercel 約 1-2 分鐘建置完。';
+                stat.style.color = '#4ade80';
+                showToast('部署已觸發', 'success');
+            } catch (err) {
+                stat.textContent = '✗ 部署失敗: ' + (err.message || err);
+                stat.style.color = '#f87171';
+                showToast('部署失敗', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = original;
+                _refreshDeployStatus();
+            }
+        }
+
+        document.getElementById('deployTwBtn').addEventListener('click', () => _triggerDeploy('tw'));
+        document.getElementById('deployThBtn').addEventListener('click', () => _triggerDeploy('th'));
+        document.getElementById('deployAllBtn').addEventListener('click', async () => {
+            if (_deployHooks.tw) await _triggerDeploy('tw');
+            if (_deployHooks.th) await _triggerDeploy('th');
         });
 
         // ============================================================================
