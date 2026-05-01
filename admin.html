@@ -1104,7 +1104,7 @@
                                         <th style="width: 10%;">國際送</th>
                                         <th>Active</th>
                                         <th>Order</th>
-                                        <th style="width: 10%;">Actions</th>
+                                        <th style="width: 110px; white-space: nowrap;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="featuredTableBody" draggable="true">
@@ -2628,7 +2628,8 @@
 
                 const product = f.products || {};
                 const brand = f.brands || {};
-                const cover = product.cover_image || product.original_cover_url || '';
+                // 優先用外部 URL (cover_image 常常是本機沒有的相對路徑 → 404)
+                const cover = product.original_cover_url || product.cover_image || '';
                 const img = cover
                     ? `<img src="${cover}" class="image-preview" style="width: 60px; height: 60px; border-radius: 4px; object-fit: cover;">`
                     : '<span style="opacity:0.4;font-size:11px">no image</span>';
@@ -2651,7 +2652,7 @@
                         </label>
                     </td>
                     <td>${f.sort_order}</td>
-                    <td>
+                    <td style="white-space: nowrap;">
                         <div class="table-actions">
                             <button class="btn-icon" onclick="editFeatured('${f.id}')">✏️</button>
                             <button class="btn-icon delete" onclick="deleteFeatured('${f.id}')">🗑️</button>
@@ -2699,7 +2700,7 @@
                         const priceLabel = carry != null ? ` — NT$${carry.toLocaleString()}` : '';
                         const sel2 = p.id === selectedId ? 'selected' : '';
                         const safeName = (p.name || '').replace(/"/g, '&quot;');
-                        return `<option value="${p.id}" ${sel2} data-cover="${(p.cover_image || p.original_cover_url || '').replace(/"/g, '&quot;')}" data-price-vnd="${p.price_vnd || 0}" data-tag="${(p.tag || p.category || '').replace(/"/g, '&quot;')}">${safeName}${priceLabel}</option>`;
+                        return `<option value="${p.id}" ${sel2} data-cover="${(p.original_cover_url || p.cover_image || '').replace(/"/g, '&quot;')}" data-price-vnd="${p.price_vnd || 0}" data-tag="${(p.tag || p.category || '').replace(/"/g, '&quot;')}">${safeName}${priceLabel}</option>`;
                     }).join('');
             } catch (e) { console.error('Failed to load products for featured selector:', e); }
         }
