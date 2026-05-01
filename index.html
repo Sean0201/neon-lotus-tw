@@ -1964,6 +1964,9 @@
     <button class="nav-btn" onclick="showPage('about')">
       <span data-en="ABOUT" data-tw="品牌故事">品牌故事</span>
     </button>
+    <button class="nav-btn" onclick="showPage('home'); setTimeout(()=>document.getElementById('hunt-section')?.scrollIntoView({behavior:'smooth',block:'start'}), 50)">
+      <span data-en="TARGET RADAR" data-tw="獵物雷達">獵物雷達</span>
+    </button>
     <button class="nav-btn" onclick="showPage('contact')">
       <span data-en="CONTACT" data-tw="聯繫我們">聯繫我們</span>
     </button>
@@ -2000,6 +2003,7 @@
     <button class="mobile-brand-item" onclick="filterByStyle('');closeMobileMenu()">Show All</button>
   </div>
   <button class="mobile-nav-btn" data-en="ABOUT" data-tw="品牌故事" onclick="showPage('about');closeMobileMenu()">品牌故事</button>
+  <button class="mobile-nav-btn" data-en="TARGET RADAR" data-tw="獵物雷達" onclick="showPage('home');closeMobileMenu();setTimeout(()=>document.getElementById('hunt-section')?.scrollIntoView({behavior:'smooth',block:'start'}), 100)">獵物雷達</button>
   <button class="mobile-nav-btn" data-en="CONTACT" data-tw="聯繫我們" onclick="showPage('contact');closeMobileMenu()">聯繫我們</button>
   <!-- 試衣間 (TRY ON) — 暫時隱藏,審核金流期間 -->
   <button class="mobile-nav-btn" data-en="✨ TRY ON" data-tw="✨ 試衣間" onclick="showPage('tryon');closeMobileMenu()" style="display:none;background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(99,102,241,0.2));color:#c084fc">✨ 試衣間</button>
@@ -2056,7 +2060,7 @@
   </section>
 
   <!-- ============ 獵物雷達 / TARGET RADAR (代尋委託表單) ============ -->
-  <section class="hunt-section">
+  <section class="hunt-section" id="hunt-section">
     <div class="hunt-inner fade-in">
       <p class="section-eyebrow" data-en="TARGET RADAR · SUBMIT A HUNT" data-tw="獵物雷達 · 委託代尋">獵物雷達 · 委託代尋</p>
       <h2 class="hunt-title" data-en="Target Radar" data-tw="獵物雷達">獵物雷達</h2>
