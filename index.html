@@ -2522,9 +2522,16 @@
           { max:  2000000, mult: 1.4  },
           { max:  Infinity, mult: 1.35 },
         ];
-        function _huntMult(vnd) {
-          for (const t of HUNT_TIERS) if (vnd <= t.max) return t.mult;
-          return HUNT_TIERS[HUNT_TIERS.length - 1].mult;
+        // 累進制倍率 — 跟 main.js 的 marginalAdjVnd 完全一致
+        function _huntMarginalAdj(vnd) {
+          if (!vnd || vnd <= 0) return 0;
+          let total = 0, prev = 0;
+          for (const { max, mult } of HUNT_TIERS) {
+            if (vnd <= max) { total += (vnd - prev) * mult; return total; }
+            total += (max - prev) * mult;
+            prev = max;
+          }
+          return total;
         }
         function _huntPsych(n) {
           if (n == null) return n;
@@ -2535,9 +2542,11 @@
         function calcHuntPrice(vnd, tag) {
           if (!vnd || vnd <= 0) return null;
           const est = HUNT_SHIP_VND[tag] ?? HUNT_SHIP_VND._default;
-          const mult = _huntMult(vnd);
-          let carry = Math.round(vnd * mult * HUNT_RATE / 10) * 10;
-          let ship  = _huntPsych((vnd + est) * mult * HUNT_RATE);
+          // 累進制:carry 跟 ship 各自 marginally 加總
+          const carry_vnd = _huntMarginalAdj(vnd);
+          const ship_vnd  = _huntMarginalAdj(vnd + est);
+          let carry = Math.round(carry_vnd * HUNT_RATE / 10) * 10;
+          let ship  = _huntPsych(ship_vnd * HUNT_RATE);
           const ceiling = carry + 200;
           if (ship > ceiling) {
             ship = _huntPsych(ceiling);
@@ -3189,6 +3198,6 @@
 <script src="shopping-guide.js?v=2"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js"></script>
-    <script src="main.js?v=53" defer></script>
+    <script src="main.js?v=54" defer></script>
 </body>
 </html>

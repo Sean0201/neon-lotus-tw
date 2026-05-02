@@ -2944,9 +2944,16 @@
             { max: 2000000, mult: 1.4  },
             { max: Infinity, mult: 1.35 },
         ];
-        function _featuredMult(vnd) {
-            for (const t of FEATURED_TIERS) if (vnd <= t.max) return t.mult;
-            return FEATURED_TIERS[FEATURED_TIERS.length - 1].mult;
+        // 累進制倍率 — 跟 main.js 的 marginalAdjVnd 完全一致
+        function _featuredMarginalAdj(vnd) {
+            if (!vnd || vnd <= 0) return 0;
+            let total = 0, prev = 0;
+            for (const { max, mult } of FEATURED_TIERS) {
+                if (vnd <= max) { total += (vnd - prev) * mult; return total; }
+                total += (max - prev) * mult;
+                prev = max;
+            }
+            return total;
         }
         function _featuredPsych(n) {
             if (n == null) return n;
@@ -2957,9 +2964,11 @@
         function _featuredCalc(vnd, tag) {
             if (!vnd) return { carry: null, ship: null };
             const est = FEATURED_SHIP_VND[tag] ?? FEATURED_SHIP_VND._default;
-            const mult = _featuredMult(vnd);
-            let carry = Math.round(vnd * mult * FEATURED_RATE / 10) * 10;
-            let ship = _featuredPsych((vnd + est) * mult * FEATURED_RATE);
+            // 累進制:carry 跟 ship 各自 marginally 加總
+            const carry_vnd = _featuredMarginalAdj(vnd);
+            const ship_vnd  = _featuredMarginalAdj(vnd + est);
+            let carry = Math.round(carry_vnd * FEATURED_RATE / 10) * 10;
+            let ship = _featuredPsych(ship_vnd * FEATURED_RATE);
             const ceiling = carry + 200;
             if (ship > ceiling) {
                 ship = _featuredPsych(ceiling);

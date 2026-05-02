@@ -120,9 +120,34 @@ let currentLang = 'tw';     // 'tw' | 'en'
    § 2.  PRICE UTILITIES  (mirrors price_calc.js)
    ═══════════════════════════════════════════════════════════════ */
 
+// ⚠️ Deprecated: 舊的單倍率邏輯,已被 marginalAdjVnd 取代。保留供其他工具參考。
 function getMultiplier(vnd) {
   for (const { max, mult } of TIERS) if (vnd <= max) return mult;
   return TIERS.at(-1).mult;
+}
+
+/**
+ * 累進制倍率 — 像所得稅級距,每段 VND 套自己的倍率,加總。
+ * 例: VND 400,000 → 前 300,000 × 1.75 + 後 100,000 × 1.5 = 525k + 150k = 675k
+ *
+ * 好處:
+ *   1. 邊界完全不會跳水(數學上保證 VND 多 → 加總後 NTD 也多)
+ *   2. 低價商品仍享 1.75x 高加成 (利潤率該高的時候高)
+ *   3. 高價商品累計後拿到合理利潤,不會像舊算法那樣每跨界就掉 60-120 NTD
+ */
+function marginalAdjVnd(vnd) {
+  if (!vnd || vnd <= 0) return 0;
+  let total = 0;
+  let prev  = 0;
+  for (const { max, mult } of TIERS) {
+    if (vnd <= max) {
+      total += (vnd - prev) * mult;
+      return total;
+    }
+    total += (max - prev) * mult;
+    prev = max;
+  }
+  return total;
 }
 
 function roundTo50(n) { return Math.round(n / 50) * 50; }
@@ -141,9 +166,9 @@ function psychPrice(n) {
 }
 
 /**
- * Recalculate TWD prices for a product.
- * - twd_carryback (親自運回): 四捨五入到 10 元 (尾數 1-4 → 0, 尾數 5-9 → 十位+1、個位=0)
- * - twd_shipping  (國際配送): 套心理定價 (50/90 結尾)
+ * Recalculate TWD prices for a product (使用累進制倍率).
+ * - twd_carryback (親自運回): marginalAdjVnd(vnd) 後四捨五入到 10
+ * - twd_shipping  (國際配送): marginalAdjVnd(vnd + ship_cost) 後套心理定價 (50/90 結尾)
  *
  * Cap rule: twd_shipping − twd_carryback ≤ 200
  *   國際配送若超過 carryback+200,壓到 carryback+200 並再套一次心理定價;
@@ -151,16 +176,19 @@ function psychPrice(n) {
  */
 function calcPrice(vnd, tag) {
   const est  = SHIP_VND[tag] ?? SHIP_VND._default;
-  const mult = getMultiplier(vnd);
 
-  let twd_carryback = Math.round(vnd * mult * RATE / 10) * 10;       // 親帶: 四捨五入到 10
-  let twd_shipping  = psychPrice((vnd + est) * mult * RATE);          // 國際: 心理定價
+  // 累進制:carry 跟 ship 各自 marginally 加總,確保邊界平滑
+  const carry_vnd = marginalAdjVnd(vnd);
+  const ship_vnd  = marginalAdjVnd(vnd + est);
+
+  let twd_carryback = Math.round(carry_vnd * RATE / 10) * 10;          // 親帶: 四捨五入到 10
+  let twd_shipping  = psychPrice(ship_vnd * RATE);                      // 國際: 心理定價
 
   // Cap: 國際送 不得超過 親自帶 + 200
   const ceiling = twd_carryback + 200;
   if (twd_shipping > ceiling) {
-    twd_shipping = psychPrice(ceiling);                               // 封頂後再套一次 50/90 心理定價
-    if (twd_shipping > ceiling) twd_shipping -= 100;                  // 避免向上跳過上限(如 1600→1650)
+    twd_shipping = psychPrice(ceiling);                                 // 封頂後再套一次 50/90 心理定價
+    if (twd_shipping > ceiling) twd_shipping -= 100;                    // 避免向上跳過上限(如 1600→1650)
   }
 
   return { twd_shipping, twd_carryback };
