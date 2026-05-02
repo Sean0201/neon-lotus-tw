@@ -923,9 +923,15 @@
       color: rgba(192,132,252,0.75);
       border: 1px dashed rgba(192,132,252,0.25);
       padding: 8px 16px; border-radius: 4px;
-      margin-bottom: 36px; letter-spacing: 0.04em;
+      margin: 0 0 8px; letter-spacing: 0.04em;
       max-width: 560px;
     }
+    .hunt-disclaimer.hunt-disclaimer-info {
+      /* 第二行語氣較輕的提醒 (節慶特價提示),用淺灰色框區分 */
+      color: rgba(156,163,175,0.85);
+      border-color: rgba(156,163,175,0.25);
+    }
+    .hunt-disclaimer:last-of-type { margin-bottom: 36px; }
     .hunt-form {
       text-align: left;
       background: rgba(22,20,30,0.65);
@@ -2252,6 +2258,7 @@
       <p class="hunt-lede" data-en="Didn't see your prey on the shelf? Tell us." data-tw="沒有在架上看到你的獵物?告訴我們。">沒有在架上看到你的獵物?告訴我們。</p>
       <p class="hunt-desc" data-en="The NEON LOTUS buyer team will infiltrate the alleys of Saigon and Hanoi to unlock your hidden code." data-tw="NEON LOTUS 的買手團隊將潛入胡志明與河內的巷弄,為你解鎖隱藏代碼。">NEON LOTUS 的買手團隊將潛入胡志明與河內的巷弄,為你解鎖隱藏代碼。</p>
       <p class="hunt-disclaimer" data-en="Note: We only accept commissions for designer labels and streetwear. We reserve the right to decline mediocre design." data-tw="註:我們僅接受設計師品牌與街頭服飾之委託。我們保留拒絕平庸設計的權利。">註:我們僅接受設計師品牌與街頭服飾之委託。我們保留拒絕平庸設計的權利。</p>
+      <p class="hunt-disclaimer hunt-disclaimer-info" data-en="Reminder: Vietnamese brands frequently run seasonal promotions — online estimates are reference only; actual price depends on real-time conditions." data-tw="提醒:越南品牌時常有節慶特價優惠,網路報價僅供參考,實際售價仍需以當下情況為主。">提醒:越南品牌時常有節慶特價優惠,網路報價僅供參考,實際售價仍需以當下情況為主。</p>
 
       <form id="huntForm" class="hunt-form" autocomplete="off">
         <div class="hunt-field">
