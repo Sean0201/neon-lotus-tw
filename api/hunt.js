@@ -60,15 +60,18 @@ export default async function handler(req, res) {
 
   try {
     const {
-      target,        // 獵物名稱 / 品牌  (必填)
-      ref_url,       // 參考連結
-      price_range,   // 預期價格範圍
-      contact,       // 聯絡方式  (必填)
-      notes,         // 備註
-      image_urls,    // 圖片 URL array (上傳到 Supabase Storage 後的公開 URL)
-      submitted_at,  // 前端 ISO 時間戳
-      user_agent,    // 用戶 UA
-      referrer,      // 來源頁面
+      target,                 // 獵物名稱 / 品牌  (必填)
+      ref_url,                // 參考連結
+      vnd_price,              // 越南盾原價 (新)
+      category,               // 商品類型 (新: Top/Outerwear/Bottom/Set/Accessories/_default)
+      estimated_carryback,    // 前端算好的預估親自帶回 NTD
+      estimated_shipping,     // 前端算好的預估國際運送 NTD
+      contact,                // 聯絡方式  (必填)
+      notes,                  // 備註
+      image_urls,             // 圖片 URL array (上傳到 Supabase Storage 後的公開 URL)
+      submitted_at,           // 前端 ISO 時間戳
+      user_agent,             // 用戶 UA
+      referrer,               // 來源頁面
     } = req.body || {};
 
     // ── 必填檢查 + 反垃圾長度限制 ────────────────────────────
@@ -104,13 +107,33 @@ export default async function handler(req, res) {
       "",
       "\ud83c\udfaf \u7375\u7269: " + target,                                          // 🎯 獵物
     ];
-    if (ref_url)     lines.push("\ud83d\udd17 \u53c3\u8003\u9023\u7d50: " + ref_url);   // 🔗 參考連結
-    if (price_range) lines.push("\ud83d\udcb0 \u9810\u671f\u50f9\u683c: " + price_range); // 💰 預期價格
-    lines.push("\ud83d\udcde \u806f\u7d61: " + contact);                                // 📞 聯絡
-    if (notes) lines.push("", "\ud83d\udcdd \u5099\u8a3b:", notes);                     // 📝 備註
+    if (ref_url) lines.push("\ud83d\udd17 \u53c3\u8003\u9023\u7d50: " + ref_url);          // 🔗 參考連結
+
+    // 越南盾原價 + 商品類型
+    const vndNum = parseInt(vnd_price, 10);
+    if (vndNum && vndNum > 0) {
+      const catLabel = ({
+        Top: "上衣", Outerwear: "外套", Bottom: "褲款 / 下身",
+        Set: "套裝", Accessories: "配件 / 帽款", _default: "其他",
+      })[category] || "其他";
+      lines.push("\ud83c\udff7\ufe0f VND \u539f\u50f9: " + vndNum.toLocaleString() + " \u20ab (" + catLabel + ")"); // 🏷️ VND 原價
+    }
+
+    // 前端送過來的預估報價 (兩種運送方式)
+    const carryNum = parseInt(estimated_carryback, 10);
+    const shipNum  = parseInt(estimated_shipping, 10);
+    if (carryNum > 0 || shipNum > 0) {
+      lines.push(
+        "\ud83d\udcca \u9810\u4f30: \u89aa\u81ea\u5e36\u56de NT$ " + (carryNum > 0 ? carryNum.toLocaleString() : "—") +
+        " / \u570b\u969b\u904b\u9001 NT$ " + (shipNum > 0 ? shipNum.toLocaleString() : "—")
+      ); // 📊 預估
+    }
+
+    lines.push("\ud83d\udcde \u806f\u7d61: " + contact);                                  // 📞 聯絡
+    if (notes) lines.push("", "\ud83d\udcdd \u5099\u8a3b:", notes);                       // 📝 備註
     if (safeImages.length > 0) lines.push("", "\ud83d\uddbc \u5716\u7247: " + safeImages.length + " \u5f35"); // 🖼 圖片
-    lines.push("", "\u23f0 \u9001\u51fa\u6642\u9593: " + ts);                          // ⏰ 送出時間
-    if (referrer)   lines.push("\ud83c\udf10 \u4f86\u6e90: " + String(referrer).slice(0, 120));  // 🌐 來源
+    lines.push("", "\u23f0 \u9001\u51fa\u6642\u9593: " + ts);                            // ⏰ 送出時間
+    if (referrer) lines.push("\ud83c\udf10 \u4f86\u6e90: " + String(referrer).slice(0, 120));  // 🌐 來源
     const msg = lines.join("\n");
 
     // ── 發送到 Telegram ─────────────────────────────────────
@@ -146,7 +169,11 @@ export default async function handler(req, res) {
     // ── PLAN B (Supabase) — 之後想啟用的時候解開 ──────────────
     // const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     // const { error: dbErr } = await sb.from("hunt_requests").insert({
-    //   target, ref_url, price_range, contact, notes,
+    //   target, ref_url, contact, notes,
+    //   vnd_price: vndNum || null,
+    //   category: category || null,
+    //   estimated_carryback: carryNum || null,
+    //   estimated_shipping:  shipNum  || null,
     //   image_urls: safeImages,
     //   user_agent, referrer,
     //   status: "pending",

@@ -1018,6 +1018,110 @@
       color: rgba(156,163,175,0.7);
       margin: 14px 0 0; letter-spacing: 0.04em;
     }
+    /* ── select 跟 input 一致樣式 ── */
+    .hunt-field select {
+      width: 100%; box-sizing: border-box;
+      background: rgba(7,4,12,0.6);
+      border: 1px solid rgba(168,85,247,0.22);
+      border-radius: 6px;
+      padding: 12px 14px;
+      color: #f0e6ff; font-size: 0.92rem;
+      font-family: inherit; letter-spacing: 0.02em;
+      cursor: pointer;
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1l5 5 5-5' stroke='%23c084fc' stroke-width='1.5' stroke-linecap='round'/></svg>");
+      background-repeat: no-repeat; background-position: right 14px center;
+      padding-right: 36px;
+    }
+    .hunt-field select:focus {
+      outline: none; border-color: var(--accent);
+      background-color: rgba(7,4,12,0.85);
+      box-shadow: 0 0 0 3px rgba(168,85,247,0.12), var(--neon-purple);
+    }
+    .hunt-field select option { background: #16141e; color: #f0e6ff; }
+
+    /* ── 即時報價預估區塊 (live estimate) ── */
+    .hunt-estimate {
+      margin: -8px 0 18px;
+      padding: 16px 18px;
+      background: rgba(168,85,247,0.07);
+      border: 1px solid rgba(168,85,247,0.22);
+      border-radius: 8px;
+    }
+    .hunt-estimate[hidden] { display: none; }
+    .hunt-estimate-title {
+      font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: rgba(192,132,252,0.85); font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .hunt-estimate-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 6px 0;
+    }
+    .hunt-estimate-row + .hunt-estimate-row {
+      border-top: 1px dashed rgba(168,85,247,0.15);
+    }
+    .hunt-estimate-label {
+      font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--lightgrey);
+    }
+    .hunt-estimate-amount {
+      font-family: var(--font-headline); font-size: 1.2rem;
+      letter-spacing: 0.04em;
+      background: var(--gradient-main);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hunt-estimate-note {
+      font-size: 0.7rem; color: rgba(156,163,175,0.7);
+      margin: 10px 0 0; letter-spacing: 0.02em;
+    }
+
+    /* ── 提交成功確認面板 ── */
+    .hunt-success-panel {
+      text-align: center;
+      padding: 32px 24px;
+      background: rgba(22,20,30,0.65);
+      border: 1px solid rgba(74,222,128,0.30);
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(74,222,128,0.08);
+    }
+    .hunt-success-icon {
+      font-size: 2rem; line-height: 1;
+      color: #4ade80;
+      margin-bottom: 12px;
+    }
+    .hunt-success-title {
+      font-family: var(--font-headline);
+      font-size: 1.3rem; font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #4ade80;
+      margin: 0 0 8px;
+    }
+    .hunt-success-desc {
+      color: var(--lightgrey); font-size: 0.92rem;
+      line-height: 1.6; margin: 0 0 20px;
+    }
+    .hunt-success-estimate {
+      max-width: 360px; margin: 0 auto 24px;
+      padding: 16px 18px;
+      background: rgba(168,85,247,0.07);
+      border: 1px solid rgba(168,85,247,0.22);
+      border-radius: 8px;
+      text-align: left;
+    }
+    .hunt-success-restart {
+      background: transparent; border: 1px solid rgba(192,132,252,0.35);
+      color: #f9d4ff; padding: 10px 24px;
+      border-radius: 6px; font-family: inherit;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      font-size: 0.78rem; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .hunt-success-restart:hover {
+      border-color: var(--accent);
+      background: rgba(168,85,247,0.10);
+    }
     /* ── 圖片上傳 dropzone ── */
     .hunt-image-zone {
       border: 1px dashed rgba(168,85,247,0.30);
@@ -2162,15 +2266,38 @@
         </div>
         <div class="hunt-row">
           <div class="hunt-field">
-            <label for="huntPriceRange" data-en="EXPECTED PRICE RANGE (NTD)" data-tw="預期價格範圍 (NTD)">預期價格範圍 (NTD)</label>
-            <input type="text" id="huntPriceRange" name="price_range" maxlength="60"
-                   placeholder="e.g. 1500-3000">
+            <label for="huntVndPrice" data-en="VIETNAMESE PRICE (VND)" data-tw="越南盾原價 (VND)">越南盾原價 (VND)</label>
+            <input type="number" id="huntVndPrice" name="vnd_price" min="0" max="50000000" step="1000"
+                   placeholder="e.g. 500000">
           </div>
           <div class="hunt-field">
-            <label for="huntContact" data-en="YOUR CONTACT (LINE / IG / EMAIL)" data-tw="你的聯絡方式 (LINE / IG / Email)">你的聯絡方式 (LINE / IG / Email)</label>
-            <input type="text" id="huntContact" name="contact" required maxlength="120"
-                   placeholder="@yourid 或 your@email.com">
+            <label for="huntCategory" data-en="ITEM TYPE" data-tw="商品類型">商品類型</label>
+            <select id="huntCategory" name="category">
+              <option value="_default">其他 / 不確定</option>
+              <option value="Top">上衣 (Tee / Shirt / Hoodie)</option>
+              <option value="Bottom">褲款 / 下身</option>
+              <option value="Outerwear">外套</option>
+              <option value="Set">套裝</option>
+              <option value="Accessories">配件 / 帽款</option>
+            </select>
           </div>
+        </div>
+        <div class="hunt-estimate" id="huntEstimate" hidden>
+          <div class="hunt-estimate-title" data-en="PRICE PREVIEW" data-tw="預估台幣售價">預估台幣售價</div>
+          <div class="hunt-estimate-row">
+            <span class="hunt-estimate-label" data-en="CARRY-BACK" data-tw="親自帶回">親自帶回</span>
+            <span class="hunt-estimate-amount" id="huntEstCarry">—</span>
+          </div>
+          <div class="hunt-estimate-row">
+            <span class="hunt-estimate-label" data-en="INTERNATIONAL SHIPPING" data-tw="國際運送">國際運送</span>
+            <span class="hunt-estimate-amount" id="huntEstShip">—</span>
+          </div>
+          <p class="hunt-estimate-note" data-en="Estimate only · final price subject to item condition &amp; shipping rules" data-tw="僅供參考 · 最終售價依商品狀態與運費規定可能微調">僅供參考 · 最終售價依商品狀態與運費規定可能微調</p>
+        </div>
+        <div class="hunt-field">
+          <label for="huntContact" data-en="YOUR CONTACT (LINE / IG / EMAIL)" data-tw="你的聯絡方式 (LINE / IG / Email)">你的聯絡方式 (LINE / IG / Email)</label>
+          <input type="text" id="huntContact" name="contact" required maxlength="120"
+                 placeholder="@yourid 或 your@email.com">
         </div>
         <div class="hunt-field">
           <label for="huntNotes" data-en="NOTES (SIZE / COLOR / URGENCY…)" data-tw="備註 (尺寸/顏色/急迫程度…)">備註 (尺寸/顏色/急迫程度…)</label>
@@ -2196,6 +2323,26 @@
         </button>
         <p class="hunt-form-hint" data-en="We typically respond within 24 hours via the contact you provided." data-tw="收到請求後,我們會在 24 小時內透過你提供的聯絡方式回覆。">收到請求後,我們會在 24 小時內透過你提供的聯絡方式回覆。</p>
       </form>
+
+      <!-- 提交成功面板 (預設隱藏,送出後才顯示) -->
+      <div class="hunt-success-panel" id="huntSuccessPanel" hidden>
+        <div class="hunt-success-icon">✓</div>
+        <h3 class="hunt-success-title" data-en="Signal Received" data-tw="訊號已成功送出">訊號已成功送出</h3>
+        <p class="hunt-success-desc" data-en="Our buyers are scanning Saigon &amp; Hanoi. We'll get back to you within 24 hours via the contact you provided." data-tw="買手團隊正在胡志明與河內掃描你的獵物,我們將在 24 小時內透過你提供的聯絡方式聯繫你。">買手團隊正在胡志明與河內掃描你的獵物,我們將在 24 小時內透過你提供的聯絡方式聯繫你。</p>
+        <div class="hunt-success-estimate" id="huntSuccessEstimate" hidden>
+          <div class="hunt-estimate-title" data-en="ESTIMATED PRICE" data-tw="預估台幣售價">預估台幣售價</div>
+          <div class="hunt-estimate-row">
+            <span class="hunt-estimate-label" data-en="CARRY-BACK" data-tw="親自帶回">親自帶回</span>
+            <span class="hunt-estimate-amount" id="huntSuccessCarry">—</span>
+          </div>
+          <div class="hunt-estimate-row">
+            <span class="hunt-estimate-label" data-en="INTERNATIONAL SHIPPING" data-tw="國際運送">國際運送</span>
+            <span class="hunt-estimate-amount" id="huntSuccessShip">—</span>
+          </div>
+          <p class="hunt-estimate-note" data-en="Estimate only · final price subject to item condition" data-tw="僅供參考 · 最終售價依商品狀態與運費規定可能微調">僅供參考 · 最終售價依商品狀態與運費規定可能微調</p>
+        </div>
+        <button type="button" class="hunt-success-restart" id="huntRestartBtn" data-en="SEND ANOTHER" data-tw="再送一筆">再送一筆</button>
+      </div>
     </div>
     <script>
       /* ════════════════════════════════════════════════════════════
@@ -2351,6 +2498,75 @@
           } catch (_) {}
         }
 
+        // ── 計價公式 (鏡像 main.js 的 calcPrice,確保前後一致) ──
+        const HUNT_RATE = 1 / 800;
+        const HUNT_SHIP_VND = {
+          Top:           72000,
+          Outerwear:    180000,
+          Bottom:       126000,
+          Set:          234000,
+          Accessories:   36000,
+          _default:      90000,
+        };
+        const HUNT_TIERS = [
+          { max:    300000, mult: 1.75 },
+          { max:    500000, mult: 1.5  },
+          { max:  1300000, mult: 1.4  },
+          { max:  2000000, mult: 1.4  },
+          { max:  Infinity, mult: 1.35 },
+        ];
+        function _huntMult(vnd) {
+          for (const t of HUNT_TIERS) if (vnd <= t.max) return t.mult;
+          return HUNT_TIERS[HUNT_TIERS.length - 1].mult;
+        }
+        function _huntPsych(n) {
+          if (n == null) return n;
+          const r = Math.round(n / 10) * 10;
+          const tail = r % 100;
+          return tail <= 50 ? r - tail + 50 : r - tail + 90;
+        }
+        function calcHuntPrice(vnd, tag) {
+          if (!vnd || vnd <= 0) return null;
+          const est = HUNT_SHIP_VND[tag] ?? HUNT_SHIP_VND._default;
+          const mult = _huntMult(vnd);
+          let carry = Math.round(vnd * mult * HUNT_RATE / 10) * 10;
+          let ship  = _huntPsych((vnd + est) * mult * HUNT_RATE);
+          const ceiling = carry + 200;
+          if (ship > ceiling) {
+            ship = _huntPsych(ceiling);
+            if (ship > ceiling) ship -= 100;
+          }
+          return { carry, ship };
+        }
+
+        // ── 即時預估報價 (用戶輸入 VND / 改類別時跑) ──
+        const vndInput   = document.getElementById('huntVndPrice');
+        const catSelect  = document.getElementById('huntCategory');
+        const estBox     = document.getElementById('huntEstimate');
+        const estCarryEl = document.getElementById('huntEstCarry');
+        const estShipEl  = document.getElementById('huntEstShip');
+        function updateLiveEstimate() {
+          const vnd = parseInt(vndInput.value, 10) || 0;
+          const tag = catSelect.value || '_default';
+          const result = calcHuntPrice(vnd, tag);
+          if (!result) { estBox.hidden = true; return; }
+          estCarryEl.textContent = 'NT$ ' + result.carry.toLocaleString();
+          estShipEl.textContent  = 'NT$ ' + result.ship.toLocaleString();
+          estBox.hidden = false;
+        }
+        vndInput.addEventListener('input',  updateLiveEstimate);
+        catSelect.addEventListener('change', updateLiveEstimate);
+
+        // ── 成功面板 ↔ 表單切換 ──
+        const successPanel    = document.getElementById('huntSuccessPanel');
+        const successEstBox   = document.getElementById('huntSuccessEstimate');
+        const successCarryEl  = document.getElementById('huntSuccessCarry');
+        const successShipEl   = document.getElementById('huntSuccessShip');
+        document.getElementById('huntRestartBtn')?.addEventListener('click', () => {
+          successPanel.hidden = true;
+          form.hidden = false;
+        });
+
         // ── 表單提交 ──────────────────────────────────────────────
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -2366,6 +2582,15 @@
             return;
           }
 
+          // 計算預估價格 (有 vnd_price 才算)
+          const vnd = parseInt(payload.vnd_price, 10) || 0;
+          const tag = payload.category || '_default';
+          const est = calcHuntPrice(vnd, tag);
+
+          payload.vnd_price = vnd || null;
+          payload.category  = tag;
+          payload.estimated_carryback = est ? est.carry : null;
+          payload.estimated_shipping  = est ? est.ship  : null;
           payload.submitted_at = new Date().toISOString();
           payload.user_agent   = navigator.userAgent.slice(0, 200);
           payload.referrer     = (document.referrer || '').slice(0, 200);
@@ -2373,7 +2598,6 @@
 
           const btn  = form.querySelector('.hunt-submit');
           const text = btn.querySelector('.hunt-submit-text');
-          const original = text.textContent;
           btn.disabled = true;
           text.textContent = '訊號傳送中…';
 
@@ -2401,19 +2625,26 @@
             console.warn('[hunt] API submit failed:', err);
           }
 
-          btn.classList.add('success');
-          text.textContent = apiOk
-            ? '✓ 訊號已送出 — 24 小時內聯繫你'
-            : '✓ 訊號已暫存 — 我們會盡快聯繫你';
+          // 顯示成功面板,塞入預估價格
+          if (est) {
+            successCarryEl.textContent = 'NT$ ' + est.carry.toLocaleString();
+            successShipEl.textContent  = 'NT$ ' + est.ship.toLocaleString();
+            successEstBox.hidden = false;
+          } else {
+            successEstBox.hidden = true;
+          }
+          form.hidden = true;
+          successPanel.hidden = false;
+          successPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+          // 重置表單 (下次再送時是乾淨的)
           form.reset();
-          // 清掉已上傳的圖
           uploaded.forEach(u => u.previewEl.remove());
           uploaded = [];
-          setTimeout(() => {
-            btn.classList.remove('success');
-            btn.disabled = false;
-            text.textContent = original;
-          }, 5000);
+          estBox.hidden = true;
+          btn.classList.remove('success');
+          btn.disabled = false;
+          text.textContent = '發送訊號 · TRANSMIT SIGNAL';
         });
       })();
     </script>
