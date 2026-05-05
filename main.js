@@ -20,13 +20,13 @@ const RATE = 1 / 800;         // 1 TWD = 800 VND  (匯率)
 
 // 國際運費 (NT$ flat,各品相一個固定 NT$) — 不再吃倍率
 // 公式: 國際運送 NT$ = (VND × 累進倍率 ÷ 800) + SHIP_NTD[cat]
-// 使用者指定 (2026-05-05):
-//   上衣 130 / 外套 225 / 褲子 170 / 套裝 250 / 配件 100 / 通用 100
+// 使用者指定 (2026-05-05 v2):
+//   上衣 130 / 外套 150 / 褲子 150 / 套裝 200 / 配件 100 / 通用 100
 const SHIP_NTD = {
   Top:           130,   // 上衣 ~0.40 kg  (T恤/襯衫/Polo/Tank/長袖/Hoodie/Sweater)
-  Outerwear:     225,   // 外套 ~1.00 kg  (Jacket/Coat/Parka)
-  Bottom:        170,   // 下身 ~0.70 kg  (Pants/Jeans/Shorts/Skirts)
-  Set:           250,   // 套裝 ~1.30 kg
+  Outerwear:     150,   // 外套 ~1.00 kg  (Jacket/Coat/Parka)
+  Bottom:        150,   // 下身 ~0.70 kg  (Pants/Jeans/Shorts/Skirts)
+  Set:           200,   // 套裝 ~1.30 kg
   Accessories:   100,   // 配件 ~0.20 kg  (Cap/Bag/Belt/Jewelry)
   _default:      100,   // 通用 ~0.50 kg
 };
