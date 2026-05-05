@@ -2544,8 +2544,8 @@
           if (!vnd || vnd <= 0) return null;
           const ship_ntd = HUNT_SHIP_NTD[tag] ?? HUNT_SHIP_NTD._default;
           const base_ntd = _huntMarginalAdj(vnd) * HUNT_RATE;
-          const carry = _huntPsych(base_ntd);                               // 50/90 結尾
-          const ship  = Math.round((base_ntd + ship_ntd) / 10) * 10;        // 四捨五入到 10
+          const carry = Math.round(base_ntd / 10) * 10;                     // 四捨五入到 10
+          const ship  = _huntPsych(base_ntd + ship_ntd);                    // 50/90 結尾
           return { carry, ship };
         }
 
@@ -3192,6 +3192,6 @@
 <script src="shopping-guide.js?v=2"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js"></script>
-    <script src="main.js?v=57" defer></script>
+    <script src="main.js?v=58" defer></script>
 </body>
 </html>

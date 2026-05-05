@@ -171,20 +171,20 @@ function psychPrice(n) {
 /**
  * 計算 TWD 報價 (新公式 — 國際運費以 NT$ 平加,不吃倍率).
  *
- *   親自帶回 NT$ = psychPrice( marginalAdjVnd(VND) ÷ 800 )                ← 50/90 結尾
- *   國際運送 NT$ = roundTo10( marginalAdjVnd(VND) ÷ 800 + SHIP_NTD[品相] )  ← 四捨五入到 10
+ *   親自帶回 NT$ = roundTo10( marginalAdjVnd(VND) ÷ 800 )                ← 四捨五入到 10
+ *   國際運送 NT$ = psychPrice( marginalAdjVnd(VND) ÷ 800 + SHIP_NTD[品相] ) ← 50/90 結尾
  *
  * 結尾規則:
- *   - 親帶 套 50/90 心理定價 (賣場常見尾數)
- *   - 國際 直接四捨五入到 10 (透明顯示,讓客戶清楚看出 ship − carry ≈ 運費)
+ *   - 親帶 直接四捨五入到 10 (透明顯示真實成本)
+ *   - 國際 套 50/90 心理定價 (賣場常見尾數)
  *   - 不再有 200 NT$ cap (新公式不需要)
  */
 function calcPrice(vnd, tag) {
   const ship_ntd = SHIP_NTD[tag] ?? SHIP_NTD._default;
   const base_ntd = marginalAdjVnd(vnd) * RATE;                         // 累進加成後 NT$ (未取整)
 
-  const twd_carryback = psychPrice(base_ntd);                          // 50/90 結尾
-  const twd_shipping  = Math.round((base_ntd + ship_ntd) / 10) * 10;   // 四捨五入到 10
+  const twd_carryback = Math.round(base_ntd / 10) * 10;                // 四捨五入到 10
+  const twd_shipping  = psychPrice(base_ntd + ship_ntd);               // 50/90 結尾
 
   return { twd_shipping, twd_carryback };
 }

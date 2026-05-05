@@ -2966,8 +2966,8 @@
             if (!vnd) return { carry: null, ship: null };
             const ship_ntd = FEATURED_SHIP_NTD[tag] ?? FEATURED_SHIP_NTD._default;
             const base_ntd = _featuredMarginalAdj(vnd) * FEATURED_RATE;
-            const carry = _featuredPsych(base_ntd);                              // 50/90 結尾
-            const ship  = Math.round((base_ntd + ship_ntd) / 10) * 10;           // 四捨五入到 10
+            const carry = Math.round(base_ntd / 10) * 10;                        // 四捨五入到 10
+            const ship  = _featuredPsych(base_ntd + ship_ntd);                   // 50/90 結尾
             return { carry, ship };
         }
 
