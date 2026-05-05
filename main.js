@@ -18,14 +18,17 @@
 /** Price formula constants — edit here to update all prices */
 const RATE = 1 / 800;         // 1 TWD = 800 VND  (匯率)
 
-// 國際運費 (VND) — 依品類重量估算, 成本 180,000 VND/kg
-const SHIP_VND = {
-  Top:           72_000,   // 上衣 ~400g  (T恤/襯衫/Polo/Tank/長袖/Hoodie/Sweater)
-  Outerwear:    180_000,   // 外套 ~1000g (Jacket/Coat/Parka)
-  Bottom:       126_000,   // 下身 ~700g  (Pants/Jeans/Shorts/Skirts)
-  Set:          234_000,   // 套裝 ~1300g
-  Accessories:   36_000,   // 配件 ~200g  (Cap/Bag/Belt/Jewelry)
-  _default:      90_000,   // 通用 ~500g
+// 國際運費 (NT$ flat,各品相一個固定 NT$) — 不再吃倍率
+// 公式: 國際運送 NT$ = (VND × 累進倍率 ÷ 800) + SHIP_NTD[cat]
+// 使用者指定 (2026-05-05):
+//   上衣 130 / 外套 225 / 褲子 170 / 套裝 250 / 配件 100 / 通用 100
+const SHIP_NTD = {
+  Top:           130,   // 上衣 ~0.40 kg  (T恤/襯衫/Polo/Tank/長袖/Hoodie/Sweater)
+  Outerwear:     225,   // 外套 ~1.00 kg  (Jacket/Coat/Parka)
+  Bottom:        170,   // 下身 ~0.70 kg  (Pants/Jeans/Shorts/Skirts)
+  Set:           250,   // 套裝 ~1.30 kg
+  Accessories:   100,   // 配件 ~0.20 kg  (Cap/Bag/Belt/Jewelry)
+  _default:      100,   // 通用 ~0.50 kg
 };
 
 // 加成倍率 (含台灣進口關稅 + 營業稅後的合理售價)
@@ -153,8 +156,8 @@ function marginalAdjVnd(vnd) {
 function roundTo50(n) { return Math.round(n / 50) * 50; }
 
 /**
- * Psychological pricing — 只用在「親自運回」價:
- *   tail 00–50  →  xx50   (e.g. 2213 → 2210 → 2250 / 2250 → 2250)
+ * Psychological pricing (50/90 結尾):
+ *   tail 00–50  →  xx50   (e.g. 2213 → 2210 → 2250)
  *   tail 51–99  →  xx90   (e.g. 2265 → 2270 → 2290)
  */
 function psychPrice(n) {
@@ -166,30 +169,22 @@ function psychPrice(n) {
 }
 
 /**
- * Recalculate TWD prices for a product (使用累進制倍率).
- * - twd_carryback (親自運回): marginalAdjVnd(vnd) 後四捨五入到 10
- * - twd_shipping  (國際配送): marginalAdjVnd(vnd + ship_cost) 後套心理定價 (50/90 結尾)
+ * 計算 TWD 報價 (新公式 — 國際運費以 NT$ 平加,不吃倍率).
  *
- * Cap rule: twd_shipping − twd_carryback ≤ 200
- *   國際配送若超過 carryback+200,壓到 carryback+200 並再套一次心理定價;
- *   若 psychPrice 把它向上推超過上限,退回 100 以維持 ≤200。
+ *   親自帶回 NT$ = psychPrice( marginalAdjVnd(VND) ÷ 800 )
+ *   國際運送 NT$ = psychPrice( marginalAdjVnd(VND) ÷ 800 + SHIP_NTD[品相] )
+ *
+ * 與舊版差異:
+ *   - 舊版把 SHIP_VND 加在 VND 上再吃倍率 → 倍率把運費也放大,需要 200 NT$ cap 裁切
+ *   - 新版運費是固定 NT$,加完倍率以後才平加 → 透明、無倍率污染
+ *   - 不再有 cap;國際 - 親帶 = SHIP_NTD[cat](再經 psych 微調)
  */
 function calcPrice(vnd, tag) {
-  const est  = SHIP_VND[tag] ?? SHIP_VND._default;
+  const ship_ntd = SHIP_NTD[tag] ?? SHIP_NTD._default;
+  const base_ntd = marginalAdjVnd(vnd) * RATE;          // 累進加成後 NT$ (未取整)
 
-  // 累進制:carry 跟 ship 各自 marginally 加總,確保邊界平滑
-  const carry_vnd = marginalAdjVnd(vnd);
-  const ship_vnd  = marginalAdjVnd(vnd + est);
-
-  let twd_carryback = Math.round(carry_vnd * RATE / 10) * 10;          // 親帶: 四捨五入到 10
-  let twd_shipping  = psychPrice(ship_vnd * RATE);                      // 國際: 心理定價
-
-  // Cap: 國際送 不得超過 親自帶 + 200
-  const ceiling = twd_carryback + 200;
-  if (twd_shipping > ceiling) {
-    twd_shipping = psychPrice(ceiling);                                 // 封頂後再套一次 50/90 心理定價
-    if (twd_shipping > ceiling) twd_shipping -= 100;                    // 避免向上跳過上限(如 1600→1650)
-  }
+  const twd_carryback = psychPrice(base_ntd);
+  const twd_shipping  = psychPrice(base_ntd + ship_ntd);
 
   return { twd_shipping, twd_carryback };
 }

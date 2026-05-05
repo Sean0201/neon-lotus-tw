@@ -2935,8 +2935,9 @@
         }
 
         // Mirrors main.js price calc — keep in sync
+        // 新公式: 國際運送 NT$ = (VND × 累進倍率 ÷ 800) + SHIP_NTD[品相]
         const FEATURED_RATE = 1 / 800;
-        const FEATURED_SHIP_VND = { Top: 72000, Outerwear: 180000, Bottom: 126000, Set: 234000, Accessories: 36000, _default: 90000 };
+        const FEATURED_SHIP_NTD = { Top: 130, Outerwear: 225, Bottom: 170, Set: 250, Accessories: 100, _default: 100 };
         const FEATURED_TIERS = [
             { max: 300000,  mult: 1.75 },
             { max: 500000,  mult: 1.5  },
@@ -2963,17 +2964,10 @@
         }
         function _featuredCalc(vnd, tag) {
             if (!vnd) return { carry: null, ship: null };
-            const est = FEATURED_SHIP_VND[tag] ?? FEATURED_SHIP_VND._default;
-            // 累進制:carry 跟 ship 各自 marginally 加總
-            const carry_vnd = _featuredMarginalAdj(vnd);
-            const ship_vnd  = _featuredMarginalAdj(vnd + est);
-            let carry = Math.round(carry_vnd * FEATURED_RATE / 10) * 10;
-            let ship = _featuredPsych(ship_vnd * FEATURED_RATE);
-            const ceiling = carry + 200;
-            if (ship > ceiling) {
-                ship = _featuredPsych(ceiling);
-                if (ship > ceiling) ship -= 100;
-            }
+            const ship_ntd = FEATURED_SHIP_NTD[tag] ?? FEATURED_SHIP_NTD._default;
+            const base_ntd = _featuredMarginalAdj(vnd) * FEATURED_RATE;
+            const carry = _featuredPsych(base_ntd);
+            const ship  = _featuredPsych(base_ntd + ship_ntd);
             return { carry, ship };
         }
 

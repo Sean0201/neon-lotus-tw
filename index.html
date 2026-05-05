@@ -2506,14 +2506,15 @@
         }
 
         // ── 計價公式 (鏡像 main.js 的 calcPrice,確保前後一致) ──
+        // 新公式: 國際運送 = (VND × 累進倍率 ÷ 800) + SHIP_NTD[品相]
         const HUNT_RATE = 1 / 800;
-        const HUNT_SHIP_VND = {
-          Top:           72000,
-          Outerwear:    180000,
-          Bottom:       126000,
-          Set:          234000,
-          Accessories:   36000,
-          _default:      90000,
+        const HUNT_SHIP_NTD = {
+          Top:          130,
+          Outerwear:    225,
+          Bottom:       170,
+          Set:          250,
+          Accessories:  100,
+          _default:     100,
         };
         const HUNT_TIERS = [
           { max:    300000, mult: 1.75 },
@@ -2541,17 +2542,10 @@
         }
         function calcHuntPrice(vnd, tag) {
           if (!vnd || vnd <= 0) return null;
-          const est = HUNT_SHIP_VND[tag] ?? HUNT_SHIP_VND._default;
-          // 累進制:carry 跟 ship 各自 marginally 加總
-          const carry_vnd = _huntMarginalAdj(vnd);
-          const ship_vnd  = _huntMarginalAdj(vnd + est);
-          let carry = Math.round(carry_vnd * HUNT_RATE / 10) * 10;
-          let ship  = _huntPsych(ship_vnd * HUNT_RATE);
-          const ceiling = carry + 200;
-          if (ship > ceiling) {
-            ship = _huntPsych(ceiling);
-            if (ship > ceiling) ship -= 100;
-          }
+          const ship_ntd = HUNT_SHIP_NTD[tag] ?? HUNT_SHIP_NTD._default;
+          const base_ntd = _huntMarginalAdj(vnd) * HUNT_RATE;
+          const carry = _huntPsych(base_ntd);
+          const ship  = _huntPsych(base_ntd + ship_ntd);
           return { carry, ship };
         }
 
@@ -3198,6 +3192,6 @@
 <script src="shopping-guide.js?v=2"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js"></script>
-    <script src="main.js?v=54" defer></script>
+    <script src="main.js?v=56" defer></script>
 </body>
 </html>
