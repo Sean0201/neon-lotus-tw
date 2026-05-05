@@ -2281,9 +2281,9 @@
             <label for="huntCategory" data-en="ITEM TYPE" data-tw="商品類型">商品類型</label>
             <select id="huntCategory" name="category">
               <option value="_default">其他 / 不確定</option>
-              <option value="Top">上衣 (Tee / Shirt / Hoodie)</option>
+              <option value="Top">上衣 (Tee / Shirt / Polo)</option>
               <option value="Bottom">褲款 / 下身</option>
-              <option value="Outerwear">外套</option>
+              <option value="Outerwear">外套 (Jacket / Hoodie / Sweater)</option>
               <option value="Set">套裝</option>
               <option value="Accessories">配件 / 帽款</option>
             </select>
@@ -2535,10 +2535,13 @@
           return total;
         }
         function _huntPsych(n) {
+          // v2: 01-50→50, 51-99→90, 00→上一百的90 (e.g. 2800→2790)
           if (n == null) return n;
           const r = Math.round(n / 10) * 10;
-          const tail = r % 100;
-          return tail <= 50 ? r - tail + 50 : r - tail + 90;
+          const tail = ((r % 100) + 100) % 100;
+          if (tail === 0)  return r - 10;
+          if (tail <= 50)  return r - tail + 50;
+          return r - tail + 90;
         }
         function calcHuntPrice(vnd, tag) {
           if (!vnd || vnd <= 0) return null;
@@ -3192,6 +3195,6 @@
 <script src="shopping-guide.js?v=2"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js"></script>
-    <script src="main.js?v=59" defer></script>
+    <script src="main.js?v=60" defer></script>
 </body>
 </html>

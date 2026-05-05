@@ -23,8 +23,8 @@ const RATE = 1 / 800;         // 1 TWD = 800 VND  (匯率)
 // 使用者指定 (2026-05-05 v2):
 //   上衣 130 / 外套 150 / 褲子 150 / 套裝 200 / 配件 100 / 通用 100
 const SHIP_NTD = {
-  Top:           130,   // 上衣 ~0.40 kg  (T恤/襯衫/Polo/Tank/長袖/Hoodie/Sweater)
-  Outerwear:     150,   // 外套 ~1.00 kg  (Jacket/Coat/Parka)
+  Top:           130,   // 上衣 ~0.40 kg  (T恤/襯衫/Polo/Tank/長袖)
+  Outerwear:     150,   // 外套 ~1.00 kg  (Jacket/Coat/Parka/Hoodie/Sweater)
   Bottom:        150,   // 下身 ~0.70 kg  (Pants/Jeans/Shorts/Skirts)
   Set:           200,   // 套裝 ~1.30 kg
   Accessories:   100,   // 配件 ~0.20 kg  (Cap/Bag/Belt/Jewelry)
@@ -156,16 +156,22 @@ function marginalAdjVnd(vnd) {
 function roundTo50(n) { return Math.round(n / 50) * 50; }
 
 /**
- * Psychological pricing (50/90 結尾):
- *   tail 00–50  →  xx50   (e.g. 2213 → 2210 → 2250)
- *   tail 51–99  →  xx90   (e.g. 2265 → 2270 → 2290)
+ * Psychological pricing (50/90 結尾) — v2 規則:
+ *   tail 01–50  →  xx50    (e.g. 2213 → 2210 → 2250)
+ *   tail 51–99  →  xx90    (e.g. 2265 → 2270 → 2290)
+ *   tail 00     →  (xx-1)90 ← 整百數歸到「上一個百」的 90
+ *                            (e.g. 2800 → 2790,2100 → 2090)
+ *
+ * 這是 v2 規則調整: 原本 00 結尾會被歸到同一百的 50 (例 2800→2850)
+ * 改成歸到上一百的 90 (例 2800→2790),賣相比 X850 更乾淨。
  */
 function psychPrice(n) {
   if (n == null) return n;
   const r    = Math.round(n / 10) * 10;   // 先四捨五入到 10
-  const tail = r % 100;
-  if (tail <= 50) return r - tail + 50;   // 0-50 → 50
-  return r - tail + 90;                    // 51-99 → 90
+  const tail = ((r % 100) + 100) % 100;   // 0..90
+  if (tail === 0)  return r - 10;          // 00 → 上一百的 90
+  if (tail <= 50)  return r - tail + 50;   // 10-50 → 50
+  return r - tail + 90;                    // 60-99 → 90
 }
 
 /**

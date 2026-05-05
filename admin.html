@@ -2957,10 +2957,13 @@
             return total;
         }
         function _featuredPsych(n) {
+            // v2: 01-50→50, 51-99→90, 00→上一百的90 (e.g. 2800→2790)
             if (n == null) return n;
             const r = Math.round(n / 10) * 10;
-            const tail = r % 100;
-            return tail <= 50 ? r - tail + 50 : r - tail + 90;
+            const tail = ((r % 100) + 100) % 100;
+            if (tail === 0)  return r - 10;
+            if (tail <= 50)  return r - tail + 50;
+            return r - tail + 90;
         }
         function _featuredCalc(vnd, tag) {
             if (!vnd) return { carry: null, ship: null };
