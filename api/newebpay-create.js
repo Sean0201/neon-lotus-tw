@@ -125,7 +125,7 @@ export default async function handler(req, res) {
       Email:           buyerEmail || '',
       LoginType:       0,                                      // 不需登入藍新會員
       // ── 開放的付款方式 (依商店實際開通狀態調整) ──
-      // CREDIT:       1,    // 信用卡 — 審核通過但服務尚未啟用,等啟用後再打開
+      CREDIT:          1,    // 信用卡一次付清 ✓
       VACC:            1,    // ATM 轉帳 ✓
       WEBATM:          1,    // 網路 ATM ✓
       APPLEPAY:        1,    // Apple Pay ✓
