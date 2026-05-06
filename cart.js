@@ -1349,7 +1349,8 @@
         const now = new Date();
         const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
         const rand = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-        const orderNumber = `NL-${dateStr}-${rand}`;
+        // 親自帶回訂單前綴用 NLC,讓付款成功頁可以顯示對應的取貨說明
+        const orderNumber = `NLC-${dateStr}-${rand}`;
 
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
@@ -1411,12 +1412,54 @@
           }).catch(function(e) { console.warn('[Notify]', e); });
         } catch(ne) { console.warn('[Notify]', ne); }
 
-        // ── 親自帶回 = 越南面交,不需線上金流,直接顯示確認頁 ──
+        // ── 導向藍新金流 (NewebPay) — 親自帶回也走線上付款 ──
+        const npItems = items.map(item => ({
+          name: item.product_name,
+          quantity: item.quantity,
+          price: item.unit_price,
+        }));
+
+        submitBtn.textContent = '導向付款頁面...';
+
+        const npRes = await fetch('/api/newebpay-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items:       npItems,
+            totalAmount: total,
+            buyerName:   name,
+            buyerEmail:  email,
+            buyerPhone:  phone,
+            orderId:     orderNumber,
+          }),
+        });
+
+        const npData = await npRes.json();
+
+        if (!npData.success || !npData.formHtml) {
+          throw new Error(npData.error || '無法建立付款訂單');
+        }
+
         CartState.clear();
         updateCartIcon();
         pageDiv.remove();
         document.body.style.overflow = '';
-        showConfirmationPage(orderNumber);
+
+        const payDiv = document.createElement('div');
+        payDiv.id = 'newebpay-redirect';
+        payDiv.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;align-items:center;justify-content:center;color:#f5f4f0;font-size:1.1rem;';
+        payDiv.innerHTML = '<div style="text-align:center"><div style="margin-bottom:16px;font-size:2rem">🔒</div>正在導向藍新付款頁面...</div>';
+        document.body.appendChild(payDiv);
+
+        const formContainer = document.createElement('div');
+        formContainer.style.display = 'none';
+        formContainer.innerHTML = npData.formHtml;
+        document.body.appendChild(formContainer);
+
+        const payForm = formContainer.querySelector('form');
+        if (payForm) {
+          payForm.submit();
+        }
 
       } catch (error) {
         console.error('[CartSystem] Carryback checkout error:', error);
@@ -1873,6 +1916,15 @@
     const amount  = params.get('amount') || '';
     const msg     = params.get('msg') || '';
 
+    // 親自帶回訂單前綴是 NLC,要顯示不同的取貨說明
+    const isCarryback = orderNo.startsWith('NLC');
+    const successSubtitle = isCarryback
+      ? `感謝您的購買！我們已收到您的付款。<br>
+         商品由賣家親自從越南帶回台灣後，將透過<strong>賣貨便</strong>通知您取貨。<br>
+         若有任何問題，請透過 LINE 與我們聯繫。`
+      : `感謝您的購買！我們已收到您的付款，將盡快為您出貨。<br>
+         如有任何問題，請透過 LINE 與我們聯繫。`;
+
     const html = success ? `
       <div class="neon-confirmation-content">
         <div class="neon-confirmation-icon" style="background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(16,185,129,0.2));border-color:rgba(34,197,94,0.4)">✓</div>
@@ -1880,8 +1932,7 @@
         ${orderNo ? `<div class="neon-confirmation-order-num">訂單編號: ${orderNo}</div>` : ''}
         ${amount ? `<div class="neon-confirmation-order-num" style="margin-top:8px;font-size:1.1rem">付款金額: NT$ ${Number(amount).toLocaleString()}</div>` : ''}
         <p class="neon-confirmation-subtitle">
-          感謝您的購買！我們已收到您的付款，將盡快為您出貨。<br>
-          如有任何問題，請透過 LINE 與我們聯繫。
+          ${successSubtitle}
         </p>
         <div class="neon-confirmation-actions">
           <a href="${LINE_URL}" target="_blank" class="neon-confirmation-btn neon-confirmation-btn-line">
