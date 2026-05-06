@@ -11,8 +11,11 @@
  *   NEWEBPAY_API_URL     — 測試: https://ccore.newebpay.com/MPG/mpg_gateway
  *                          正式: https://core.newebpay.com/MPG/mpg_gateway
  *   SITE_URL             — e.g. https://neon-lotus-tw.vercel.app
- *
- * 開放付款方式 (依使用者選擇): CREDIT, VACC, WEBATM, CVS, BARCODE
+ *   NEWEBPAY_PAYMENT_METHODS — 開放付款方式 (逗號分隔,依商店實際開通狀態)
+ *                              測試示例: CREDIT,APPLEPAY,GOOGLEPAY,SAMSUNGPAY,WEBATM,VACC,CVS,BARCODE
+ *                              正式示例: CREDIT,APPLEPAY,UNIONPAY,VACC,CVS
+ *                              支援: CREDIT, APPLEPAY, GOOGLEPAY, SAMSUNGPAY,
+ *                                    UNIONPAY, VACC, WEBATM, CVS, BARCODE, LINEPAY
  */
 
 import crypto from 'crypto';
@@ -90,6 +93,13 @@ export default async function handler(req, res) {
                         || 'https://ccore.newebpay.com/MPG/mpg_gateway';  // 預設測試
     const SITE_URL    = process.env.SITE_URL || 'https://neon-lotus-tw.vercel.app';
 
+    // 付款方式 (依商店實際開通狀態,以 env var 控制 sandbox 與 production 不同清單)
+    // 範例: CREDIT,APPLEPAY,VACC,WEBATM,CVS
+    const PAYMENT_METHODS = (process.env.NEWEBPAY_PAYMENT_METHODS || 'CREDIT,VACC')
+      .split(',')
+      .map(s => s.trim().toUpperCase())
+      .filter(Boolean);
+
     if (!MERCHANT_ID || !HASH_KEY || !HASH_IV) {
       return res.status(500).json({ error: 'NewebPay credentials not configured' });
     }
@@ -124,16 +134,12 @@ export default async function handler(req, res) {
       ClientBackURL:   `${SITE_URL}/`,                        // 取消按鈕回首頁
       Email:           buyerEmail || '',
       LoginType:       0,                                      // 不需登入藍新會員
-      // ── 開放的付款方式 (依商店實際開通狀態調整) ──
-      CREDIT:          1,    // 信用卡一次付清 ✓
-      VACC:            1,    // ATM 轉帳 ✓
-      WEBATM:          1,    // 網路 ATM ✓
-      APPLEPAY:        1,    // Apple Pay ✓
-      UNIONPAY:        1,    // 銀聯卡 ✓
-      // CVS:          1,    // 超商代碼 — 申請中,啟用後再打開
-      // BARCODE:      1,    // 超商條碼 — 未申請
-      // LINEPAY:      1,    // LINE Pay — 申請中,啟用後再打開
     };
+
+    // ── 動態加入開放的付款方式 (來自 NEWEBPAY_PAYMENT_METHODS env var) ──
+    PAYMENT_METHODS.forEach(method => {
+      tradeInfoObj[method] = 1;
+    });
 
     const tradeInfoQuery = buildQueryString(tradeInfoObj);
 

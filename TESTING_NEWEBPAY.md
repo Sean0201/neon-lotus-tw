@@ -6,17 +6,22 @@
 
 ## 1. Vercel 環境變數設定
 
-到 **Vercel Dashboard → 你的專案 → Settings → Environment Variables**,新增下列 5 組:
+到 **Vercel Dashboard → 你的專案 → Settings → Environment Variables**,新增下列 6 組:
 
-| 變數名稱 | 值 | 來源 | 環境 |
+| 變數名稱 | 測試環境值 (範例) | 正式環境值 (範例) | 來源 |
 |---|---|---|---|
-| `NEWEBPAY_MERCHANT_ID` | `MS********` | 藍新後台 / 開通信件 | Production / Preview / Development |
-| `NEWEBPAY_HASH_KEY` | (32 字元字串) | 藍新後台 / 開通信件 | Production / Preview / Development |
-| `NEWEBPAY_HASH_IV` | (16 字元字串) | 藍新後台 / 開通信件 | Production / Preview / Development |
-| `NEWEBPAY_API_URL` | `https://ccore.newebpay.com/MPG/mpg_gateway` | (測試環境固定) | Production / Preview / Development |
-| `SITE_URL` | `https://neon-lotus-tw.vercel.app` | Vercel domain | Production / Preview / Development |
+| `NEWEBPAY_MERCHANT_ID` | `MS********` (測試商店) | `MS********` (正式商店) | 藍新後台 / 開通信件 |
+| `NEWEBPAY_HASH_KEY` | 32 字元 (測試) | 32 字元 (正式) | 藍新後台 / 開通信件 |
+| `NEWEBPAY_HASH_IV` | 16 字元 (測試) | 16 字元 (正式) | 藍新後台 / 開通信件 |
+| `NEWEBPAY_API_URL` | `https://ccore.newebpay.com/MPG/mpg_gateway` | `https://core.newebpay.com/MPG/mpg_gateway` | (測試多個 c) |
+| `NEWEBPAY_PAYMENT_METHODS` | `CREDIT,APPLEPAY,GOOGLEPAY,SAMSUNGPAY,WEBATM,VACC,CVS,BARCODE` | `CREDIT,APPLEPAY,UNIONPAY,VACC,CVS` | 商店後台「服務開通」狀態 |
+| `SITE_URL` | `https://neon-lotus-tw.vercel.app` | `https://neon-lotus-tw.vercel.app` (或自訂 domain) | Vercel domain |
 
 > ⚠️ **千萬不要把 MerchantID / HashKey / HashIV 寫進 git**。它們等同於金流密碼,只能放在 Vercel 環境變數裡。實際的測試與正式憑證請從藍新開通信件中取得,不要分享在公開頻道或 commit log。
+
+> 💡 **NEWEBPAY_PAYMENT_METHODS** 是逗號分隔,程式會把每個方式傳給藍新對應的 `=1` 旗標。**只列出商店後台已實際 active 的服務**,送了沒開通的會卡在「服務未啟用」直接失敗。
+>
+> 支援的旗標: `CREDIT`, `APPLEPAY`, `GOOGLEPAY`, `SAMSUNGPAY`, `UNIONPAY`, `VACC`, `WEBATM`, `CVS`, `BARCODE`, `LINEPAY`。
 
 設定完後,**Redeploy** 一次,環境變數才會被新 deploy 讀到。
 
