@@ -1411,63 +1411,12 @@
           }).catch(function(e) { console.warn('[Notify]', e); });
         } catch(ne) { console.warn('[Notify]', ne); }
 
-        // ── 訂單完成 → 顯示成功頁面 ──
-        // (ECPay 金流暫時停用，待開通後再啟用)
+        // ── 親自帶回 = 越南面交,不需線上金流,直接顯示確認頁 ──
         CartState.clear();
         updateCartIcon();
         pageDiv.remove();
         document.body.style.overflow = '';
         showConfirmationPage(orderNumber);
-
-        /* ── [暫時停用] ECPay 金流 ──
-        const ecpayItems = items.map(item => ({
-          name: item.product_name,
-          quantity: item.quantity,
-          price: item.unit_price,
-        }));
-
-        submitBtn.textContent = '導向付款頁面...';
-
-        const ecpayRes = await fetch('/api/ecpay-create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items: ecpayItems,
-            totalAmount: total,
-            buyerName: name,
-            buyerEmail: email,
-            buyerPhone: phone,
-            orderId: orderNumber,
-          }),
-        });
-
-        const ecpayData = await ecpayRes.json();
-
-        if (!ecpayData.success || !ecpayData.formHtml) {
-          throw new Error(ecpayData.error || '無法建立付款訂單');
-        }
-
-        CartState.clear();
-        updateCartIcon();
-        pageDiv.remove();
-        document.body.style.overflow = '';
-
-        const ecpayDiv = document.createElement('div');
-        ecpayDiv.id = 'ecpay-redirect';
-        ecpayDiv.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;align-items:center;justify-content:center;color:#f5f4f0;font-size:1.1rem;';
-        ecpayDiv.innerHTML = '<div style="text-align:center"><div style="margin-bottom:16px;font-size:2rem">🔒</div>正在導向綠界付款頁面...</div>';
-        document.body.appendChild(ecpayDiv);
-
-        const formContainer = document.createElement('div');
-        formContainer.style.display = 'none';
-        formContainer.innerHTML = ecpayData.formHtml;
-        document.body.appendChild(formContainer);
-
-        const ecpayForm = formContainer.querySelector('form');
-        if (ecpayForm) {
-          ecpayForm.submit();
-        }
-        ── 暫時停用結束 */
 
       } catch (error) {
         console.error('[CartSystem] Carryback checkout error:', error);
@@ -1807,15 +1756,8 @@
         } catch(ne) { console.warn('[Notify]', ne); }
 
 
-        // ── 訂單完成 → 顯示成功頁面 ──
-        // (ECPay 金流暫時停用，待開通後再啟用)
-        CartState.clear();
-        updateCartIcon();
-        cleanupCheckout();
-        showConfirmationPage(orderNumber);
-
-        /* ── [暫時停用] ECPay 金流 ──
-        const ecpayItems = items.map(item => ({
+        // ── 導向藍新金流 (NewebPay) ──
+        const npItems = items.map(item => ({
           name: item.product_name,
           quantity: item.quantity,
           price: item.unit_price,
@@ -1825,45 +1767,44 @@
 
         const grandTotal = subtotal + currentShippingFee;
 
-        const ecpayRes = await fetch('/api/ecpay-create', {
+        const npRes = await fetch('/api/newebpay-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            items: ecpayItems,
+            items:       npItems,
             totalAmount: grandTotal,
-            buyerName: name,
-            buyerEmail: email,
-            buyerPhone: phone,
-            orderId: orderNumber,
+            buyerName:   name,
+            buyerEmail:  email,
+            buyerPhone:  phone,
+            orderId:     orderNumber,
           }),
         });
 
-        const ecpayData = await ecpayRes.json();
+        const npData = await npRes.json();
 
-        if (!ecpayData.success || !ecpayData.formHtml) {
-          throw new Error(ecpayData.error || '無法建立付款訂單');
+        if (!npData.success || !npData.formHtml) {
+          throw new Error(npData.error || '無法建立付款訂單');
         }
 
         CartState.clear();
         updateCartIcon();
         cleanupCheckout();
 
-        const ecpayDiv = document.createElement('div');
-        ecpayDiv.id = 'ecpay-redirect';
-        ecpayDiv.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;align-items:center;justify-content:center;color:#f5f4f0;font-size:1.1rem;';
-        ecpayDiv.innerHTML = '<div style="text-align:center"><div style="margin-bottom:16px;font-size:2rem">🔒</div>正在導向綠界付款頁面...</div>';
-        document.body.appendChild(ecpayDiv);
+        const payDiv = document.createElement('div');
+        payDiv.id = 'newebpay-redirect';
+        payDiv.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;align-items:center;justify-content:center;color:#f5f4f0;font-size:1.1rem;';
+        payDiv.innerHTML = '<div style="text-align:center"><div style="margin-bottom:16px;font-size:2rem">🔒</div>正在導向藍新付款頁面...</div>';
+        document.body.appendChild(payDiv);
 
         const formContainer = document.createElement('div');
         formContainer.style.display = 'none';
-        formContainer.innerHTML = ecpayData.formHtml;
+        formContainer.innerHTML = npData.formHtml;
         document.body.appendChild(formContainer);
 
-        const ecpayForm = formContainer.querySelector('form');
-        if (ecpayForm) {
-          ecpayForm.submit();
+        const payForm = formContainer.querySelector('form');
+        if (payForm) {
+          payForm.submit();
         }
-        ── 暫時停用結束 */
 
       } catch (error) {
         console.error('[CartSystem] Checkout error:', error);
@@ -1913,14 +1854,15 @@
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // ECPay PAYMENT RESULT PAGE (hash routing)
+  // PAYMENT RESULT PAGE (hash routing) — NewebPay
   // ─────────────────────────────────────────────────────────────────
 
   function showPaymentResultPage(success, params) {
     injectStyles();
 
-    // Remove any loading overlay
-    const loadingEl = document.getElementById('ecpay-redirect');
+    // Remove any loading overlay (NewebPay or legacy)
+    const loadingEl = document.getElementById('newebpay-redirect')
+                   || document.getElementById('ecpay-redirect');
     if (loadingEl) loadingEl.remove();
 
     const pageDiv = document.createElement('div');
@@ -1978,7 +1920,7 @@
     });
   }
 
-  // ── Check for ECPay payment result on page load ──
+  // ── Check for NewebPay payment result on page load ──
   function checkPaymentResult() {
     const hash = window.location.hash;
     const params = new URLSearchParams(window.location.search);
