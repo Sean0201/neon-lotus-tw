@@ -24,10 +24,13 @@ const SUPABASE_ANON = [
 const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Constants ─────────────────────────────────────────────────
-// V6: tag/category 已標準化為 5 個值 (Top/Outerwear/Bottom/Set/Accessories),
-//     推一版讓所有用戶立即拿到正確運費分類,而不是等 V5 cache 過期。
-const CACHE_KEY     = 'NEON_LOTUS_TW_V6';
-const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V6_TS';
+// V7: 清除 products 表中所有 stale price_thb_shipping / price_thb_carryback 舊 THB 值
+//     (commit e2e55aa 之後這兩欄變成 NT$ override,但 DB 還有 3702 筆舊值在裡面,
+//     V6 cache 推上去後讓這些舊值第一次以 override 身份生效,造成全站價格跑掉)。
+//     已透過 SQL 把全部 override 設回 NULL,推 V7 讓所有用戶立即拿到正確 fresh data。
+// V6: tag/category 已標準化為 5 個值 (Top/Outerwear/Bottom/Set/Accessories)。
+const CACHE_KEY     = 'NEON_LOTUS_TW_V7';
+const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V7_TS';
 const CACHE_TTL     = 5 * 60 * 1000;   // 5 minutes
 const PAGE_SIZE     = 1000;             // Supabase max rows per request
 
