@@ -283,8 +283,15 @@ function _parseData(data) {
       const recalc = calcPrice(vnd, tag);
       p.price.twd_shipping  = recalc.twd_shipping;
       p.price.twd_carryback = recalc.twd_carryback;
+    }
+    // 直接 NT$ 覆蓋: admin 在「NT$ (國際送/親自帶)」欄位輸入的金額
+    // 會存進 thb_shipping / thb_carryback 欄位 (語義上是 NTD,欄位名稱沿用),
+    // 若 > 0 則覆蓋掉由 VND 自動換算的價格 (即使 VND 沒填也會生效)。
+    if (p.price) {
+      if (p.price.thb_shipping  > 0) p.price.twd_shipping  = p.price.thb_shipping;
+      if (p.price.thb_carryback > 0) p.price.twd_carryback = p.price.thb_carryback;
       // price_note override: e.g. "twd_carryback:750"
-      var note = p.price?.note || '';
+      var note = p.price.note || '';
       if (note) {
         note.split(';').forEach(function(part) {
           var kv = part.trim().split(':');

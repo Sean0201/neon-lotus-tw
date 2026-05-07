@@ -1539,15 +1539,21 @@
                             <input type="number" id="productPriceVndEst">
                         </div>
                         <div class="form-group">
-                            <label for="productPriceThbShip">THB(含運)</label>
-                            <input type="number" id="productPriceThbShip">
+                            <label for="productPriceThbShip">NT$ (國際送)</label>
+                            <input type="number" id="productPriceThbShip" placeholder="留空則由 VND 自動換算">
                         </div>
                         <div class="form-group">
-                            <label for="productPriceThbCarry">THB(自取)</label>
-                            <input type="number" id="productPriceThbCarry">
+                            <label for="productPriceThbCarry">NT$ (親自帶)</label>
+                            <input type="number" id="productPriceThbCarry" placeholder="留空則由 VND 自動換算">
                         </div>
                     </div>
                     <div class="form-row full">
+                        <div class="form-group full">
+                            <p style="margin: -0.5rem 0 0.75rem; color: var(--muted, #888); font-size: 0.85rem; line-height: 1.5;">
+                                💡 只填 VND → 前台自動換算 NT$;<br>
+                                💡 填 NT$(國際送/親自帶) → 前台直接顯示你輸入的 NT$,覆蓋自動換算。
+                            </p>
+                        </div>
                         <div class="form-group full">
                             <label for="productPriceNote">價格備註</label>
                             <textarea id="productPriceNote" style="min-height: 60px;"></textarea>
