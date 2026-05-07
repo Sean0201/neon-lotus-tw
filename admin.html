@@ -1513,12 +1513,26 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="productTag">Tag</label>
-                            <input type="text" id="productTag" placeholder="選擇">
+                            <label for="productTag">Tag(影響運費級距)</label>
+                            <select id="productTag">
+                                <option value="">(無)</option>
+                                <option value="Top">Top — 上衣 (運費 NT$130)</option>
+                                <option value="Outerwear">Outerwear — 外套 (運費 NT$150)</option>
+                                <option value="Bottom">Bottom — 下身 (運費 NT$150)</option>
+                                <option value="Set">Set — 套裝/連身 (運費 NT$200)</option>
+                                <option value="Accessories">Accessories — 配件 (運費 NT$100)</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label for="productCategory">Category</label>
-                            <input type="text" id="productCategory" placeholder="選擇">
+                            <label for="productCategory">Category(備援,Tag 為空時使用)</label>
+                            <select id="productCategory">
+                                <option value="">(無)</option>
+                                <option value="Top">Top — 上衣</option>
+                                <option value="Outerwear">Outerwear — 外套</option>
+                                <option value="Bottom">Bottom — 下身</option>
+                                <option value="Set">Set — 套裝/連身</option>
+                                <option value="Accessories">Accessories — 配件</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="productSeason">Season</label>
@@ -2506,8 +2520,10 @@
             document.getElementById('productId').value = product.id;
             document.getElementById('productName').value = product.name || '';
             document.getElementById('productBrand').value = product.brand_id || '';
-            document.getElementById('productTag').value = product.tag || '';
-            document.getElementById('productCategory').value = product.category || '';
+            // Tag/Category 是 <select>,若 DB 還是舊值(TEES、PANTS…)就附加一個臨時 option
+            // 避免存檔時被靜默清空。執行完統一 UPDATE 後這條保險就用不到了。
+            _setSelectKeepLegacy(document.getElementById('productTag'),      product.tag);
+            _setSelectKeepLegacy(document.getElementById('productCategory'), product.category);
             document.getElementById('productSeason').value = product.season || '';
             document.getElementById('productPriceVnd').value = product.price_vnd || '';
             document.getElementById('productPriceVndEst').value = product.price_vnd_estimated || '';
@@ -2996,6 +3012,27 @@
             const carry = Math.round(base_ntd / 10) * 10;                        // 四捨五入到 10
             const ship  = _featuredPsych(base_ntd + ship_ntd);                   // 50/90 結尾
             return { carry, ship };
+        }
+
+        // ── 商品編輯表單: <select> 設值小工具 ────────────────────────
+        // Tag/Category 改成 <select> 後,若 DB 還有未遷移的舊值(例如 TEES、PANTS),
+        // 直接 selectEl.value = 'TEES' 在標準瀏覽器會被忽略 → 顯示成空白 → 存檔時被清空。
+        // 這個 helper 會臨時 append 一個 option 把舊值保住,並標示「(待標準化)」提示使用者改選。
+        function _setSelectKeepLegacy(selectEl, value) {
+            if (!selectEl) return;
+            // 移除上次掛上的臨時 option (id-suffix 標記)
+            Array.from(selectEl.querySelectorAll('option[data-legacy="1"]')).forEach(o => o.remove());
+            const v = value == null ? '' : String(value);
+            selectEl.value = v;
+            if (v && selectEl.value !== v) {
+                const opt = document.createElement('option');
+                opt.value = v;
+                opt.textContent = `${v} (待標準化,請改選)`;
+                opt.dataset.legacy = '1';
+                opt.style.color = '#ff8888';
+                selectEl.appendChild(opt);
+                selectEl.value = v;
+            }
         }
 
         // ── 商品編輯表單: NT$ 覆蓋欄位的即時狀態提示 ─────────────────────
