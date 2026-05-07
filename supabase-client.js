@@ -24,8 +24,10 @@ const SUPABASE_ANON = [
 const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Constants ─────────────────────────────────────────────────
-const CACHE_KEY     = 'NEON_LOTUS_TW_V5';
-const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V5_TS';
+// V6: tag/category 已標準化為 5 個值 (Top/Outerwear/Bottom/Set/Accessories),
+//     推一版讓所有用戶立即拿到正確運費分類,而不是等 V5 cache 過期。
+const CACHE_KEY     = 'NEON_LOTUS_TW_V6';
+const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V6_TS';
 const CACHE_TTL     = 5 * 60 * 1000;   // 5 minutes
 const PAGE_SIZE     = 1000;             // Supabase max rows per request
 
