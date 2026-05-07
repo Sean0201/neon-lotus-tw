@@ -250,18 +250,23 @@
   // ── 攔截 window.BRANDS_DATA 賦值 ────────────────────────────
   // supabase-client.js 內會做 `window.BRANDS_DATA = data;`
   // 我們在那之前先把這個 property 改成 setter, merge 完再存起來
+  //
+  // 注意 (2026-05): data-overlay.js 已改成 defer 載入(10.6 MB 不再擋首屏),
+  // 所以 supabase-client 的 async fetch 有機會比 overlay 先完成。這時直接
+  // merge 會吃到空 overlay → size_charts 全部漏掉。對策:tryMerge 只在
+  // DATA_OVERLAY 真的存在時才執行,否則先存資料、待 overlay 載入再 retry。
   let _real = null;
+  function tryMerge(v) {
+    if (!v || v.__overlay_applied) return false;
+    if (!window.DATA_OVERLAY) return false;   // overlay 還沒到,等
+    try { merge(v); v.__overlay_applied = true; return true; }
+    catch (e) { console.error('[overlay] merge failed', e); return false; }
+  }
   try {
     Object.defineProperty(window, 'BRANDS_DATA', {
       configurable: true,
       get() { return _real; },
-      set(v) {
-        if (v && !v.__overlay_applied) {
-          try { merge(v); } catch (e) { console.error('[overlay] merge failed', e); }
-          v.__overlay_applied = true;
-        }
-        _real = v;
-      },
+      set(v) { _real = v; tryMerge(v); },
     });
   } catch (e) {
     console.error('[overlay] Object.defineProperty failed', e);
@@ -269,11 +274,26 @@
 
   // 有一個邊角情況: 如果 supabase-client 已經在我們之前執行 (script 順序錯誤),
   //                window.BRANDS_DATA 可能已經被設了。手動再 merge 一次。
-  if (_real && !_real.__overlay_applied) {
-    try { merge(_real); _real.__overlay_applied = true; }
-    catch (e) { console.error('[overlay] retroactive merge failed', e); }
-  }
+  tryMerge(_real);
+
+  // ── 等 DATA_OVERLAY 載入後 retry merge ──────────────────────
+  // data-overlay.js 改成 defer 後可能晚到。這個輪詢最多撐 10 秒,
+  // overlay 一到就立刻補一次 merge,然後退出。
+  (function _waitOverlayThenMerge() {
+    let attempts = 0;
+    const tick = () => {
+      if (window.DATA_OVERLAY) {
+        if (tryMerge(_real)) {
+          console.log('[overlay] late-merge applied after deferred DATA_OVERLAY arrival');
+        }
+        return;
+      }
+      if (attempts++ < 100) setTimeout(tick, 100);   // up to 10s
+      else console.warn('[overlay] DATA_OVERLAY never loaded (10s) — size_charts will be empty');
+    };
+    tick();
+  })();
 
   // 暴露 API 方便 debug
-  window.DataOverlay = { merge, getOverlay };
+  window.DataOverlay = { merge, getOverlay, tryMerge };
 })();

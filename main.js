@@ -448,10 +448,16 @@ window.addEventListener('popstate', (e) => {
 /* ═══════════════════════════════════════════════════════════════
    § 4.1  核心修復：顯示品牌與品項
    ═══════════════════════════════════════════════════════════════ */
+// 用於 progressive render: 快速切換品牌時,過時的 loadBrandDetail callback
+// 不應覆蓋當前畫面。每次進場 +1,callback 比對自己的 token。
+let _brandRenderToken = 0;
+
 async function renderBrandPage(brandId) {
   // Use internal BRANDS array (already parsed by _parseData) — no longer depends on window.BRANDS_DATA
   const brand = BRANDS.find(b => b.id === brandId);
   if (!brand) return;
+
+  const myToken = ++_brandRenderToken;
 
   // ── Apply brand-specific colour theme ────────────────────────
   const theme  = BRAND_THEME[brandId] || {};
@@ -463,24 +469,12 @@ async function renderBrandPage(brandId) {
     `color-mix(in srgb, ${theme.accent || '#c084fc'} 18%, transparent)`
   );
 
-  // ── Lazy-load gallery & sizes for this brand ────────────────
-  //    loadBrandDetail() patches BRANDS_DATA.products in place,
-  //    so brand.products will have gallery + sizes after this call.
-  if (typeof window.loadBrandDetail === 'function') {
-    // Show a quick loading state in the product grid
-    const grid = document.getElementById('products-grid');
-    if (grid) grid.innerHTML = '<p style="text-align:center;padding:60px;color:#c084fc;font-size:1.1rem">Loading products…</p>';
-    try {
-      await window.loadBrandDetail(brandId);
-      // Re-read brand from BRANDS since _parseData built it from BRANDS_DATA
-      // but loadBrandDetail patched BRANDS_DATA.products — we need to sync
-      _syncBrandProducts(brandId);
-    } catch (err) {
-      console.error('[renderBrandPage] loadBrandDetail failed:', err);
-    }
-  }
-
-  // Store current brand products for filter use
+  // ── Progressive render ──────────────────────────────────────
+  // 第一階段: 用初始 fetch 已經有的資料 (cover image / 名稱 / 價格 / category)
+  //          立刻畫整頁,使用者不會看到「Loading products…」空白。
+  // 第二階段: loadBrandDetail() 在背景 fetch gallery + sizes,完成後 re-render
+  //          (gallery thumbs + size chips 漸進補上)。
+  // 不再 await ─ 從「等 1-2 秒空白」變成「立刻看到商品」。
   window.CURRENT_BRAND_PRODUCTS = brand.products || [];
 
   // Hero name
@@ -516,6 +510,22 @@ async function renderBrandPage(brandId) {
 
   renderFilters();
   renderProducts('ALL');
+
+  // ── 第二階段: 背景 fetch gallery + sizes,完成後 re-render ──
+  if (typeof window.loadBrandDetail === 'function') {
+    window.loadBrandDetail(brandId).then(() => {
+      // 使用者已經切到別的品牌,放棄這次 callback
+      if (myToken !== _brandRenderToken) return;
+      _syncBrandProducts(brandId);
+      window.CURRENT_BRAND_PRODUCTS = brand.products || [];
+      // 從 DOM 讀目前作用中的 filter,re-render 時保留使用者選擇
+      const activeBtn = document.querySelector('#brand-filters .filter-btn.active, .filter-btn.active');
+      const cat = activeBtn ? (activeBtn.getAttribute('data-cat') || 'ALL') : 'ALL';
+      renderProducts(cat);
+    }).catch(err => {
+      console.error('[renderBrandPage] loadBrandDetail failed:', err);
+    });
+  }
 }
 
 /**
