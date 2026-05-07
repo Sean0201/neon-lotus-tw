@@ -1540,18 +1540,26 @@
                         </div>
                         <div class="form-group">
                             <label for="productPriceThbShip">NT$ (國際送)</label>
-                            <input type="number" id="productPriceThbShip" placeholder="留空則由 VND 自動換算">
+                            <div style="display:flex; gap:0.4rem; align-items:center;">
+                                <input type="number" id="productPriceThbShip" placeholder="留空則由 VND 自動換算" style="flex:1; min-width:0;">
+                                <button type="button" id="productPriceThbShipClear" class="btn-small" title="清除手動覆蓋,改回公式自動換算" style="display:none; padding:0 0.6rem; white-space:nowrap;">✕ 清除</button>
+                            </div>
+                            <div id="productPriceThbShipStatus" style="margin-top:0.35rem; font-size:0.78rem; color:var(--muted, #888); line-height:1.4;"></div>
                         </div>
                         <div class="form-group">
                             <label for="productPriceThbCarry">NT$ (親自帶)</label>
-                            <input type="number" id="productPriceThbCarry" placeholder="留空則由 VND 自動換算">
+                            <div style="display:flex; gap:0.4rem; align-items:center;">
+                                <input type="number" id="productPriceThbCarry" placeholder="留空則由 VND 自動換算" style="flex:1; min-width:0;">
+                                <button type="button" id="productPriceThbCarryClear" class="btn-small" title="清除手動覆蓋,改回公式自動換算" style="display:none; padding:0 0.6rem; white-space:nowrap;">✕ 清除</button>
+                            </div>
+                            <div id="productPriceThbCarryStatus" style="margin-top:0.35rem; font-size:0.78rem; color:var(--muted, #888); line-height:1.4;"></div>
                         </div>
                     </div>
                     <div class="form-row full">
                         <div class="form-group full">
                             <p style="margin: -0.5rem 0 0.75rem; color: var(--muted, #888); font-size: 0.85rem; line-height: 1.5;">
-                                💡 只填 VND → 前台自動換算 NT$;<br>
-                                💡 填 NT$(國際送/親自帶) → 前台直接顯示你輸入的 NT$,覆蓋自動換算。
+                                💡 只填 VND → 前台自動換算 NT$。<br>
+                                💡 填 NT$ 欄位 → 前台改用你輸入的 NT$ 覆蓋自動換算。每欄下方會即時顯示「目前使用值」,按「✕ 清除」可移除覆蓋還原為自動換算。
                             </p>
                         </div>
                         <div class="form-group full">
@@ -2445,6 +2453,8 @@
             });
             clearProductSizes();
             clearProductGallery();
+            // 重置 NT$ 覆蓋狀態提示 (form.reset() 已清空 input,但提示需顯式刷新)
+            try { _updateNtdOverrideStatus(); } catch (_) {}
             document.getElementById('productModal').classList.add('active');
         });
 
@@ -2504,6 +2514,8 @@
             document.getElementById('productPriceThbShip').value = product.price_thb_shipping || '';
             document.getElementById('productPriceThbCarry').value = product.price_thb_carryback || '';
             document.getElementById('productPriceNote').value = product.price_note || '';
+            // 立即重算「目前使用值」狀態 (VND/Tag 已設好,可正確比較自動 vs 覆蓋)
+            try { _updateNtdOverrideStatus(); } catch (_) {}
             document.getElementById('productCoverUrl').value = product.cover_image || '';
             const ocuEl = document.getElementById('productOriginalCoverUrl');
             if (ocuEl) ocuEl.value = product.original_cover_url || '';
@@ -2985,6 +2997,81 @@
             const ship  = _featuredPsych(base_ntd + ship_ntd);                   // 50/90 結尾
             return { carry, ship };
         }
+
+        // ── 商品編輯表單: NT$ 覆蓋欄位的即時狀態提示 ─────────────────────
+        // 顯示「目前使用 自動換算 / 手動覆蓋」並控制「✕ 清除」按鈕的顯示。
+        function _updateNtdOverrideStatus() {
+            const vndEl   = document.getElementById('productPriceVnd');
+            const tagEl   = document.getElementById('productTag');
+            const catEl   = document.getElementById('productCategory');
+            if (!vndEl || !tagEl) return;
+
+            const vnd = parseInt(vndEl.value) || 0;
+            const tag = (tagEl.value || (catEl && catEl.value) || '_default').trim();
+            const auto = _featuredCalc(vnd, tag);   // { ship, carry }
+
+            const fmt = n => (n == null ? '—' : `NT$${n.toLocaleString()}`);
+
+            const updateOne = (inputId, btnId, statusId, autoVal) => {
+                const input  = document.getElementById(inputId);
+                const btn    = document.getElementById(btnId);
+                const status = document.getElementById(statusId);
+                if (!input || !btn || !status) return;
+
+                const raw = input.value.trim();
+                const v = parseInt(raw);
+                const hasOverride = raw !== '' && Number.isFinite(v) && v > 0;
+
+                if (hasOverride) {
+                    btn.style.display = 'inline-block';
+                    if (vnd > 0) {
+                        status.innerHTML = `🟧 手動覆蓋 <strong>NT$${v.toLocaleString()}</strong>(公式為 ${fmt(autoVal)})`;
+                    } else {
+                        status.innerHTML = `🟧 手動覆蓋 <strong>NT$${v.toLocaleString()}</strong>(無 VND,無公式可比較)`;
+                    }
+                } else {
+                    btn.style.display = 'none';
+                    if (vnd > 0) {
+                        status.innerHTML = `🟢 自動換算 <strong>${fmt(autoVal)}</strong>`;
+                    } else {
+                        status.innerHTML = `⚪ 尚未填 VND,無法自動換算`;
+                    }
+                }
+            };
+
+            updateOne('productPriceThbShip',  'productPriceThbShipClear',  'productPriceThbShipStatus',  auto.ship);
+            updateOne('productPriceThbCarry', 'productPriceThbCarryClear', 'productPriceThbCarryStatus', auto.carry);
+        }
+
+        // 綁定觸發點: VND / Tag / Category / 兩個 NT$ 覆蓋欄位本身的變動,以及兩個清除按鈕
+        (function _wireNtdOverrideUi() {
+            const ids = ['productPriceVnd', 'productTag', 'productCategory',
+                         'productPriceThbShip', 'productPriceThbCarry'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input',  _updateNtdOverrideStatus);
+                    el.addEventListener('change', _updateNtdOverrideStatus);
+                }
+            });
+
+            const clearShip  = document.getElementById('productPriceThbShipClear');
+            const clearCarry = document.getElementById('productPriceThbCarryClear');
+            if (clearShip) {
+                clearShip.addEventListener('click', () => {
+                    const inp = document.getElementById('productPriceThbShip');
+                    if (inp) inp.value = '';
+                    _updateNtdOverrideStatus();
+                });
+            }
+            if (clearCarry) {
+                clearCarry.addEventListener('click', () => {
+                    const inp = document.getElementById('productPriceThbCarry');
+                    if (inp) inp.value = '';
+                    _updateNtdOverrideStatus();
+                });
+            }
+        })();
 
         function renderFeaturedTable() {
             const tbody = document.getElementById('featuredTableBody');
