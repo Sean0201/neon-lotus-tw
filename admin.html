@@ -2248,16 +2248,22 @@
                 brandsSelect.innerHTML = '<option value="">選擇品牌</option>';
                 brandsSelect.innerHTML += allBrands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
 
+                // 重建下拉前先保留當前選的品牌/分類,重建後再還原
+                // 這樣編輯完一個商品儲存後,品牌/分類篩選不會被重置回「所有」
                 const brandFilter = document.getElementById('brandFilter');
+                const prevBrand = brandFilter.value;
                 brandFilter.innerHTML = '<option value="">所有品牌</option>';
                 brandFilter.innerHTML += allBrands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+                if (prevBrand && allBrands.some(b => b.id === prevBrand)) brandFilter.value = prevBrand;
 
                 // 分類下拉:從 products 抓所有不同的 category
                 const categoryFilter = document.getElementById('categoryFilter');
                 if (categoryFilter) {
+                    const prevCat = categoryFilter.value;
                     const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
                     categoryFilter.innerHTML = '<option value="">所有分類</option>'
                         + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+                    if (prevCat && cats.includes(prevCat)) categoryFilter.value = prevCat;
                 }
 
                 renderProductsTable();
