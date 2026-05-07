@@ -24,8 +24,8 @@ const SUPABASE_ANON = [
 const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Constants ─────────────────────────────────────────────────
-const CACHE_KEY     = 'NEON_LOTUS_TW_V4';
-const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V4_TS';
+const CACHE_KEY     = 'NEON_LOTUS_TW_V5';
+const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V5_TS';
 const CACHE_TTL     = 5 * 60 * 1000;   // 5 minutes
 const PAGE_SIZE     = 1000;             // Supabase max rows per request
 
@@ -90,6 +90,11 @@ async function loadSupabaseData() {
   const [brands, products, banners, featured, settingsRows] = await Promise.all([
     fetchAll('brands'),
     fetchAll('products', {
+      // 明確列出前台用得到的欄位 — 跳過 description_zh / description_en 因為前台從沒讀過
+      // (商品描述只有 admin 編輯頁用,不需要載到瀏覽器)。少抓兩個大欄位 = 大幅減少 egress。
+      select: 'id, brand_id, name, tag, category, season, ' +
+              'price_vnd, price_vnd_estimated, price_thb_shipping, price_thb_carryback, price_note, ' +
+              'cover_image, original_cover_url, sold_out, needs_review, sort_order, is_active',
       filter: q => q.eq('is_active', true),
       order: 'sort_order',
     }),
@@ -156,11 +161,7 @@ async function loadSupabaseData() {
     sold_out:           p.sold_out || false,
     needs_review:       p.needs_review || false,
     original_cover_url: p.original_cover_url || p.cover_image || '',
-    // 多語描述 (migration 20260501);此站只用中文 + 英文,泰文另站處理
-    description: {
-      zh: p.description_zh || '',
-      en: p.description_en || '',
-    },
+    // 商品描述刻意不放進記憶體/快取 — 前台沒在用 (只 admin 編輯頁讀)
   }));
 
   // ── Transform banners ───────────────────────────────────────
@@ -192,13 +193,38 @@ async function loadSupabaseData() {
     settings: settings,
   };
 
-  // ── Cache (products-only data fits in localStorage) ──────────
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
-  } catch (e) {
-    console.warn('[supabase-client] Cache write failed:', e);
-    try { localStorage.removeItem(CACHE_KEY); } catch (_) {}
+  // ── Cache (tiered fallback — 6000+ 商品時會超過 localStorage 5MB) ──
+  // 嘗試順序:完整 → 剝品牌 description → 連 banner/featured/settings 都剝 → 放棄
+  // 任何一層成功就停下來,失敗的資料下一頁只是少 cache 不影響功能。
+  const tiers = [
+    () => data,
+    () => ({
+      ...data,
+      brands: data.brands.map(b => ({ ...b, description: { zh: '', en: '' } })),
+    }),
+    () => ({
+      brands: data.brands.map(b => ({ ...b, description: { zh: '', en: '' }, meta: {} })),
+      products: data.products,
+      banners: [],
+      featured: [],
+      settings: {},
+    }),
+  ];
+  let cached = false;
+  for (let i = 0; i < tiers.length; i++) {
+    try {
+      const slim = tiers[i]();
+      localStorage.setItem(CACHE_KEY, JSON.stringify(slim));
+      localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
+      if (i > 0) console.log(`[supabase-client] Cache written at trim level ${i}`);
+      cached = true;
+      break;
+    } catch (_) {
+      try { localStorage.removeItem(CACHE_KEY); } catch (_) {}
+    }
+  }
+  if (!cached) {
+    console.warn('[supabase-client] Cache write skipped — payload still too large after trim');
   }
 
   const ms = Math.round(performance.now() - t0);
