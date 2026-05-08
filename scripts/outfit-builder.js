@@ -175,7 +175,8 @@
           selfieBase64: currentBase64,
           selfieType: currentType,
           productName: item.product.name || 'item',
-          category: cat
+          category: cat,
+          isLayered: i > 0  // skip moderation on AI-generated intermediate results
         };
         try {
           const imgData = await imageUrlToBase64(item.imageUrl);
@@ -212,6 +213,10 @@
           if (attempts < maxRetries && (res.status >= 500 || res.status === 429)) {
             await new Promise(function(r){ setTimeout(r, 3000); });
             continue;
+          }
+          if (res.status === 403 && errBody.error === 'content_blocked') {
+            /* Phase 1 — content moderation rejection, do not retry */
+            throw new Error(errBody.message || '上傳的照片不符規範，請更換照片再試。');
           }
           if (res.status === 429) throw new Error('目前排隊人數較多，請稍後再試！');
           if (res.status === 504) throw new Error('AI 處理時間較長，請稍後再試一次！');
