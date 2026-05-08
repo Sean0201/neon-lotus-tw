@@ -1214,6 +1214,7 @@
                                         <option value="cancelled">Cancelled</option>
                                     </select>
                                     <button class="btn-secondary" onclick="loadOrders()">Refresh</button>
+                                    <button class="btn-secondary" onclick="exportOrdersCSV()" title="匯出當月訂單為 CSV,可直接貼到成本利潤表 A5">📥 匯出 CSV</button>
                                 </div>
                             </div>
                             <table class="data-table">
@@ -3371,6 +3372,124 @@
             } catch (err) {
                 console.error('Failed to load orders:', err);
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef5350;">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        // ─── 匯出訂單 CSV (給成本利潤表用) ─────────────────────────
+        // 輸出 7 欄: 訂單日期 / 訂單編號 / 客戶 / SKU / 數量 / 售價 / 備註
+        // 對應成本利潤表「訂單記錄」sheet 的 A-G 欄,可一鍵 paste 到 A5
+        async function exportOrdersCSV() {
+            const now = new Date();
+            const tpeNow = new Date(now.getTime() + 8 * 3600 * 1000);
+            const defaultMonth = tpeNow.toISOString().slice(0, 7);   // yyyy-mm
+
+            const monthInput = prompt(
+                '匯出哪個月的訂單?\n格式: yyyy-mm (例: 2026-05)\n\n會排除 cancelled / rejected 訂單。',
+                defaultMonth
+            );
+            if (!monthInput) return;
+
+            const m = monthInput.match(/^(\d{4})-(\d{1,2})$/);
+            if (!m) {
+                showToast('格式錯誤,請用 yyyy-mm', 'error');
+                return;
+            }
+            const year = parseInt(m[1], 10);
+            const month = parseInt(m[2], 10);
+            if (month < 1 || month > 12) {
+                showToast('月份必須是 1-12', 'error');
+                return;
+            }
+
+            // 計算 Asia/Taipei (UTC+8) 月初 / 下個月月初的 UTC ISO
+            // Date.UTC(y, m, d, h) 的 m 是 0-indexed; 用 -8 hour 把 +08:00 的本地時間換成 UTC
+            const startISO = new Date(Date.UTC(year, month - 1, 1, -8, 0, 0)).toISOString();
+            const endISO   = new Date(Date.UTC(year, month, 1, -8, 0, 0)).toISOString();
+
+            showToast('匯出中...');
+            try {
+                const { data: orders, error: ordersErr } = await sb
+                    .from('orders')
+                    .select('id, order_number, customer_name, created_at, note, status')
+                    .gte('created_at', startISO)
+                    .lt('created_at', endISO)
+                    .not('status', 'in', '(cancelled,rejected)')
+                    .order('created_at', { ascending: true })
+                    .limit(10000);
+                if (ordersErr) throw ordersErr;
+
+                if (!orders || orders.length === 0) {
+                    showToast(monthInput + ' 沒有訂單', 'error');
+                    return;
+                }
+
+                const orderIds = orders.map(o => o.id);
+                const { data: items, error: itemsErr } = await sb
+                    .from('order_items')
+                    .select('order_id, product_id, quantity, unit_price')
+                    .in('order_id', orderIds)
+                    .limit(50000);
+                if (itemsErr) throw itemsErr;
+
+                const ordersById = Object.fromEntries(orders.map(o => [o.id, o]));
+
+                // Format: 把 created_at (UTC) 轉成 Asia/Taipei 的 yyyy-mm-dd
+                const dateStr = (utcIso) => {
+                    const t = new Date(utcIso).getTime() + 8 * 3600 * 1000;
+                    return new Date(t).toISOString().slice(0, 10);
+                };
+
+                const rows = (items || []).map(it => {
+                    const o = ordersById[it.order_id];
+                    if (!o) return null;
+                    return [
+                        dateStr(o.created_at),
+                        o.order_number || '',
+                        o.customer_name || '',
+                        it.product_id || '',
+                        it.quantity || 0,
+                        it.unit_price || 0,
+                        o.note || '',
+                    ];
+                }).filter(Boolean);
+
+                // 排序: 日期 → 訂單編號 → SKU
+                rows.sort((a, b) => {
+                    if (a[0] !== b[0]) return a[0].localeCompare(b[0]);
+                    if (a[1] !== b[1]) return String(a[1]).localeCompare(String(b[1]));
+                    return String(a[3]).localeCompare(String(b[3]));
+                });
+
+                if (rows.length === 0) {
+                    showToast('找不到對應的 order_items', 'error');
+                    return;
+                }
+
+                // CSV 編碼: 含逗號/換行/雙引號的欄位要加 quote 並 double-escape "
+                const csvEscape = (v) => {
+                    const s = (v === null || v === undefined) ? '' : String(v);
+                    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+                };
+                const header = ['訂單日期', '訂單編號', '客戶', 'SKU', '數量', '售價', '備註'];
+                // \uFEFF BOM 讓 Excel 用 UTF-8 開不會中文亂碼
+                const csv = '\uFEFF' + [header, ...rows]
+                    .map(r => r.map(csvEscape).join(','))
+                    .join('\r\n');
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'orders_' + monthInput + '.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showToast('已匯出 ' + rows.length + ' 列 (共 ' + orders.length + ' 筆訂單)');
+            } catch (err) {
+                console.error('Failed to export orders:', err);
+                showToast('匯出失敗: ' + err.message, 'error');
             }
         }
 
