@@ -151,11 +151,13 @@
     }
   }
 
-  async function executeTryOn(onProgress, onComplete, onError) {
+  async function executeTryOn(onProgress, onComplete, onError, options) {
     if (isProcessing) return;
     if (!selfieBase64) { onError('請先上傳照片'); return; }
     const layers = getSelectedLayers();
     if (layers.length === 0) { onError('請至少選擇一件商品'); return; }
+    options = options || {};
+    const useMask = options.useMask !== false;   // default: ON when MaskGenerator is available
     isProcessing = true;
     let currentBase64 = selfieBase64;
     let currentType = selfieType;
@@ -188,6 +190,27 @@
             bodyObj.clothingUrl = item.imageUrl;
           } else {
             throw new Error('商品圖片無法載入，請試試其他款式！');
+          }
+        }
+
+        /* ── Phase 3: Region mask (top / bottom only, when MaskGenerator is loaded) ── */
+        if (useMask && window.MaskGenerator) {
+          const region = window.MaskGenerator.regionFor(cat);
+          if (region) {
+            try {
+              const mask = await window.MaskGenerator.generateMask(
+                currentBase64, currentType, region
+              );
+              bodyObj.maskBase64 = mask.base64;
+              bodyObj.maskType   = mask.mimeType;
+              bodyObj.maskRegion = region;
+              if (mask.debug) {
+                console.log('[tryon] mask generated for ' + cat + ' (' + region + ')', mask.debug);
+              }
+            } catch (mErr) {
+              // Mask generation failed — log and continue without mask (graceful degrade)
+              console.warn('[tryon] mask generation failed, falling back to prompt-only:', mErr.message || mErr);
+            }
           }
         }
 

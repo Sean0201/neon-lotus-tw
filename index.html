@@ -2933,6 +2933,11 @@
             <!-- Rendered by OutfitBuilder.renderOutfitPanel() -->
           </div>
 
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:#a78bfa;margin:8px 0;cursor:pointer;user-select:none">
+            <input type="checkbox" id="tryon-precise-mode" checked />
+            <span data-en="🎯 Precise mode (lock face &amp; background)" data-tw="🎯 精準模式 (鎖定臉部與背景)">🎯 精準模式 (鎖定臉部與背景)</span>
+          </label>
+
           <button id="outfit-tryon-btn" disabled data-en="Select items first" data-tw="請先選擇商品">請先選擇商品</button>
         </div>
       </div>
@@ -3199,7 +3204,8 @@
 <!-- shopping-guide.js: 客戶服務 modal (購買須知/運送/退換貨) -->
 <script src="shopping-guide.js?v=2"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
-<script src="scripts/outfit-builder.js?v=2"></script>
-    <script src="main.js?v=62" defer></script>
+<script src="scripts/mask-generator.js?v=1"></script>
+<script src="scripts/outfit-builder.js?v=3"></script>
+    <script src="main.js?v=63" defer></script>
 </body>
 </html>

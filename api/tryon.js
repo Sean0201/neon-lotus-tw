@@ -275,6 +275,7 @@ export default async function handler(request) {
     const {
       selfieBase64, selfieType,
       clothingUrl, clothingBase64, clothingType,
+      maskBase64, maskType, maskRegion,
       productName, category,
       isLayered  // when true, selfieBase64 is a previous AI-generated result, skip moderation
     } = body;
@@ -295,8 +296,19 @@ export default async function handler(request) {
       }
     }
 
-    // Build prompt based on category
-    const promptText = getPrompt(category, productName);
+    // Build prompt based on category (and append mask instructions if a mask is provided)
+    let promptText = getPrompt(category, productName);
+    if (maskBase64) {
+      promptText += '\n\n' + [
+        'MASK GUIDANCE:',
+        'A third reference image is provided as a binary MASK.',
+        '- WHITE pixels in the mask = the ONLY region you may modify (the clothing area)',
+        '- BLACK pixels in the mask = STRICTLY PRESERVE — do not alter at all',
+        '- The mask precisely defines the ' + (maskRegion === 'bottom' ? 'lower-body' : 'upper-body') + ' clothing region within the person silhouette',
+        '- Outside the white region: face, skin, hair, background, lighting, and other clothing must remain pixel-identical to the input',
+        '- Use the mask as ground truth for editing boundaries — respect it precisely'
+      ].join('\n');
+    }
 
     // Build image parts
     const parts = [];
@@ -335,6 +347,16 @@ export default async function handler(request) {
         inlineData: {
           mimeType: contentType,
           data: imgBase64
+        }
+      });
+    }
+
+    // Mask image (Phase 3) — append as third reference if provided
+    if (maskBase64) {
+      parts.push({
+        inlineData: {
+          mimeType: maskType || 'image/png',
+          data: maskBase64
         }
       });
     }
