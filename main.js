@@ -364,9 +364,6 @@ function _showFatalError(title, subtitle, bullets = []) {
    ═══════════════════════════════════════════════════════════════ */
 
 function showPage(page, brandId, skipPush, restoreScrollY) {
-  // 試衣間暫時關閉 (審核金流期間), 任何嘗試訪問都導回首頁
-  if (page === 'tryon') { page = 'home'; brandId = null; }
-
   // 在進新頁面之前, 把目前頁的 scrollY 寫入「現有」history state,
   // 這樣使用者按瀏覽器返回鍵時會知道之前停在哪
   if (!skipPush) {
