@@ -2517,9 +2517,10 @@
           _default:     100,
         };
         const HUNT_TIERS = [
+          // v4 (2026-05-09): 30-50萬 1.5→1.65, 50-130萬 1.4→1.5
           { max:    300000, mult: 1.75 },
-          { max:    500000, mult: 1.5  },
-          { max:  1300000, mult: 1.4  },
+          { max:    500000, mult: 1.65 },
+          { max:  1300000, mult: 1.5  },
           { max:  2000000, mult: 1.4  },
           { max:  Infinity, mult: 1.35 },
         ];
@@ -3199,6 +3200,6 @@
 <script src="shopping-guide.js?v=2"></script>
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/outfit-builder.js?v=2"></script>
-    <script src="main.js?v=61" defer></script>
+    <script src="main.js?v=62" defer></script>
 </body>
 </html>
