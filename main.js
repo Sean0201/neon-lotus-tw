@@ -324,6 +324,17 @@ function _parseData(data) {
     meta_location: (b.meta && b.meta.location) || '',
     products:      byBrand[b.id] || [],
   }));
+
+  /* Expose product lookup so cart drawer + other modules can fetch
+     the original product (sizes, prices) by id without duplicating data */
+  window.findProductById = function(id) {
+    if (!id) return null;
+    for (const b of BRANDS) {
+      const p = b.products.find(x => x.id === id);
+      if (p) return p;
+    }
+    return null;
+  };
 }
 
 /* ── Loading / error helpers ────────────────────────────────── */
@@ -1676,25 +1687,25 @@ function initTryOnRoom() {
   }
 
   function renderClothes(brandFilter, catFilter) {
+    /* Pull from each active brand. Apply category filter BEFORE per-brand sampling
+       so categories that aren't in the first N products (e.g. bags/caps that come
+       later in stressmama's catalogue) still surface. */
+    const PER_BRAND_CAP = (catFilter && catFilter !== 'ALL') ? 12 : 8;
     let products = [];
     const activeBrands = BRANDS.filter(b => b.products.length > 0);
+    const targets = (brandFilter === 'all')
+      ? activeBrands
+      : activeBrands.filter(b => b.id === brandFilter);
 
-    if (brandFilter === 'all') {
-      activeBrands.forEach(b => {
-        b.products.slice(0, 8).forEach(p => products.push({ ...p, brandName: b.name }));
+    targets.forEach(b => {
+      const matched = b.products.filter(p => {
+        if (!_getProductImageSrc(p)) return false;
+        return matchesOutfitCat(p, catFilter);
       });
-    } else {
-      const brand = activeBrands.find(b => b.id === brandFilter);
-      if (brand) brand.products.forEach(p => products.push({ ...p, brandName: brand.name }));
-    }
-
-    // Filter to only products with any image (cover or gallery)
-    products = products.filter(p => {
-      return _getProductImageSrc(p);
+      /* Cap per brand to keep grid manageable; on single-brand view show all */
+      const taken = (brandFilter === 'all') ? matched.slice(0, PER_BRAND_CAP) : matched;
+      taken.forEach(p => products.push({ ...p, brandName: b.name }));
     });
-
-    // Filter by outfit category
-    products = products.filter(p => matchesOutfitCat(p, catFilter));
 
     clothesGrid.innerHTML = products.map(p => {
       const imgUrl = _getProductImageSrc(p) || '';

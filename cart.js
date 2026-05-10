@@ -86,10 +86,34 @@
         quantity: 1,
         unit_price,
         shipping_method: shippingMethod,
+        note: '',
         image_url: product.images?.cover || product.cover_image || '',
       };
 
       items.push(item);
+      this.save(items);
+      return items;
+    },
+
+    /* Update an arbitrary set of fields on a cart item.
+       If shipping_method is changed, recalculates unit_price from the
+       referenced product (looked up via window.findProductById). */
+    updateField(index, patch) {
+      const items = this.load();
+      if (!items[index]) return items;
+      const next = { ...items[index], ...patch };
+      if (patch.shipping_method && patch.shipping_method !== items[index].shipping_method) {
+        const prod = (typeof window !== 'undefined' && window.findProductById)
+          ? window.findProductById(items[index].product_id) : null;
+        if (prod && prod.price) {
+          if (patch.shipping_method === 'shipping' && prod.price.twd_shipping) {
+            next.unit_price = prod.price.twd_shipping;
+          } else if (patch.shipping_method === 'carryback' && prod.price.twd_carryback) {
+            next.unit_price = prod.price.twd_carryback;
+          }
+        }
+      }
+      items[index] = next;
       this.save(items);
       return items;
     },
@@ -339,6 +363,53 @@
 
       .neon-cart-item-remove:hover {
         color: #ff6b6b;
+      }
+
+      /* ── Editable fields per cart item ── */
+      .neon-cart-edit-row {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+      }
+      .neon-cart-edit-row .neon-cart-edit-field {
+        flex: 1;
+        min-width: 0;
+      }
+      .neon-cart-edit-label {
+        display: block;
+        font-size: 10px;
+        color: ${colors.lightgrey};
+        letter-spacing: 0.05em;
+        margin-bottom: 2px;
+        text-transform: uppercase;
+      }
+      .neon-cart-edit-select,
+      .neon-cart-edit-note {
+        width: 100%;
+        background: ${colors.grey};
+        border: 1px solid ${colors.border};
+        color: ${colors.white};
+        font-size: 12px;
+        padding: 5px 8px;
+        border-radius: 4px;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s ease;
+        box-sizing: border-box;
+      }
+      .neon-cart-edit-select:focus,
+      .neon-cart-edit-note:focus {
+        border-color: ${colors.accent};
+      }
+      .neon-cart-edit-note {
+        resize: vertical;
+        min-height: 28px;
+        max-height: 80px;
+        line-height: 1.4;
+      }
+      .neon-cart-edit-note::placeholder {
+        color: rgba(255,255,255,0.3);
       }
 
       .neon-cart-footer {
@@ -1033,6 +1104,32 @@
       `;
     } else {
       items.forEach((item, idx) => {
+        /* Look up the original product to get available sizes + both prices */
+        const prod = (typeof window.findProductById === 'function')
+          ? window.findProductById(item.product_id) : null;
+        const availableSizes = (prod && Array.isArray(prod.sizes) && prod.sizes.length)
+          ? prod.sizes : (item.size ? [item.size] : ['FREE']);
+        /* If the item's current size isn't in the product's size list, prepend it */
+        if (item.size && availableSizes.indexOf(item.size) === -1) availableSizes.unshift(item.size);
+        const priceShipping  = prod && prod.price && prod.price.twd_shipping  ? prod.price.twd_shipping  : null;
+        const priceCarryback = prod && prod.price && prod.price.twd_carryback ? prod.price.twd_carryback : null;
+        const canSwitch = !!(priceShipping && priceCarryback);
+
+        const sizeOptions = availableSizes.map(s =>
+          `<option value="${s}"${s === item.size ? ' selected' : ''}>${s}</option>`
+        ).join('');
+
+        const shippingOptions = `
+          <option value="shipping"${item.shipping_method === 'shipping' ? ' selected' : ''}>
+            🚚 國際配送${priceShipping ? ` (NT$${priceShipping.toLocaleString()})` : ''}
+          </option>
+          <option value="carryback"${item.shipping_method === 'carryback' ? ' selected' : ''}>
+            🧳 親自運送${priceCarryback ? ` (NT$${priceCarryback.toLocaleString()})` : ''}
+          </option>
+        `;
+
+        const noteVal = (item.note || '').replace(/"/g, '&quot;');
+
         const itemEl = document.createElement('div');
         itemEl.className = 'neon-cart-item';
         itemEl.innerHTML = `
@@ -1042,10 +1139,30 @@
           <div class="neon-cart-item-details">
             <div>
               <div class="neon-cart-item-name">${item.product_name}</div>
-              <div class="neon-cart-item-meta">
-                ${item.size ? `尺寸: ${item.size} | ` : ''}${item.shipping_method === 'shipping' ? '國際配送' : '親自運送'}
-              </div>
               <div class="neon-cart-item-price">NT$ ${(item.unit_price || 0).toLocaleString()}</div>
+
+              <div class="neon-cart-edit-row">
+                <div class="neon-cart-edit-field">
+                  <label class="neon-cart-edit-label">尺寸</label>
+                  <select class="neon-cart-edit-select" data-field="size" data-idx="${idx}">
+                    ${sizeOptions}
+                  </select>
+                </div>
+                <div class="neon-cart-edit-field" style="flex:1.6">
+                  <label class="neon-cart-edit-label">運送方式${canSwitch ? '' : ' (此商品僅單一)'}</label>
+                  <select class="neon-cart-edit-select" data-field="shipping_method" data-idx="${idx}"${canSwitch ? '' : ' disabled'}>
+                    ${shippingOptions}
+                  </select>
+                </div>
+              </div>
+
+              <div class="neon-cart-edit-row">
+                <div class="neon-cart-edit-field">
+                  <label class="neon-cart-edit-label">備註 (選填)</label>
+                  <input type="text" class="neon-cart-edit-note" data-field="note" data-idx="${idx}"
+                         placeholder="例: 想要全新或近全新" value="${noteVal}" maxlength="80" />
+                </div>
+              </div>
             </div>
             <div class="neon-cart-item-qty">
               <button class="neon-cart-qty-btn" data-idx="${idx}" data-action="minus">−</button>
@@ -1073,6 +1190,25 @@
           renderCartContent();
           updateCartIcon();
         });
+
+        /* Size & shipping selects → updateField on change. Re-render so the
+           subtotal & price-row reflect any unit_price recalculation. */
+        itemEl.querySelectorAll('select[data-field]').forEach(sel => {
+          sel.addEventListener('change', (e) => {
+            const field = e.target.dataset.field;
+            CartState.updateField(idx, { [field]: e.target.value });
+            renderCartContent();
+            updateCartIcon();
+          });
+        });
+
+        /* Note input → save on blur (don't re-render while typing) */
+        const noteEl = itemEl.querySelector('input[data-field="note"]');
+        if (noteEl) {
+          noteEl.addEventListener('blur', (e) => {
+            CartState.updateField(idx, { note: e.target.value });
+          });
+        }
 
         content.appendChild(itemEl);
       });
@@ -2100,6 +2236,7 @@
     addToCart: (product, size, shippingMethod) => CartState.add(product, size, shippingMethod),
     removeFromCart: (index) => CartState.remove(index),
     updateQuantity: (index, qty) => CartState.update(index, qty),
+    updateItemField: (index, patch) => CartState.updateField(index, patch),
     getCart: () => CartState.get(),
     getCartCount: () => CartState.getCount(),
     getCartTotal: () => CartState.getTotal(),
