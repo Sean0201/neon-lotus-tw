@@ -1578,12 +1578,14 @@ function initTryOnRoom() {
 
     function getProductCategory(product) {
       const cat = (product.category || '').toUpperCase();
+      const tag = (product.tag || '').toUpperCase();
+      const matchAny = (list) => list.some(c => (cat && cat.includes(c)) || (tag && tag.includes(c)));
       // Check outerwear BEFORE top (jackets shouldn't be misclassified as top)
-      if (OUTFIT_CAT_MAP.outerwear.some(c => cat.includes(c))) return 'outerwear';
-      if (OUTFIT_CAT_MAP.top.some(c => cat.includes(c)))       return 'top';
-      if (OUTFIT_CAT_MAP.bottom.some(c => cat.includes(c)))    return 'bottom';
-      if (OUTFIT_CAT_MAP.bag.some(c => cat.includes(c)))       return 'bag';
-      if (OUTFIT_CAT_MAP.hat.some(c => cat.includes(c)))       return 'hat';
+      if (matchAny(OUTFIT_CAT_MAP.outerwear)) return 'outerwear';
+      if (matchAny(OUTFIT_CAT_MAP.top))       return 'top';
+      if (matchAny(OUTFIT_CAT_MAP.bottom))    return 'bottom';
+      if (matchAny(OUTFIT_CAT_MAP.bag))       return 'bag';
+      if (matchAny(OUTFIT_CAT_MAP.hat))       return 'hat';
       return null;  // unknown — caller handles
     }
 
@@ -1655,18 +1657,19 @@ function initTryOnRoom() {
     }
 
   const OUTFIT_CAT_MAP = {
-    top:       ['TOP','TOPS','TEE','TEES','SHIRT','SHIRTS','POLO','POLOS','TANK','TANKS','LONGSLEEVES','SWEATERS','SWEATER','JERSEYS','JERSEY','HOODIE','HOODIES'],
-    bottom:    ['BOTTOM','BOTTOMS','PANTS','PANT','SHORTS','SHORT','SKIRTS','SKIRT'],
+    top:       ['TOP','TOPS','TEE','TEES','SHIRT','SHIRTS','POLO','POLOS','TANK','TANKS','LONGSLEEVES','SWEATERS','SWEATER','JERSEYS','JERSEY','HOODIE','HOODIES','SWEATSHIRT','SWEATSHIRTS','KNITWEAR','SET','SETS','DRESS','DRESSES'],
+    bottom:    ['BOTTOM','BOTTOMS','PANTS','PANT','SHORTS','SHORT','SKIRTS','SKIRT','TROUSER','TROUSERS','JEANS'],
     outerwear: ['OUTERWEAR','JACKET','JACKETS','COAT','COATS'],
-    bag:       ['BAG','BAGS','BACKPACK','BACKPACKS','TOTE','TOTES'],
-    hat:       ['CAP','CAPS','HAT','HATS','BEANIE','BEANIES','BUCKET','BUCKETS'],
+    bag:       ['BAG','BAGS','BACKPACK','BACKPACKS','TOTE','TOTES','HANDBAG','HANDBAGS'],
+    hat:       ['CAP','CAPS','HAT','HATS','BEANIE','BEANIES','BUCKET','BUCKETS','HEADWEAR','HEADGEAR'],
   };
 
   function matchesOutfitCat(product, cat) {
     if (!cat || cat === 'ALL') return true;
-    const pCat = (product.category || product.tag || '').toUpperCase();
+    const pCat = (product.category || '').toUpperCase();
+    const pTag = (product.tag || '').toUpperCase();
     const allowed = OUTFIT_CAT_MAP[cat] || [];
-    return allowed.some(c => pCat.includes(c));
+    return allowed.some(c => (pCat && pCat.includes(c)) || (pTag && pTag.includes(c)));
   }
 
   function updateOutfitCatTabs() {
@@ -1864,8 +1867,23 @@ function initTryOnRoom() {
       for (var key in outfitSlots) {
         var prod = outfitSlots[key];
         if (!prod) continue;
-        /* Default to first available size; user can adjust in cart */
-        var size = (prod.sizes && prod.sizes.length > 0) ? prod.sizes[0] : 'FREE';
+        /* Default to first AVAILABLE size; user can adjust in cart.
+           sizes from Supabase are [{label, available}] objects, but legacy
+           data may be plain strings. Pick the first available label. */
+        var size = 'FREE';
+        if (prod.sizes && prod.sizes.length > 0) {
+          var pickedLabel = '';
+          for (var si = 0; si < prod.sizes.length; si++) {
+            var sz = prod.sizes[si];
+            if (typeof sz === 'string') { pickedLabel = sz; break; }
+            if (sz && sz.label && sz.available !== false) { pickedLabel = String(sz.label); break; }
+          }
+          if (!pickedLabel && prod.sizes[0]) {
+            var first = prod.sizes[0];
+            pickedLabel = (typeof first === 'string') ? first : String(first.label || '');
+          }
+          if (pickedLabel) size = pickedLabel;
+        }
         try {
           CS.addToCart(prod, size, 'shipping');
           added++;

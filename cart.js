@@ -1107,16 +1107,38 @@
         /* Look up the original product to get available sizes + both prices */
         const prod = (typeof window.findProductById === 'function')
           ? window.findProductById(item.product_id) : null;
-        const availableSizes = (prod && Array.isArray(prod.sizes) && prod.sizes.length)
-          ? prod.sizes : (item.size ? [item.size] : ['FREE']);
-        /* If the item's current size isn't in the product's size list, prepend it */
-        if (item.size && availableSizes.indexOf(item.size) === -1) availableSizes.unshift(item.size);
+        /* Normalize sizes: handle both string[] and [{label, available}] shapes.
+           Prod.sizes from Supabase is [{label,available}]; legacy fallback may be string[]. */
+        const normalizeSize = (s) => {
+          if (!s) return null;
+          if (typeof s === 'string') return { label: s, available: true };
+          if (typeof s === 'object') return { label: String(s.label || s.size || ''), available: s.available !== false };
+          return null;
+        };
+        let sizeList = [];
+        if (prod && Array.isArray(prod.sizes) && prod.sizes.length) {
+          sizeList = prod.sizes.map(normalizeSize).filter(Boolean).filter(s => s.label);
+        }
+        /* Cart items may have item.size as a string (new) or accidentally an object (legacy bug).
+           Coerce to a label string for display + comparison. */
+        const itemSizeLabel = (typeof item.size === 'object' && item.size !== null)
+          ? String(item.size.label || item.size.size || '')
+          : (item.size || '');
+        /* Only show sizes flagged available; if none survive, fall back to itemSize/FREE. */
+        let availableSizes = sizeList.filter(s => s.available !== false);
+        if (availableSizes.length === 0) {
+          availableSizes = itemSizeLabel ? [{ label: itemSizeLabel, available: true }] : [{ label: 'FREE', available: true }];
+        }
+        /* If the item's current size isn't in the available list, prepend it so the user sees it. */
+        if (itemSizeLabel && !availableSizes.some(s => s.label === itemSizeLabel)) {
+          availableSizes.unshift({ label: itemSizeLabel, available: true });
+        }
         const priceShipping  = prod && prod.price && prod.price.twd_shipping  ? prod.price.twd_shipping  : null;
         const priceCarryback = prod && prod.price && prod.price.twd_carryback ? prod.price.twd_carryback : null;
         const canSwitch = !!(priceShipping && priceCarryback);
 
         const sizeOptions = availableSizes.map(s =>
-          `<option value="${s}"${s === item.size ? ' selected' : ''}>${s}</option>`
+          `<option value="${s.label}"${s.label === itemSizeLabel ? ' selected' : ''}>${s.label}</option>`
         ).join('');
 
         const shippingOptions = `
@@ -1242,6 +1264,28 @@
     footer.querySelector('.neon-cart-btn-continue').addEventListener('click', closeCartDrawer);
   }
 
+  /* Track which brand IDs have already had their detail (sizes/gallery)
+     hydrated this session so we don't re-fetch on every cart-open. */
+  const _hydratedBrandIds = new Set();
+
+  function _hydrateCartBrandSizes() {
+    if (typeof window.loadBrandDetail !== 'function') return;
+    const items = CartState.get();
+    const brandIds = Array.from(new Set(
+      items.map(it => it.brand_id).filter(id => id && !_hydratedBrandIds.has(id))
+    ));
+    if (brandIds.length === 0) return;
+    brandIds.forEach(id => _hydratedBrandIds.add(id));
+    /* Fire all loads in parallel; re-render once each settles so size
+       dropdowns populate as soon as data lands. Failures are silent — the
+       size dropdown gracefully falls back to the cart item's stored size. */
+    brandIds.forEach(id => {
+      Promise.resolve(window.loadBrandDetail(id))
+        .then(() => { if (cartDrawerOpen) renderCartContent(); })
+        .catch(err => console.warn('[cart] loadBrandDetail failed for', id, err));
+    });
+  }
+
   function openCartDrawer() {
     if (cartDrawerOpen) return;
     cartDrawerOpen = true;
@@ -1250,6 +1294,9 @@
     document.getElementById('neon-cart-drawer').classList.add('open');
     document.getElementById('neon-cart-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
+    /* Lazy-load full sizes for any brand whose products are in the cart so
+       the size dropdown has the complete option list. */
+    _hydrateCartBrandSizes();
   }
 
   function closeCartDrawer() {
