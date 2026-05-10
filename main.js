@@ -1562,19 +1562,26 @@ function initTryOnRoom() {
   // ── Category filter for outfit tabs ─────────────────────────
   let currentOutfitCat = 'ALL';
 
-    /* ── Outfit multi-select slots ── */
-    const outfitSlots = { top: null, bottom: null, outerwear: null, accessory: null };
+    /* ── Outfit multi-select slots — one per try-on layer ── */
+    const outfitSlots = { top: null, bottom: null, outerwear: null, bag: null, hat: null };
 
     function getProductCategory(product) {
       const cat = (product.category || '').toUpperCase();
-      if (OUTFIT_CAT_MAP.top.includes(cat)) return 'top';
-      if (OUTFIT_CAT_MAP.bottom.includes(cat)) return 'bottom';
-      if (OUTFIT_CAT_MAP.outerwear.includes(cat)) return 'outerwear';
-      return 'accessory';
+      // Check outerwear BEFORE top (jackets shouldn't be misclassified as top)
+      if (OUTFIT_CAT_MAP.outerwear.some(c => cat.includes(c))) return 'outerwear';
+      if (OUTFIT_CAT_MAP.top.some(c => cat.includes(c)))       return 'top';
+      if (OUTFIT_CAT_MAP.bottom.some(c => cat.includes(c)))    return 'bottom';
+      if (OUTFIT_CAT_MAP.bag.some(c => cat.includes(c)))       return 'bag';
+      if (OUTFIT_CAT_MAP.hat.some(c => cat.includes(c)))       return 'hat';
+      return null;  // unknown — caller handles
     }
 
     function addToOutfit(product) {
       const slot = getProductCategory(product);
+      if (!slot) {
+        alert('此商品分類不支援試穿');
+        return;
+      }
       outfitSlots[slot] = product;
       renderOutfitPanel();
       updateTryOnButton();
@@ -1602,10 +1609,11 @@ function initTryOnRoom() {
     function renderOutfitPanel() {
       const panel = document.getElementById('outfit-panel');
       const slotLabels = {
-        top: { icon: '\uD83D\uDC55', tw: '\u4E0A\u8863', en: 'Top' },
-        bottom: { icon: '\uD83D\uDC56', tw: '\u8932\u5B50', en: 'Pants' },
-        outerwear: { icon: '\u{1F9E5}', tw: '\u5916\u5957', en: 'Outerwear' },
-        accessory: { icon: '\uD83C\uDFA9', tw: '\u914D\u4EF6', en: 'Accessory' }
+        top:       { icon: '👕', tw: '上衣', en: 'Top' },
+        bottom:    { icon: '👖', tw: '褲子', en: 'Pants' },
+        outerwear: { icon: '🧥', tw: '外套', en: 'Outerwear' },
+        bag:       { icon: '🎒', tw: '背包', en: 'Bag' },
+        hat:       { icon: '🧢', tw: '帽子', en: 'Hat' }
       };
       let html = '<div class="outfit-slots">';
       for (const [slot, prod] of Object.entries(outfitSlots)) {
@@ -1726,11 +1734,10 @@ function initTryOnRoom() {
       const rawB64 = selfieBase64.indexOf(",") !== -1 ? selfieBase64.split(",")[1] : selfieBase64;
       const selfieSmImg = document.getElementById("tryon-selfie-small");
       OB.setSelfie(rawB64, selfieType || "image/jpeg", selfieSmImg ? selfieSmImg.src : null);
-      /* Sync outfit items */
+      /* Sync outfit items — slot key IS the category (top/bottom/outerwear/bag/hat) */
       for (const [slot, prod] of Object.entries(outfitSlots)) {
         if (!prod) continue;
-        const cat = OB.resolveCategory(prod);
-        if (cat) OB.setItem(cat, prod);
+        OB.setItem(slot, prod);
       }
       if (OB.getItemCount() === 0) { alert("Please select items first"); return; }
       /* Switch to step 3 */
@@ -1745,6 +1752,8 @@ function initTryOnRoom() {
       resultEl.style.display  = "none";
       errorEl.style.display   = "none";
       if (progressEl) progressEl.style.display = "block";
+      /* Hide add-cart button while loading (will be re-shown on success) */
+      if (addCartBtn) addCartBtn.style.display = "none";
       /* Read precise-mode toggle (Phase 3 mask) */
       var preciseEl = document.getElementById('tryon-precise-mode');
       var useMask = preciseEl ? preciseEl.checked : true;
@@ -1785,8 +1794,20 @@ function initTryOnRoom() {
           var priceEl = document.getElementById("tryon-result-price");
           if (nameEl) nameEl.textContent = results.map(function(r){ return r.product.name || ""; }).join(" + ");
           if (priceEl) {
-            var total = results.reduce(function(s, r){ return s + (parseFloat(r.product.price) || 0); }, 0);
+            /* Sum twd_shipping (the actual sale price) for accurate total */
+            var total = results.reduce(function(s, r){
+              var p = r.product.price;
+              var v = (p && p.twd_shipping) ? p.twd_shipping
+                    : (typeof p === 'number' ? p : parseFloat(p) || 0);
+              return s + v;
+            }, 0);
             priceEl.textContent = "NT$ " + total.toLocaleString();
+          }
+          /* Reveal "🛒 全部加入購物車" button (was display:none until success) */
+          var addBtn = document.getElementById("tryon-add-cart");
+          if (addBtn) {
+            addBtn.style.display = "inline-flex";
+            addBtn.textContent = "🛒 全部加入購物車 (" + results.length + " 件)";
           }
         },
         function onError(msg) {
@@ -1815,25 +1836,39 @@ function initTryOnRoom() {
     renderOutfitPanel();
 
 
-  tryAnother.addEventListener('click', () => goStep(2));
+  tryAnother.addEventListener('click', () => {
+    goStep(2);
+    if (addCartBtn) addCartBtn.style.display = 'none';
+  });
 
   // ── Add outfit items to cart ──────────────────────────────────
   if (addCartBtn) {
     addCartBtn.addEventListener('click', function() {
       var CS = window.CartSystem;
-      if (!CS) { alert("Cart not available"); return; }
+      if (!CS) { alert("購物車系統尚未載入,請重新整理頁面"); return; }
+      /* Prevent double-click */
+      if (addCartBtn.disabled) return;
+      addCartBtn.disabled = true;
       var added = 0;
       for (var key in outfitSlots) {
         var prod = outfitSlots[key];
         if (!prod) continue;
-        var size = (prod.sizes && prod.sizes.length > 0) ? prod.sizes[0] : "FREE";
-        CS.addToCart(prod, size, "shipping");
-        added++;
+        /* Default to first available size; user can adjust in cart */
+        var size = (prod.sizes && prod.sizes.length > 0) ? prod.sizes[0] : 'FREE';
+        try {
+          CS.addToCart(prod, size, 'shipping');
+          added++;
+        } catch (e) {
+          console.warn('[tryon→cart] failed to add', prod.name, e);
+        }
       }
+      /* Re-enable after short delay */
+      setTimeout(function() { addCartBtn.disabled = false; }, 1500);
       if (added > 0) {
+        /* Open cart drawer so user reviews + clicks 前往結帳 */
         CS.openCart();
       } else {
-        alert("No items selected");
+        alert('沒有可加入的商品');
       }
     });
   }

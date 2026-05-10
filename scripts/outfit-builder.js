@@ -12,7 +12,9 @@
     // Tops
     'TOPS': 'top', 'TEES': 'top', 'LONGSLEEVES': 'top', 'TANKS': 'top',
     'SHIRTS': 'top', 'POLOS': 'top', 'HOODIES': 'top', 'SWEATERS': 'top',
-    'SWEATSHIRTS': 'top', 'KNITWEAR': 'top', 'JACKETS': 'top', 'OUTERWEAR': 'top',
+    'SWEATSHIRTS': 'top', 'KNITWEAR': 'top',
+    // Outerwear (separate layer — applied OVER top)
+    'JACKETS': 'outerwear', 'OUTERWEAR': 'outerwear', 'COATS': 'outerwear', 'COAT': 'outerwear',
     // Bottoms
     'BOTTOMS': 'bottom', 'PANTS': 'bottom', 'SHORTS': 'bottom', 'SKIRTS': 'bottom',
     // Bags
@@ -25,15 +27,18 @@
 
   /* ── UI labels per category ────────────────────────── */
   const CATEGORY_LABELS = {
-    top:    { tw: '上衣',  en: 'Top',   icon: '👕' },
-    bottom: { tw: '褲子',  en: 'Bottom', icon: '👖' },
-    bag:    { tw: '背包',  en: 'Bag',    icon: '🎒' },
-    hat:    { tw: '帽子',  en: 'Hat',    icon: '🧢' }
+    top:       { tw: '上衣',  en: 'Top',       icon: '👕' },
+    bottom:    { tw: '褲子',  en: 'Bottom',    icon: '👖' },
+    outerwear: { tw: '外套',  en: 'Outerwear', icon: '🧥' },
+    bag:       { tw: '背包',  en: 'Bag',       icon: '🎒' },
+    hat:       { tw: '帽子',  en: 'Hat',       icon: '🧢' }
   };
 
-  const LAYER_ORDER = ['top', 'bottom', 'bag', 'hat'];
+  /* Layer order: top first (silhouette baseline), then bottom, then outerwear OVER top,
+     then bag (over outerwear if present), then hat (independent region). */
+  const LAYER_ORDER = ['top', 'bottom', 'outerwear', 'bag', 'hat'];
 
-  const outfit = { top: null, bottom: null, bag: null, hat: null };
+  const outfit = { top: null, bottom: null, outerwear: null, bag: null, hat: null };
   let selfieBase64 = null;
   let selfieType = 'image/jpeg';
   let selfieSrc = null;
