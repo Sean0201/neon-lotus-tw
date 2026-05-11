@@ -129,9 +129,13 @@ export default async function handler(req, res) {
       MerchantOrderNo: merchantOrderNo,
       Amt:             Math.round(totalAmount),
       ItemDesc:        itemDesc,
-      ReturnURL:       `${SITE_URL}/api/newebpay-return`,    // 前台導回
+      ReturnURL:       `${SITE_URL}/api/newebpay-return`,    // 前台導回 (有 TradeInfo,可判定成敗)
       NotifyURL:       `${SITE_URL}/api/newebpay-notify`,    // 後台通知 (server-to-server)
-      ClientBackURL:   `${SITE_URL}/`,                        // 取消按鈕回首頁
+      /* ClientBackURL — 客戶點「返回商店」按鈕後的目的地。
+         藍新只是純 GET 跳轉,不會帶 TradeInfo,所以我們無法在此判斷成敗。
+         導向「付款處理中」頁面 + 帶訂單編號,讓客戶看到自己的訂單編號,
+         並請他們勿重複付款 (NotifyURL 才是真正的成敗來源)。 */
+      ClientBackURL:   `${SITE_URL}/?order=${encodeURIComponent(merchantOrderNo)}&status=processing#order-processing`,
       Email:           buyerEmail || '',
       LoginType:       0,                                      // 不需登入藍新會員
     };
