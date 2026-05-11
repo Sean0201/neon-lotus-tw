@@ -55,8 +55,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const HASH_KEY = process.env.NEWEBPAY_HASH_KEY;
-    const HASH_IV  = process.env.NEWEBPAY_HASH_IV;
+    /* trim — 防 Vercel env var 帶空白導致 SHA 驗證失敗 */
+    const HASH_KEY = (process.env.NEWEBPAY_HASH_KEY || '').trim();
+    const HASH_IV  = (process.env.NEWEBPAY_HASH_IV  || '').trim();
 
     const { Status, MerchantID, TradeInfo, TradeSha, Version } = req.body || {};
 

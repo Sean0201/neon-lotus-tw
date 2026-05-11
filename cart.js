@@ -2083,7 +2083,11 @@
   // PAYMENT RESULT PAGE (hash routing) — NewebPay
   // ─────────────────────────────────────────────────────────────────
 
-  function showPaymentResultPage(success, params) {
+  /**
+   * @param {'success'|'failed'|'processing'} state
+   * @param {URLSearchParams} params
+   */
+  function showPaymentResultPage(state, params) {
     injectStyles();
 
     // Remove any loading overlay (NewebPay or legacy)
@@ -2108,7 +2112,9 @@
       : `感謝您的購買！我們已收到您的付款，將盡快為您出貨。<br>
          如有任何問題，請透過 LINE 與我們聯繫。`;
 
-    const html = success ? `
+    let html;
+    if (state === 'success') {
+      html = `
       <div class="neon-confirmation-content">
         <div class="neon-confirmation-icon" style="background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(16,185,129,0.2));border-color:rgba(34,197,94,0.4)">✓</div>
         <h1 class="neon-confirmation-title">付款成功！</h1>
@@ -2124,7 +2130,33 @@
           <button type="button" class="neon-confirmation-btn neon-confirmation-btn-home">回到首頁</button>
         </div>
       </div>
-    ` : `
+      `;
+    } else if (state === 'processing') {
+      /* Server couldn't locally verify the signature / decrypt the payload but
+         that does NOT mean the payment failed — NotifyURL (server-to-server)
+         is the true source of truth and the order may already be marked paid.
+         Show a warm "we're verifying" message and tell the customer to wait
+         for LINE confirmation. */
+      html = `
+      <div class="neon-confirmation-content">
+        <div class="neon-confirmation-icon" style="background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(139,92,246,0.2));border-color:rgba(168,85,247,0.4)">⏳</div>
+        <h1 class="neon-confirmation-title">付款處理中</h1>
+        ${orderNo ? `<div class="neon-confirmation-order-num">訂單編號: ${orderNo}</div>` : ''}
+        <p class="neon-confirmation-subtitle">
+          我們正在向藍新金流確認您的付款結果。<br>
+          若已完成扣款，您的訂單會自動成立，<strong>請勿重複付款</strong>。<br>
+          可透過 LINE 提供訂單編號或交易截圖加速確認。
+        </p>
+        <div class="neon-confirmation-actions">
+          <a href="${LINE_URL}" target="_blank" class="neon-confirmation-btn neon-confirmation-btn-line">
+            透過 LINE 聯繫我們
+          </a>
+          <button type="button" class="neon-confirmation-btn neon-confirmation-btn-home">回到首頁</button>
+        </div>
+      </div>
+      `;
+    } else {
+      html = `
       <div class="neon-confirmation-content">
         <div class="neon-confirmation-icon" style="background:linear-gradient(135deg,rgba(239,68,68,0.2),rgba(220,38,38,0.2));border-color:rgba(239,68,68,0.4)">✗</div>
         <h1 class="neon-confirmation-title">付款未完成</h1>
@@ -2140,7 +2172,8 @@
           <button type="button" class="neon-confirmation-btn neon-confirmation-btn-home">回到首頁</button>
         </div>
       </div>
-    `;
+      `;
+    }
 
     pageDiv.innerHTML = html;
     document.body.appendChild(pageDiv);
@@ -2158,11 +2191,16 @@
   function checkPaymentResult() {
     const hash = window.location.hash;
     const params = new URLSearchParams(window.location.search);
+    const statusParam = (params.get('status') || '').toLowerCase();
 
-    if (hash === '#order-success') {
-      showPaymentResultPage(true, params);
-    } else if (hash === '#order-failed') {
-      showPaymentResultPage(false, params);
+    if (hash === '#order-success' || statusParam === 'paid') {
+      showPaymentResultPage('success', params);
+    } else if (hash === '#order-processing' || statusParam === 'processing') {
+      /* Server couldn't verify locally; show neutral processing page rather
+         than the scary failure page. Real status comes from NotifyURL. */
+      showPaymentResultPage('processing', params);
+    } else if (hash === '#order-failed' || statusParam === 'failed') {
+      showPaymentResultPage('failed', params);
     }
   }
 
