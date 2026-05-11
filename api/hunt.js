@@ -12,8 +12,16 @@
  * ─────────────────────────────────────────────────────────────
  */
 
-const TG_TOKEN = "8573719490:AAE0VQM7LndIvJKXkTuqGn0JEQPV_wzGoLg";
-const TG_CHAT  = "7083254563";
+/**
+ * Telegram bot 通知 — token / chat_id 必須來自 Vercel env vars,
+ * 嚴禁硬寫在程式碼裡 (整個 repo 是 public)。
+ *
+ * Vercel 環境變數:
+ *   TELEGRAM_BOT_TOKEN — BotFather 給的 token
+ *   TELEGRAM_CHAT_ID   — 接收訊息的 chat id (個人或群組)
+ */
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TG_CHAT  = process.env.TELEGRAM_CHAT_ID;
 
 // ── Reference URL 白名單 (防垃圾連結) ───────────────────────────────────
 // 只接受社群平台、台越東南亞常見的二手/拍賣站、IG/FB/蝦皮等。
@@ -56,6 +64,10 @@ function _isAllowedRefUrl(url) {
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+  if (!TG_TOKEN || !TG_CHAT) {
+    console.error("[hunt] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not configured");
+    return res.status(500).json({ error: "telegram not configured" });
   }
 
   try {

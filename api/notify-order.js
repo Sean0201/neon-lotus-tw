@@ -1,8 +1,20 @@
-const TG_TOKEN = "8573719490:AAE0VQM7LndIvJKXkTuqGn0JEQPV_wzGoLg";
-const TG_CHAT = "7083254563";
+/**
+ * Telegram bot 通知 — token / chat_id 必須來自 Vercel env vars,
+ * 嚴禁硬寫在程式碼裡 (整個 repo 是 public)。
+ *
+ * Vercel 環境變數:
+ *   TELEGRAM_BOT_TOKEN — BotFather 給的 token
+ *   TELEGRAM_CHAT_ID   — 接收訊息的 chat id (個人或群組)
+ */
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TG_CHAT  = process.env.TELEGRAM_CHAT_ID;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!TG_TOKEN || !TG_CHAT) {
+    console.error("[notify-order] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not configured");
+    return res.status(200).json({ success: false, error: "telegram not configured" });
+  }
   try {
     const { orderNumber, name, phone, email, address, shipping, total, items, note } = req.body;
     if (!orderNumber || !name) return res.status(400).json({ error: "Missing fields" });
