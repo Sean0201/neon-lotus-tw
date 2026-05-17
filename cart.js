@@ -29,6 +29,78 @@
   const LINE_OFFICIAL = '@590eckna';
   const LINE_URL = 'https://line.me/R/ti/p/@590eckna';
 
+  // ───────────────────────────────────────────────────────────────
+  // 滿額折扣 (TIER DISCOUNTS) — Phase 1
+  // ───────────────────────────────────────────────────────────────
+  // Tiers are evaluated PER shipping_method group. A cart that mixes
+  // shipping methods (e.g. 國際運費 + 親自帶回) groups items by method
+  // independently, applies each group's best-qualifying tier, then sums.
+  //
+  // Threshold basis = group product subtotal (unit_price × quantity).
+  // Domestic last-mile fee (超商/宅配) is NOT included in threshold check,
+  // and free-shipping logic continues to use raw subtotal.
+  //
+  // Tiers must be listed in ascending min order; pickTier picks the
+  // deepest discount whose threshold is met.
+  const DISCOUNT_TIERS = {
+    // 國際運費 — 商品已含運,門檻拉高
+    shipping: [
+      { min: 5000,  rate: 0.95, label: '95 折' },
+      { min: 10000, rate: 0.92, label: '92 折' },
+      { min: 19000, rate: 0.88, label: '88 折' },
+    ],
+    // 親自帶回 — 採購人力成本高,門檻拉高
+    carryback: [
+      { min: 5000,  rate: 0.95, label: '95 折' },
+      { min: 10000, rate: 0.92, label: '92 折' },
+      { min: 19000, rate: 0.88, label: '88 折' },
+    ],
+    // 一般出貨 fallback — 預留給未來國內出貨類型
+    default: [
+      { min: 4000,  rate: 0.95, label: '95 折' },
+      { min: 8000,  rate: 0.92, label: '92 折' },
+      { min: 15000, rate: 0.88, label: '88 折' },
+    ],
+  };
+
+  // 顯示用標籤 (與 cart item.shipping_method 對應)
+  const SHIPPING_GROUP_LABELS = {
+    shipping:  '國際運費',
+    carryback: '親自帶回',
+    default:   '一般出貨',
+  };
+
+  // Pick the best (deepest discount) tier whose threshold is met.
+  // Returns the tier object { min, rate, label } or null if no tier hit.
+  function pickTier(shippingMethod, subtotal) {
+    const tiers = DISCOUNT_TIERS[shippingMethod] || DISCOUNT_TIERS.default;
+    let best = null;
+    for (let i = 0; i < tiers.length; i++) {
+      const t = tiers[i];
+      if (subtotal >= t.min) {
+        if (!best || t.rate < best.rate) best = t;
+      }
+    }
+    return best;
+  }
+
+  // Pick the next-up tier the customer hasn't reached, for the
+  // "再買 NT$ XXX 即可享 92 折" upsell hint.
+  function pickNextTier(shippingMethod, subtotal) {
+    const tiers = DISCOUNT_TIERS[shippingMethod] || DISCOUNT_TIERS.default;
+    for (let i = 0; i < tiers.length; i++) {
+      if (subtotal < tiers[i].min) return tiers[i];
+    }
+    return null;
+  }
+
+  // Expose for diagnostics / server-side reuse (server has its own copy).
+  if (typeof window !== 'undefined') {
+    window.NEON_DISCOUNT_TIERS = DISCOUNT_TIERS;
+    window.NEON_pickTier = pickTier;
+    window.NEON_pickNextTier = pickNextTier;
+  }
+
   // Color scheme (matches main site)
   const colors = {
     black: '#0a0a0f',
@@ -154,6 +226,59 @@
         (sum, item) => sum + ((item.unit_price || 0) * (item.quantity || 1)),
         0
       );
+    },
+
+    // ── 滿額折扣支援 ────────────────────────────────
+    // Group cart items by shipping_method, returning
+    // { [shipping_method]: [items] }.
+    groupByShipping() {
+      const items = this.load();
+      const groups = {};
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const key = it.shipping_method || 'default';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(it);
+      }
+      return groups;
+    },
+
+    // For each shipping_method group, returns:
+    // { shipping_method, items, subtotal, tier, nextTier, discount, total }
+    // - subtotal = raw product subtotal for that group
+    // - tier     = applied DISCOUNT_TIERS entry, or null
+    // - nextTier = next-up tier the user hasn't reached, or null
+    // - discount = subtotal - total (positive int)
+    // - total    = discounted subtotal (Math.round)
+    getDiscountBreakdown() {
+      const groups = this.groupByShipping();
+      return Object.keys(groups).map((sm) => {
+        const items = groups[sm];
+        const subtotal = items.reduce(
+          (s, it) => s + ((it.unit_price || 0) * (it.quantity || 1)),
+          0
+        );
+        const tier = pickTier(sm, subtotal);
+        const nextTier = pickNextTier(sm, subtotal);
+        const total = tier ? Math.round(subtotal * tier.rate) : subtotal;
+        const discount = subtotal - total;
+        return { shipping_method: sm, items, subtotal, tier, nextTier, discount, total };
+      });
+    },
+
+    // Raw product subtotal across all groups (no discount).
+    getRawSubtotal() {
+      return this.getTotal();
+    },
+
+    // Sum of every group's discounted total.
+    getDiscountedSubtotal() {
+      return this.getDiscountBreakdown().reduce((s, g) => s + g.total, 0);
+    },
+
+    // Total absolute discount across all groups.
+    getTotalDiscount() {
+      return this.getDiscountBreakdown().reduce((s, g) => s + g.discount, 0);
     },
   };
 
@@ -1236,12 +1361,64 @@
       });
     }
 
-    // Render footer
-    const total = CartState.getTotal();
+    // Render footer (with per-shipping-group 滿額折扣 breakdown)
+    const rawSubtotal      = CartState.getRawSubtotal();
+    const totalDiscount    = CartState.getTotalDiscount();
+    const discountedTotal  = CartState.getDiscountedSubtotal();
+    const breakdown        = CartState.getDiscountBreakdown();
+
+    // Build per-group rows ONLY if cart spans >1 group, OR when at least
+    // one group earns a discount / has an upsell hint to surface.
+    const showGroups = breakdown.length > 1
+      || breakdown.some(g => g.tier || g.nextTier);
+
+    let groupsHtml = '';
+    if (showGroups) {
+      groupsHtml = breakdown.map(g => {
+        const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
+        let tierLine = '';
+        if (g.tier) {
+          tierLine = `<div style="font-size:12px;color:#4ade80;margin-top:2px">
+            ✨ 已套用 ${g.tier.label} 優惠 ( -NT$ ${g.discount.toLocaleString()} )
+          </div>`;
+        }
+        let nextLine = '';
+        if (g.nextTier) {
+          const gap = g.nextTier.min - g.subtotal;
+          nextLine = `<div style="font-size:12px;color:${colors.accent};margin-top:2px">
+            🛍 再買 NT$ ${gap.toLocaleString()} 即可享 ${g.nextTier.label}
+          </div>`;
+        }
+        return `
+          <div style="padding:8px 0;border-top:1px dashed ${colors.glassBorder}">
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:${colors.white}">
+              <span>${label} 小計</span>
+              <span>NT$ ${g.subtotal.toLocaleString()}</span>
+            </div>
+            ${tierLine}
+            ${nextLine}
+          </div>
+        `;
+      }).join('');
+    }
+
+    const discountRow = totalDiscount > 0 ? `
+      <div class="neon-cart-subtotal" style="margin-top:6px;color:#4ade80">
+        <span class="neon-cart-subtotal-label">滿額折扣:</span>
+        <span class="neon-cart-subtotal-value">- NT$ ${totalDiscount.toLocaleString()}</span>
+      </div>
+    ` : '';
+
     footer.innerHTML = `
-      <div class="neon-cart-subtotal">
-        <span class="neon-cart-subtotal-label">小計:</span>
-        <span class="neon-cart-subtotal-value">NT$ ${total.toLocaleString()}</span>
+      ${groupsHtml}
+      <div class="neon-cart-subtotal" style="margin-top:8px">
+        <span class="neon-cart-subtotal-label">商品小計:</span>
+        <span class="neon-cart-subtotal-value">NT$ ${rawSubtotal.toLocaleString()}</span>
+      </div>
+      ${discountRow}
+      <div class="neon-cart-subtotal" style="margin-top:6px;border-top:1px solid ${colors.border};padding-top:8px;font-size:16px;font-weight:600">
+        <span class="neon-cart-subtotal-label">應付小計:</span>
+        <span class="neon-cart-subtotal-value">NT$ ${discountedTotal.toLocaleString()}</span>
       </div>
       <div class="neon-cart-actions">
         <button type="button" class="neon-cart-btn neon-cart-btn-checkout">前往結帳</button>
@@ -1431,8 +1608,12 @@
     pageDiv.className = 'page neon-checkout-page';
     pageDiv.id = 'neon-checkout-page';
 
-    const items = CartState.get();
-    const total = CartState.getTotal();
+    const items           = CartState.get();
+    const rawSubtotal     = CartState.getRawSubtotal();
+    const totalDiscount   = CartState.getTotalDiscount();
+    const discountedTotal = CartState.getDiscountedSubtotal();
+    const breakdown       = CartState.getDiscountBreakdown();
+    const total           = discountedTotal; // 親自運送無物流費
 
     let itemsSummary = '';
     items.forEach((item) => {
@@ -1444,6 +1625,22 @@
         </div>
       `;
     });
+
+    // 滿額折扣明細 (每組顯示已套用 / 差多少升級)
+    let tierLines = '';
+    breakdown.forEach((g) => {
+      const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
+      if (g.tier) {
+        tierLines += `<div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px"><span>${label} ${g.tier.label} 優惠</span><span>-NT$ ${g.discount.toLocaleString()}</span></div>`;
+      } else if (g.nextTier) {
+        const gap = g.nextTier.min - g.subtotal;
+        tierLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${gap.toLocaleString()}</span><span>即享 ${g.nextTier.label}</span></div>`;
+      }
+    });
+
+    const discountRow = totalDiscount > 0
+      ? `<div class="neon-checkout-summary-row" style="color:#4ade80"><span>滿額折扣合計:</span><span>-NT$ ${totalDiscount.toLocaleString()}</span></div>`
+      : '';
 
     const html = `
       <div class="neon-checkout-header">
@@ -1477,6 +1674,12 @@
               ${itemsSummary}
             </div>
             <div class="neon-checkout-summary-totals">
+              <div class="neon-checkout-summary-row">
+                <span class="neon-checkout-summary-label">商品小計:</span>
+                <span class="neon-checkout-summary-value">NT$ ${rawSubtotal.toLocaleString()}</span>
+              </div>
+              ${tierLines}
+              ${discountRow}
               <div class="neon-checkout-summary-row">
                 <span class="neon-checkout-summary-label">配送方式:</span>
                 <span class="neon-checkout-summary-value">親自運送</span>
@@ -1546,8 +1749,9 @@
             shipping_method: '親自運送',
             payment_method: '待確認',
             status: 'pending',
-            subtotal: total,
+            subtotal: rawSubtotal,
             shipping_fee: 0,
+            discount: totalDiscount,
             total: total,
             note: note,
             line_notified: false,
@@ -1596,10 +1800,12 @@
         } catch(ne) { console.warn('[Notify]', ne); }
 
         // ── 導向藍新金流 (NewebPay) — 親自帶回也走線上付款 ──
+        // shipping_method 必須一起送至 API,讓 server 端可重新驗證滿額折扣
         const npItems = items.map(item => ({
           name: item.product_name,
           quantity: item.quantity,
           price: item.unit_price,
+          shipping_method: item.shipping_method || 'carryback',
         }));
 
         submitBtn.textContent = '導向付款頁面...';
@@ -1610,6 +1816,8 @@
           body: JSON.stringify({
             items:       npItems,
             totalAmount: total,
+            shippingFee: 0,
+            discount:    totalDiscount,
             buyerName:   name,
             buyerEmail:  email,
             buyerPhone:  phone,
@@ -1665,13 +1873,18 @@
     pageDiv.className = 'page neon-checkout-page';
     pageDiv.id = 'neon-checkout-page';
 
-    const items = CartState.get();
-    const subtotal = CartState.getTotal();
+    const items           = CartState.get();
+    const rawSubtotal     = CartState.getRawSubtotal();
+    const totalDiscount   = CartState.getTotalDiscount();
+    const discountedSubtotal = CartState.getDiscountedSubtotal();
+    const breakdown       = CartState.getDiscountBreakdown();
+    // subtotal 變數仍指「商品小計 (未含折扣)」,讓免運判斷用原始消費額
+    const subtotal        = rawSubtotal;
 
     // ── 運費設定 ──
     const SHIPPING_FEE_CVS  = 70;   // 超商取貨運費
     const SHIPPING_FEE_HOME = 120;  // 宅配到府運費
-    const FREE_SHIPPING_THRESHOLD = 3000; // 滿額免運門檻
+    const FREE_SHIPPING_THRESHOLD = 3000; // 滿額免運門檻 (依「原始」商品小計判斷,折扣不影響免運資格)
 
     const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
     let currentShippingFee = isFreeShipping ? 0 : SHIPPING_FEE_CVS; // 預設超商
@@ -1686,6 +1899,21 @@
         </div>
       `;
     });
+
+    // 滿額折扣明細 (每組顯示已套用 / 差多少升級)
+    let tierLines = '';
+    breakdown.forEach((g) => {
+      const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
+      if (g.tier) {
+        tierLines += `<div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px"><span>${label} ${g.tier.label} 優惠</span><span>-NT$ ${g.discount.toLocaleString()}</span></div>`;
+      } else if (g.nextTier) {
+        const gap = g.nextTier.min - g.subtotal;
+        tierLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${gap.toLocaleString()}</span><span>即享 ${g.nextTier.label}</span></div>`;
+      }
+    });
+    const discountRow = totalDiscount > 0
+      ? `<div class="neon-checkout-summary-row" style="color:#4ade80"><span>滿額折扣合計:</span><span>-NT$ ${totalDiscount.toLocaleString()}</span></div>`
+      : '';
 
     const freeShippingNote = isFreeShipping
       ? '<div id="checkout-free-shipping-note" style="color:#4ade80;font-size:13px;margin-top:4px;">訂單滿 NT$ 3,000 享免運優惠！</div>'
@@ -1763,9 +1991,11 @@
             </div>
             <div class="neon-checkout-summary-totals">
               <div class="neon-checkout-summary-row">
-                <span class="neon-checkout-summary-label">小計:</span>
+                <span class="neon-checkout-summary-label">商品小計:</span>
                 <span class="neon-checkout-summary-value">NT$ ${subtotal.toLocaleString()}</span>
               </div>
+              ${tierLines}
+              ${discountRow}
               <div class="neon-checkout-summary-row" id="checkout-shipping-row">
                 <span class="neon-checkout-summary-label">運費 (超商取貨):</span>
                 <span class="neon-checkout-summary-value" id="checkout-shipping-value">${isFreeShipping ? '<span style="text-decoration:line-through;color:' + colors.muted + '">NT$ 70</span> <span style="color:#4ade80">免運</span>' : 'NT$ ' + currentShippingFee.toLocaleString()}</span>
@@ -1773,7 +2003,7 @@
               ${freeShippingNote}
               <div class="neon-checkout-summary-total">
                 <span>合計:</span>
-                <span class="neon-checkout-summary-total-value" id="checkout-grand-total">NT$ ${(subtotal + currentShippingFee).toLocaleString()}</span>
+                <span class="neon-checkout-summary-total-value" id="checkout-grand-total">NT$ ${(discountedSubtotal + currentShippingFee).toLocaleString()}</span>
               </div>
             </div>
             <button type="button" class="neon-checkout-btn" id="checkout-submit">確認訂單</button>
@@ -1820,10 +2050,10 @@
         }
       }
 
-      // 合計
+      // 合計 (使用折扣後小計)
       const grandTotalEl = pageDiv.querySelector('#checkout-grand-total');
       if (grandTotalEl) {
-        grandTotalEl.textContent = `NT$ ${(subtotal + currentShippingFee).toLocaleString()}`;
+        grandTotalEl.textContent = `NT$ ${(discountedSubtotal + currentShippingFee).toLocaleString()}`;
       }
     }
 
@@ -1917,7 +2147,7 @@
           ? `超商取貨 (${cvsSubTypeLabel[selectedCvsSubType] || '超商'}) - ${cvsStoreName}`
           : '宅配到府';
 
-        // Insert order
+        // Insert order (含滿額折扣明細)
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert([
@@ -1930,9 +2160,10 @@
               shipping_method: shippingLabel,
               payment_method: '待確認',
               status: 'pending',
-              subtotal: subtotal,
+              subtotal: subtotal,                            // 商品原價小計
               shipping_fee: currentShippingFee,
-              total: subtotal + currentShippingFee,
+              discount: totalDiscount,                       // 滿額折扣金額
+              total: discountedSubtotal + currentShippingFee,// 應付總額
               note: note,
               line_notified: false,
             },
@@ -1970,28 +2201,33 @@
           var _a = typeof address !== 'undefined' ? address : (typeof customerAddress !== 'undefined' ? customerAddress : '');
           var _nt = typeof note !== 'undefined' ? note : (typeof customerNote !== 'undefined' ? customerNote : '');
           var _sh = typeof selectedShipping !== 'undefined' ? selectedShipping : (typeof shippingMethod !== 'undefined' ? shippingMethod : '');
+          // 計算 grandTotal 給通知用 (subtotal 變數已重新指向商品原價小計)
+          var _grand = (typeof discountedSubtotal !== 'undefined' ? discountedSubtotal : subtotal) + (currentShippingFee || 0);
           fetch('/api/notify-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderNumber: orderNumber,
               name: _n, phone: _p, email: _e, address: _a,
-              shipping: _sh, total: total, items: items, note: _nt
+              shipping: _sh, total: _grand, items: items, note: _nt,
+              discount: (typeof totalDiscount !== 'undefined' ? totalDiscount : 0)
             })
           }).catch(function(e) { console.warn('[Notify]', e); });
         } catch(ne) { console.warn('[Notify]', ne); }
 
 
         // ── 導向藍新金流 (NewebPay) ──
+        // shipping_method 必須一起送至 API,讓 server 端可重新驗證滿額折扣
         const npItems = items.map(item => ({
           name: item.product_name,
           quantity: item.quantity,
           price: item.unit_price,
+          shipping_method: item.shipping_method || 'default',
         }));
 
         submitBtn.textContent = '導向付款頁面...';
 
-        const grandTotal = subtotal + currentShippingFee;
+        const grandTotal = discountedSubtotal + currentShippingFee;
 
         const npRes = await fetch('/api/newebpay-create', {
           method: 'POST',
@@ -1999,6 +2235,8 @@
           body: JSON.stringify({
             items:       npItems,
             totalAmount: grandTotal,
+            shippingFee: currentShippingFee,
+            discount:    totalDiscount,
             buyerName:   name,
             buyerEmail:  email,
             buyerPhone:  phone,

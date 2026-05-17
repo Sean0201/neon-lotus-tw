@@ -22,6 +22,78 @@ import crypto from 'crypto';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
+/* ── 滿額折扣 (TIER DISCOUNTS) ───────────────────────
+   * 必須與 cart.js DISCOUNT_TIERS 保持同步。
+   * 用於 server-side 重新驗證 totalAmount,避免前端被竄改後送錯金額。 */
+const DISCOUNT_TIERS = {
+  shipping: [
+    { min: 5000,  rate: 0.95 },
+    { min: 10000, rate: 0.92 },
+    { min: 19000, rate: 0.88 },
+  ],
+  carryback: [
+    { min: 5000,  rate: 0.95 },
+    { min: 10000, rate: 0.92 },
+    { min: 19000, rate: 0.88 },
+  ],
+  default: [
+    { min: 4000,  rate: 0.95 },
+    { min: 8000,  rate: 0.92 },
+    { min: 15000, rate: 0.88 },
+  ],
+};
+
+function serverPickTier(shippingMethod, subtotal) {
+  const tiers = DISCOUNT_TIERS[shippingMethod] || DISCOUNT_TIERS.default;
+  let best = null;
+  for (let i = 0; i < tiers.length; i++) {
+    const t = tiers[i];
+    if (subtotal >= t.min) {
+      if (!best || t.rate < best.rate) best = t;
+    }
+  }
+  return best;
+}
+
+/* Recalculate expected total from items + shippingFee. Returns
+   { expectedTotal, expectedDiscount, groups: [{shipping_method, subtotal, tier, total}] }. */
+function recalculateOrder(items, shippingFee) {
+  const groups = {};
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] || {};
+    const sm = it.shipping_method || 'default';
+    if (!groups[sm]) groups[sm] = 0;
+    const qty = Number(it.quantity) || 0;
+    const price = Number(it.price) || 0;
+    groups[sm] += price * qty;
+  }
+  const groupSummaries = [];
+  let discountedSubtotal = 0;
+  let rawSubtotal = 0;
+  Object.keys(groups).forEach((sm) => {
+    const sub = groups[sm];
+    rawSubtotal += sub;
+    const tier = serverPickTier(sm, sub);
+    const groupTotal = tier ? Math.round(sub * tier.rate) : sub;
+    discountedSubtotal += groupTotal;
+    groupSummaries.push({
+      shipping_method: sm,
+      subtotal: sub,
+      tier_rate: tier ? tier.rate : 1,
+      total: groupTotal,
+    });
+  });
+  const fee = Number(shippingFee) || 0;
+  return {
+    rawSubtotal,
+    discountedSubtotal,
+    expectedDiscount: rawSubtotal - discountedSubtotal,
+    expectedTotal: discountedSubtotal + fee,
+    shippingFee: fee,
+    groups: groupSummaries,
+  };
+}
+
 /* ── AES-256-CBC 加密 (藍新規格) ──────────────────── */
 function aesEncrypt(plainText, key, iv) {
   const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
@@ -78,8 +150,10 @@ export default async function handler(req, res) {
 
   try {
     const {
-      items,        // [{ name, quantity, price }]
-      totalAmount,  // 整數 (TWD)
+      items,        // [{ name, quantity, price, shipping_method? }]
+      totalAmount,  // 整數 (TWD) — 應為折扣後 + 運費的「應付總額」
+      shippingFee,  // 整數 (TWD) — 域內運費 (超商 70 / 宅配 120 / 親送 0)
+      discount,     // 整數 (TWD) — 前端宣告的滿額折扣金額,後台再核對
       buyerName,
       buyerEmail,
       buyerPhone,
@@ -111,6 +185,32 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'totalAmount must be positive' });
     }
 
+    /* ── Server-side 滿額折扣重新驗證 ────────────────
+       * 前端送來 totalAmount + items[].shipping_method,後端重新計算
+       * 並比對。容忍 ±5 元 rounding 誤差。若舊版前端沒送 shipping_method,
+       * default group fallback (4K/8K/15K) 會被用,通常仍能正確匹配。 */
+    const recalc = recalculateOrder(items, shippingFee);
+    const declaredTotal = Math.round(Number(totalAmount));
+    const expectedTotal = Math.round(recalc.expectedTotal);
+    const totalDiff = Math.abs(declaredTotal - expectedTotal);
+    const TOLERANCE = 5; // NT$5 rounding 容忍
+    if (totalDiff > TOLERANCE) {
+      console.warn('[NewebPay create] totalAmount mismatch', {
+        declared: declaredTotal,
+        expected: expectedTotal,
+        diff: totalDiff,
+        recalc,
+        items,
+      });
+      return res.status(400).json({
+        error: '訂單金額計算不一致,請重新整理購物車再試',
+        debug: { declared: declaredTotal, expected: expectedTotal },
+      });
+    }
+
+    // Server-recalculated total is the source of truth (use it for Amt)
+    const finalAmt = expectedTotal;
+
     // 訂單號
     const merchantOrderNo = sanitizeOrderNo(orderId || generateOrderNo());
 
@@ -127,7 +227,7 @@ export default async function handler(req, res) {
       TimeStamp:       String(Math.floor(Date.now() / 1000)),
       Version:         '2.0',
       MerchantOrderNo: merchantOrderNo,
-      Amt:             Math.round(totalAmount),
+      Amt:             finalAmt,
       ItemDesc:        itemDesc,
       ReturnURL:       `${SITE_URL}/api/newebpay-return`,    // 前台導回 (有 TradeInfo,可判定成敗)
       NotifyURL:       `${SITE_URL}/api/newebpay-notify`,    // 後台通知 (server-to-server)
