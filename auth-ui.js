@@ -10,6 +10,13 @@
 'use strict';
 
 (function () {
+  /* ─── Feature flag ────────────────────────────────────────
+   * Sean 還在設定 Supabase Auth providers (Google / Facebook / Email),
+   * 在 provider 還沒接通之前,登入按鈕點下去會跳 "Invalid login provider"。
+   * 暫時把整個 nav 登入 UI 隱藏 — 改成 true 即可重新啟用。
+   * (modal API 仍然透過 window.AuthUI 暴露,僅 nav 按鈕被隱藏) */
+  const AUTH_UI_ENABLED = false;
+
   const TIER_LABELS = {
     bronze:  { name: '銅卡', emoji: '🥉', color: '#cd7f32' },
     silver:  { name: '銀卡', emoji: '🥈', color: '#c0c0c0' },
@@ -348,15 +355,15 @@
     if (_navContainer && document.body.contains(_navContainer)) return _navContainer;
     _navContainer = document.createElement('div');
     _navContainer.id = 'neon-auth-nav';
-    _navContainer.style.cssText = 'position:relative;display:inline-block;margin-left:8px;';
+    _navContainer.style.cssText = 'position:relative;display:inline-block;margin:0 10px;';
 
-    // 嘗試掛到購物車圖示旁邊
-    const cartIcon = document.querySelector('.neon-cart-icon, #neon-cart-icon, .cart-icon');
+    // 嘗試掛到購物車圖示旁邊 — index.html 用 #nav-cart-icon
+    const cartIcon = document.querySelector('#nav-cart-icon, .neon-cart-icon, #neon-cart-icon, .cart-icon');
     if (cartIcon && cartIcon.parentElement) {
       cartIcon.parentElement.insertBefore(_navContainer, cartIcon);
     } else {
-      // Fallback: 固定右上角
-      _navContainer.style.cssText = 'position:fixed;top:14px;right:80px;z-index:9000;';
+      // Fallback: 固定右上角(往左挪避開 EN 切換按鈕)
+      _navContainer.style.cssText = 'position:fixed;top:14px;right:120px;z-index:9000;';
       document.body.appendChild(_navContainer);
     }
     return _navContainer;
@@ -436,6 +443,11 @@
 
   // ── Boot ────────────────────────────────────────────
   function boot() {
+    // Feature flag: 還在設定 provider 時不顯示登入按鈕
+    if (!AUTH_UI_ENABLED) {
+      console.log('[AuthUI] Disabled (AUTH_UI_ENABLED=false). Modal API 仍可用: window.AuthUI.openModal()');
+      return;
+    }
     if (!window.AuthSystem) {
       setTimeout(boot, 100);
       return;
