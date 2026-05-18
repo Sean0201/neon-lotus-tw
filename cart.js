@@ -1751,7 +1751,7 @@
             status: 'pending',
             subtotal: rawSubtotal,
             shipping_fee: 0,
-            discount: totalDiscount,
+            tier_discount: totalDiscount,
             total: total,
             note: note,
             line_notified: false,
@@ -2162,7 +2162,7 @@
               status: 'pending',
               subtotal: subtotal,                            // 商品原價小計
               shipping_fee: currentShippingFee,
-              discount: totalDiscount,                       // 滿額折扣金額
+              tier_discount: totalDiscount,                  // 滿額折扣金額 (對應 migration 002)
               total: discountedSubtotal + currentShippingFee,// 應付總額
               note: note,
               line_notified: false,
