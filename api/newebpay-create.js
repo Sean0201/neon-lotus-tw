@@ -26,15 +26,16 @@ export const config = { runtime: 'nodejs', maxDuration: 30 };
    * 必須與 cart.js DISCOUNT_TIERS 保持同步。
    * 用於 server-side 重新驗證 totalAmount,避免前端被竄改後送錯金額。 */
 const DISCOUNT_TIERS = {
+  // ⚠️ 必須與 cart.js DISCOUNT_TIERS 完全同步, 否則 server 重新驗證會 reject
   shipping: [
     { min: 5000,  rate: 0.95 },
     { min: 10000, rate: 0.92 },
     { min: 19000, rate: 0.88 },
   ],
   carryback: [
-    { min: 5000,  rate: 0.95 },
-    { min: 10000, rate: 0.92 },
-    { min: 19000, rate: 0.88 },
+    { min: 4000,  rate: 0.95 },
+    { min: 8000,  rate: 0.92 },
+    { min: 15000, rate: 0.88 },
   ],
   default: [
     { min: 4000,  rate: 0.95 },

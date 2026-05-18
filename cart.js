@@ -43,19 +43,19 @@
   // Tiers must be listed in ascending min order; pickTier picks the
   // deepest discount whose threshold is met.
   const DISCOUNT_TIERS = {
-    // 國際運費 — 商品已含運,門檻拉高
+    // 國際運費 — 商品已含運,門檻最高
     shipping: [
       { min: 5000,  rate: 0.95, label: '95 折' },
       { min: 10000, rate: 0.92, label: '92 折' },
       { min: 19000, rate: 0.88, label: '88 折' },
     ],
-    // 親自帶回 — 採購人力成本高,門檻拉高
+    // 親自帶回 — 採購人力成本較高但無運費,門檻為基準
     carryback: [
-      { min: 5000,  rate: 0.95, label: '95 折' },
-      { min: 10000, rate: 0.92, label: '92 折' },
-      { min: 19000, rate: 0.88, label: '88 折' },
+      { min: 4000,  rate: 0.95, label: '95 折' },
+      { min: 8000,  rate: 0.92, label: '92 折' },
+      { min: 15000, rate: 0.88, label: '88 折' },
     ],
-    // 一般出貨 fallback — 預留給未來國內出貨類型
+    // 一般出貨 fallback — 預留給未來國內出貨類型 (= carryback 同階)
     default: [
       { min: 4000,  rate: 0.95, label: '95 折' },
       { min: 8000,  rate: 0.92, label: '92 折' },
