@@ -30,76 +30,16 @@
   const LINE_URL = 'https://line.me/R/ti/p/@590eckna';
 
   // ───────────────────────────────────────────────────────────────
-  // 滿額折扣 (TIER DISCOUNTS) — Phase 1
+  // 折扣 — Phase 2.2 (五階等級 + 雙軌滿額 + 生日 + 折抵金 + 樓地板)
   // ───────────────────────────────────────────────────────────────
-  // Tiers are evaluated PER shipping_method group. A cart that mixes
-  // shipping methods (e.g. 國際運費 + 親自帶回) groups items by method
-  // independently, applies each group's best-qualifying tier, then sums.
-  //
-  // Threshold basis = group product subtotal (unit_price × quantity).
-  // Domestic last-mile fee (超商/宅配) is NOT included in threshold check,
-  // and free-shipping logic continues to use raw subtotal.
-  //
-  // Tiers must be listed in ascending min order; pickTier picks the
-  // deepest discount whose threshold is met.
-  const DISCOUNT_TIERS = {
-    // 國際運費 — 商品已含運,門檻最高
-    shipping: [
-      { min: 5000,  rate: 0.95, label: '95 折' },
-      { min: 10000, rate: 0.92, label: '92 折' },
-      { min: 19000, rate: 0.88, label: '88 折' },
-    ],
-    // 親自帶回 — 採購人力成本較高但無運費,門檻為基準
-    carryback: [
-      { min: 4000,  rate: 0.95, label: '95 折' },
-      { min: 8000,  rate: 0.92, label: '92 折' },
-      { min: 15000, rate: 0.88, label: '88 折' },
-    ],
-    // 一般出貨 fallback — 預留給未來國內出貨類型 (= carryback 同階)
-    default: [
-      { min: 4000,  rate: 0.95, label: '95 折' },
-      { min: 8000,  rate: 0.92, label: '92 折' },
-      { min: 15000, rate: 0.88, label: '88 折' },
-    ],
-  };
-
-  // 顯示用標籤 (與 cart item.shipping_method 對應)
+  // 折扣計算全部移到 window.DiscountEngine (discount-engine.js),
+  // 是前端與後端共用的單一信任來源 (lib/discount.js 是同一份 Node 移植版)。
+  // 此處只留下 SHIPPING_GROUP_LABELS,給 UI 顯示「親自帶回 / 國際運費」之類的標籤用。
   const SHIPPING_GROUP_LABELS = {
     shipping:  '國際運費',
     carryback: '親自帶回',
     default:   '一般出貨',
   };
-
-  // Pick the best (deepest discount) tier whose threshold is met.
-  // Returns the tier object { min, rate, label } or null if no tier hit.
-  function pickTier(shippingMethod, subtotal) {
-    const tiers = DISCOUNT_TIERS[shippingMethod] || DISCOUNT_TIERS.default;
-    let best = null;
-    for (let i = 0; i < tiers.length; i++) {
-      const t = tiers[i];
-      if (subtotal >= t.min) {
-        if (!best || t.rate < best.rate) best = t;
-      }
-    }
-    return best;
-  }
-
-  // Pick the next-up tier the customer hasn't reached, for the
-  // "再買 NT$ XXX 即可享 92 折" upsell hint.
-  function pickNextTier(shippingMethod, subtotal) {
-    const tiers = DISCOUNT_TIERS[shippingMethod] || DISCOUNT_TIERS.default;
-    for (let i = 0; i < tiers.length; i++) {
-      if (subtotal < tiers[i].min) return tiers[i];
-    }
-    return null;
-  }
-
-  // Expose for diagnostics / server-side reuse (server has its own copy).
-  if (typeof window !== 'undefined') {
-    window.NEON_DISCOUNT_TIERS = DISCOUNT_TIERS;
-    window.NEON_pickTier = pickTier;
-    window.NEON_pickNextTier = pickNextTier;
-  }
 
   // Color scheme (matches main site)
   const colors = {
@@ -228,7 +168,7 @@
       );
     },
 
-    // ── 滿額折扣支援 ────────────────────────────────
+    // ── 折扣支援 (Phase 2.2 — DiscountEngine 接管) ──────────
     // Group cart items by shipping_method, returning
     // { [shipping_method]: [items] }.
     groupByShipping() {
@@ -243,14 +183,50 @@
       return groups;
     },
 
-    // For each shipping_method group, returns:
-    // { shipping_method, items, subtotal, tier, nextTier, discount, total }
-    // - subtotal = raw product subtotal for that group
-    // - tier     = applied DISCOUNT_TIERS entry, or null
-    // - nextTier = next-up tier the user hasn't reached, or null
-    // - discount = subtotal - total (positive int)
-    // - total    = discounted subtotal (Math.round)
+    // 取得目前登入會員 (沒登入 = null)。若 AuthSystem 還沒初始化也回 null。
+    _getMember() {
+      try {
+        return (window.AuthSystem && typeof window.AuthSystem.getMember === 'function')
+          ? (window.AuthSystem.getMember() || null)
+          : null;
+      } catch { return null; }
+    },
+
+    /**
+     * 完整折扣計算結果 — 委派給 DiscountEngine。
+     * 若 DiscountEngine 還沒載入,使用內建 fallback (純加總,沒折扣)。
+     */
+    getDiscountResult() {
+      const items = this.load();
+      if (window.DiscountEngine && typeof window.DiscountEngine.computeCart === 'function') {
+        return window.DiscountEngine.computeCart({
+          items,
+          member: this._getMember(),
+        });
+      }
+      // Fallback — 引擎沒載入,純加總
+      const raw = items.reduce((s, it) => s + ((it.unit_price || 0) * (it.quantity || 1)), 0);
+      return {
+        raw_subtotal: raw,
+        tier_key: 'bronze', tier_rate: 1.0, tier_eligible: false,
+        groups: { carryback: { raw: 0, after_tier: 0, after_birthday: 0, bulk_discount: 0, after_bulk: 0 },
+                  shipping:  { raw: 0, after_tier: 0, after_birthday: 0, bulk_discount: 0, after_bulk: 0 } },
+        tier_discount: 0,
+        birthday_eligible: false, birthday_discount: 0,
+        bulk_eligible: false, bulk_discount_total: 0,
+        credit_balance: 0, credit_used: 0,
+        floor_rate: 0.75, floor_amount: 0, floor_clamped: false, floor_refund: 0,
+        subtotal_after_tier: raw, subtotal_after_birthday: raw,
+        subtotal_after_bulk: raw, subtotal_after_credit: raw,
+        final_subtotal: raw,
+        total_savings: 0,
+      };
+    },
+
+    // ── 舊 API 兼容 (footer / order-insert 內仍用這些名字) ──
+    // Returns per-shipping-group breakdown 用於 UI 顯示分軌小計。
     getDiscountBreakdown() {
+      const result = this.getDiscountResult();
       const groups = this.groupByShipping();
       return Object.keys(groups).map((sm) => {
         const items = groups[sm];
@@ -258,28 +234,30 @@
           (s, it) => s + ((it.unit_price || 0) * (it.quantity || 1)),
           0
         );
-        const tier = pickTier(sm, subtotal);
-        const nextTier = pickNextTier(sm, subtotal);
-        const total = tier ? Math.round(subtotal * tier.rate) : subtotal;
-        const discount = subtotal - total;
-        return { shipping_method: sm, items, subtotal, tier, nextTier, discount, total };
+        const gKey = (sm === 'carryback') ? 'carryback' : 'shipping';
+        const g = result.groups[gKey] || { after_tier: subtotal, after_birthday: subtotal, bulk_discount: 0, after_bulk: subtotal };
+        // 升下一階提示 (用 DiscountEngine.nextBulkRung)
+        let nextRung = null;
+        if (window.DiscountEngine && typeof window.DiscountEngine.nextBulkRung === 'function' && result.bulk_eligible) {
+          nextRung = window.DiscountEngine.nextBulkRung(gKey, g.after_birthday);
+        }
+        return {
+          shipping_method: sm,
+          items,
+          subtotal,                       // 此組原價小計
+          after_tier:      g.after_tier,
+          after_birthday:  g.after_birthday,
+          bulk_discount:   g.bulk_discount,
+          total:           g.after_bulk,  // 此組折後 (未扣折抵金 / 未過樓地板)
+          discount:        subtotal - g.after_bulk,
+          nextRung,                       // {threshold, discount, gap} or null
+        };
       });
     },
 
-    // Raw product subtotal across all groups (no discount).
-    getRawSubtotal() {
-      return this.getTotal();
-    },
-
-    // Sum of every group's discounted total.
-    getDiscountedSubtotal() {
-      return this.getDiscountBreakdown().reduce((s, g) => s + g.total, 0);
-    },
-
-    // Total absolute discount across all groups.
-    getTotalDiscount() {
-      return this.getDiscountBreakdown().reduce((s, g) => s + g.discount, 0);
-    },
+    getRawSubtotal()        { return this.getTotal(); },
+    getDiscountedSubtotal() { return this.getDiscountResult().final_subtotal; },
+    getTotalDiscount()      { return this.getDiscountResult().total_savings; },
   };
 
   // ─────────────────────────────────────────────────────────────────
@@ -1361,65 +1339,130 @@
       });
     }
 
-    // Render footer (with per-shipping-group 滿額折扣 breakdown)
+    // Render footer (Phase 2.2 — 五階等級 + 雙軌滿額現折 + 生日 + 折抵金 + 樓地板)
     const rawSubtotal      = CartState.getRawSubtotal();
-    const totalDiscount    = CartState.getTotalDiscount();
-    const discountedTotal  = CartState.getDiscountedSubtotal();
+    const discountResult   = CartState.getDiscountResult();
+    const totalDiscount    = discountResult.total_savings;
+    const discountedTotal  = discountResult.final_subtotal;
     const breakdown        = CartState.getDiscountBreakdown();
+    const member           = CartState._getMember();
 
-    // Build per-group rows ONLY if cart spans >1 group, OR when at least
-    // one group earns a discount / has an upsell hint to surface.
-    const showGroups = breakdown.length > 1
-      || breakdown.some(g => g.tier || g.nextTier);
+    // Tier label lookup
+    const TIER_LBL = (window.DiscountEngine && window.DiscountEngine.TIER_LABELS) || {
+      bronze:  { emoji: '🥉', label: '銅卡' },
+      silver:  { emoji: '🥈', label: '銀卡' },
+      gold:    { emoji: '🥇', label: '金卡' },
+      diamond: { emoji: '💎', label: '鑽石卡' },
+      black:   { emoji: '🖤', label: '黑卡' },
+    };
+    const tierMeta = TIER_LBL[discountResult.tier_key] || TIER_LBL.bronze;
+    const tierPct = Math.round(discountResult.tier_rate * 100);
 
+    // Per-group upsell hint (差 X 升 LX) — 只對會員顯示
     let groupsHtml = '';
-    if (showGroups) {
+    if (member && breakdown.length > 0) {
       groupsHtml = breakdown.map(g => {
         const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
-        let tierLine = '';
-        if (g.tier) {
-          tierLine = `<div style="font-size:12px;color:#4ade80;margin-top:2px">
-            ✨ 已套用 ${g.tier.label} 優惠 ( -NT$ ${g.discount.toLocaleString()} )
-          </div>`;
-        }
+        // 升下一階滿額現折提示
         let nextLine = '';
-        if (g.nextTier) {
-          const gap = g.nextTier.min - g.subtotal;
+        if (g.nextRung) {
           nextLine = `<div style="font-size:12px;color:${colors.accent};margin-top:2px">
-            🛍 再買 NT$ ${gap.toLocaleString()} 即可享 ${g.nextTier.label}
+            🛍 再買 NT$ ${g.nextRung.gap.toLocaleString()} 即可享滿額現折 -NT$ ${g.nextRung.discount.toLocaleString()}
           </div>`;
         }
+        // 已套用提示
+        let appliedLine = '';
+        if (g.bulk_discount > 0) {
+          appliedLine = `<div style="font-size:12px;color:#4ade80;margin-top:2px">
+            ✨ 已套用滿額現折 -NT$ ${g.bulk_discount.toLocaleString()}
+          </div>`;
+        }
+        if (!appliedLine && !nextLine) return ''; // 沒可顯示就跳過
         return `
           <div style="padding:8px 0;border-top:1px dashed ${colors.glassBorder}">
             <div style="display:flex;justify-content:space-between;font-size:13px;color:${colors.white}">
               <span>${label} 小計</span>
               <span>NT$ ${g.subtotal.toLocaleString()}</span>
             </div>
-            ${tierLine}
+            ${appliedLine}
             ${nextLine}
           </div>
         `;
-      }).join('');
+      }).filter(Boolean).join('');
     }
 
-    const discountRow = totalDiscount > 0 ? `
+    // 訪客誘因 banner
+    const guestBanner = (!member) ? `
+      <div style="margin-top:8px;padding:10px 12px;background:rgba(192,132,252,0.08);border:1px solid ${colors.border};border-radius:8px;font-size:12px;color:${colors.accent};line-height:1.5">
+        🔓 登入會員享 95–85 折 + 滿額現折最高 -NT$2,500 + 註冊禮金 NT$100
+      </div>
+    ` : '';
+
+    // 等級折扣行 (僅會員 + 有折扣率時顯示)
+    const tierRow = (member && discountResult.tier_discount > 0) ? `
       <div class="neon-cart-subtotal" style="margin-top:6px;color:#4ade80">
-        <span class="neon-cart-subtotal-label">滿額折扣:</span>
-        <span class="neon-cart-subtotal-value">- NT$ ${totalDiscount.toLocaleString()}</span>
+        <span class="neon-cart-subtotal-label">${tierMeta.emoji} ${tierMeta.label} 折扣 (${tierPct}折):</span>
+        <span class="neon-cart-subtotal-value">- NT$ ${discountResult.tier_discount.toLocaleString()}</span>
+      </div>
+    ` : '';
+
+    // 生日 9 折行
+    const birthdayRow = discountResult.birthday_discount > 0 ? `
+      <div class="neon-cart-subtotal" style="margin-top:6px;color:#4ade80">
+        <span class="neon-cart-subtotal-label">🎂 生日月 9 折:</span>
+        <span class="neon-cart-subtotal-value">- NT$ ${discountResult.birthday_discount.toLocaleString()}</span>
+      </div>
+    ` : '';
+
+    // 滿額現折行
+    const bulkRow = discountResult.bulk_discount_total > 0 ? `
+      <div class="neon-cart-subtotal" style="margin-top:6px;color:#4ade80">
+        <span class="neon-cart-subtotal-label">🛍 滿額現折:</span>
+        <span class="neon-cart-subtotal-value">- NT$ ${discountResult.bulk_discount_total.toLocaleString()}</span>
+      </div>
+    ` : '';
+
+    // 折抵金行
+    const creditRow = discountResult.credit_used > 0 ? `
+      <div class="neon-cart-subtotal" style="margin-top:6px;color:#4ade80">
+        <span class="neon-cart-subtotal-label">💴 折抵金:</span>
+        <span class="neon-cart-subtotal-value">- NT$ ${discountResult.credit_used.toLocaleString()}</span>
+      </div>
+    ` : '';
+
+    // 樓地板拉回行 (有觸發時顯示為「保護線」)
+    const floorRow = discountResult.floor_clamped ? `
+      <div class="neon-cart-subtotal" style="margin-top:6px;color:#fbbf24;font-size:12px">
+        <span class="neon-cart-subtotal-label">⛔ 等級樓地板 (${Math.round(discountResult.floor_rate * 100)}%):</span>
+        <span class="neon-cart-subtotal-value">折扣已封頂</span>
+      </div>
+    ` : '';
+
+    // 總共省下行
+    const savingsRow = totalDiscount > 0 ? `
+      <div class="neon-cart-subtotal" style="margin-top:4px;color:${colors.accent};font-size:12px">
+        <span class="neon-cart-subtotal-label">您共省下:</span>
+        <span class="neon-cart-subtotal-value">NT$ ${totalDiscount.toLocaleString()}</span>
       </div>
     ` : '';
 
     footer.innerHTML = `
+      ${guestBanner}
       ${groupsHtml}
       <div class="neon-cart-subtotal" style="margin-top:8px">
         <span class="neon-cart-subtotal-label">商品小計:</span>
         <span class="neon-cart-subtotal-value">NT$ ${rawSubtotal.toLocaleString()}</span>
       </div>
-      ${discountRow}
+      ${tierRow}
+      ${birthdayRow}
+      ${bulkRow}
+      ${creditRow}
+      ${floorRow}
       <div class="neon-cart-subtotal" style="margin-top:6px;border-top:1px solid ${colors.border};padding-top:8px;font-size:16px;font-weight:600">
         <span class="neon-cart-subtotal-label">應付小計:</span>
         <span class="neon-cart-subtotal-value">NT$ ${discountedTotal.toLocaleString()}</span>
       </div>
+      ${savingsRow}
       <div class="neon-cart-actions">
         <button type="button" class="neon-cart-btn neon-cart-btn-checkout">前往結帳</button>
         <button type="button" class="neon-cart-btn neon-cart-btn-continue">繼續購物</button>
@@ -1610,10 +1653,23 @@
 
     const items           = CartState.get();
     const rawSubtotal     = CartState.getRawSubtotal();
-    const totalDiscount   = CartState.getTotalDiscount();
-    const discountedTotal = CartState.getDiscountedSubtotal();
+    const discountResult  = CartState.getDiscountResult();
+    const totalDiscount   = discountResult.total_savings;
+    const discountedTotal = discountResult.final_subtotal;
     const breakdown       = CartState.getDiscountBreakdown();
+    const member          = CartState._getMember();
     const total           = discountedTotal; // 親自運送無物流費
+
+    // Tier label lookup
+    const TIER_LBL_CB = (window.DiscountEngine && window.DiscountEngine.TIER_LABELS) || {
+      bronze:  { emoji: '🥉', label: '銅卡' },
+      silver:  { emoji: '🥈', label: '銀卡' },
+      gold:    { emoji: '🥇', label: '金卡' },
+      diamond: { emoji: '💎', label: '鑽石卡' },
+      black:   { emoji: '🖤', label: '黑卡' },
+    };
+    const tierMetaCB = TIER_LBL_CB[discountResult.tier_key] || TIER_LBL_CB.bronze;
+    const tierPctCB  = Math.round(discountResult.tier_rate * 100);
 
     let itemsSummary = '';
     items.forEach((item) => {
@@ -1626,20 +1682,62 @@
       `;
     });
 
-    // 滿額折扣明細 (每組顯示已套用 / 差多少升級)
-    let tierLines = '';
-    breakdown.forEach((g) => {
-      const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
-      if (g.tier) {
-        tierLines += `<div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px"><span>${label} ${g.tier.label} 優惠</span><span>-NT$ ${g.discount.toLocaleString()}</span></div>`;
-      } else if (g.nextTier) {
-        const gap = g.nextTier.min - g.subtotal;
-        tierLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${gap.toLocaleString()}</span><span>即享 ${g.nextTier.label}</span></div>`;
-      }
-    });
+    // 每組滿額現折提示行 (差多少 / 已套用) — 僅會員
+    let groupLines = '';
+    if (member) {
+      breakdown.forEach((g) => {
+        const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
+        if (g.bulk_discount > 0) {
+          groupLines += `<div class="neon-checkout-summary-row" style="color:#4ade80;font-size:12px"><span>${label} 已套用滿額現折</span><span>-NT$ ${g.bulk_discount.toLocaleString()}</span></div>`;
+        } else if (g.nextRung) {
+          groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${g.nextRung.gap.toLocaleString()}</span><span>即享 -NT$ ${g.nextRung.discount.toLocaleString()}</span></div>`;
+        }
+      });
+    }
+
+    // 等級折扣行
+    const tierRowCB = (member && discountResult.tier_discount > 0) ? `
+      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
+        <span>${tierMetaCB.emoji} ${tierMetaCB.label} 折扣 (${tierPctCB}折):</span>
+        <span>-NT$ ${discountResult.tier_discount.toLocaleString()}</span>
+      </div>` : '';
+
+    // 生日 9 折行
+    const birthdayRowCB = discountResult.birthday_discount > 0 ? `
+      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
+        <span>🎂 生日月 9 折:</span>
+        <span>-NT$ ${discountResult.birthday_discount.toLocaleString()}</span>
+      </div>` : '';
+
+    // 滿額現折行 (總計)
+    const bulkRowCB = discountResult.bulk_discount_total > 0 ? `
+      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
+        <span>🛍 滿額現折合計:</span>
+        <span>-NT$ ${discountResult.bulk_discount_total.toLocaleString()}</span>
+      </div>` : '';
+
+    // 折抵金行
+    const creditRowCB = discountResult.credit_used > 0 ? `
+      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
+        <span>💴 註冊禮金折抵:</span>
+        <span>-NT$ ${discountResult.credit_used.toLocaleString()}</span>
+      </div>` : '';
+
+    // 樓地板拉回行
+    const floorRowCB = discountResult.floor_clamped ? `
+      <div class="neon-checkout-summary-row" style="color:#fbbf24;font-size:12px">
+        <span>⛔ 等級樓地板 (${Math.round(discountResult.floor_rate * 100)}%):</span>
+        <span>折扣已封頂</span>
+      </div>` : '';
+
+    // 訪客誘因 banner
+    const guestBannerCB = (!member) ? `
+      <div class="neon-checkout-summary-row" style="background:rgba(192,132,252,0.08);border:1px solid ${colors.border};border-radius:8px;padding:8px 10px;font-size:12px;color:${colors.accent};line-height:1.5;display:block">
+        🔓 登入會員享 95–85 折 + 滿額現折最高 -NT$2,500 + 註冊禮金 NT$100
+      </div>` : '';
 
     const discountRow = totalDiscount > 0
-      ? `<div class="neon-checkout-summary-row" style="color:#4ade80"><span>滿額折扣合計:</span><span>-NT$ ${totalDiscount.toLocaleString()}</span></div>`
+      ? `<div class="neon-checkout-summary-row" style="color:${colors.accent};font-size:12px"><span>您共省下:</span><span>NT$ ${totalDiscount.toLocaleString()}</span></div>`
       : '';
 
     const html = `
@@ -1678,7 +1776,13 @@
                 <span class="neon-checkout-summary-label">商品小計:</span>
                 <span class="neon-checkout-summary-value">NT$ ${rawSubtotal.toLocaleString()}</span>
               </div>
-              ${tierLines}
+              ${guestBannerCB}
+              ${groupLines}
+              ${tierRowCB}
+              ${birthdayRowCB}
+              ${bulkRowCB}
+              ${creditRowCB}
+              ${floorRowCB}
               ${discountRow}
               <div class="neon-checkout-summary-row">
                 <span class="neon-checkout-summary-label">配送方式:</span>
@@ -1739,9 +1843,20 @@
         const orderNumber = `NLC-${dateStr}-${rand}`;
 
         // 若登入會員,把 member_id 寫進訂單 — Phase 2.2 累積消費 / 消費次數要用
-        const _carryMemberId = (window.AuthSystem && typeof window.AuthSystem.getMember === 'function')
-          ? (window.AuthSystem.getMember()?.id || null)
+        const _carryMember   = (window.AuthSystem && typeof window.AuthSystem.getMember === 'function')
+          ? (window.AuthSystem.getMember() || null)
           : null;
+        const _carryMemberId = _carryMember?.id || null;
+
+        // Phase 2.2 訂單欄位拆解:
+        //   tier_at_purchase     = 下單當下會員等級 (歷史快照)
+        //   tier_discount        = 等級折扣 + 滿額現折 - 樓地板補回 (折抵金、生日除外)
+        //   birthday_discount    = 生日月 9 折金額
+        //   signup_credit_used   = 註冊禮金扣抵
+        const _cbTierKey       = _carryMember ? (discountResult.tier_key || null) : null;
+        const _cbBirthday      = discountResult.birthday_discount || 0;
+        const _cbCredit        = discountResult.credit_used || 0;
+        const _cbTierBundle    = Math.max(0, (totalDiscount - _cbBirthday - _cbCredit));
 
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
@@ -1756,7 +1871,10 @@
             status: 'pending',
             subtotal: rawSubtotal,
             shipping_fee: 0,
-            tier_discount: totalDiscount,
+            tier_at_purchase:   _cbTierKey,
+            tier_discount:      _cbTierBundle,
+            birthday_discount:  _cbBirthday,
+            signup_credit_used: _cbCredit,
             total: total,
             note: note,
             line_notified: false,
@@ -1824,6 +1942,10 @@
             totalAmount: total,
             shippingFee: 0,
             discount:    totalDiscount,
+            // Phase 2.2 — 傳會員上下文讓 server 重算 + 驗證金額 (±NT$5 容差)
+            memberId:    _carryMemberId,
+            tierKey:     _cbTierKey,
+            useCredit:   _cbCredit > 0,
             buyerName:   name,
             buyerEmail:  email,
             buyerPhone:  phone,
@@ -1879,13 +2001,26 @@
     pageDiv.className = 'page neon-checkout-page';
     pageDiv.id = 'neon-checkout-page';
 
-    const items           = CartState.get();
-    const rawSubtotal     = CartState.getRawSubtotal();
-    const totalDiscount   = CartState.getTotalDiscount();
-    const discountedSubtotal = CartState.getDiscountedSubtotal();
-    const breakdown       = CartState.getDiscountBreakdown();
+    const items              = CartState.get();
+    const rawSubtotal        = CartState.getRawSubtotal();
+    const discountResult     = CartState.getDiscountResult();
+    const totalDiscount      = discountResult.total_savings;
+    const discountedSubtotal = discountResult.final_subtotal;
+    const breakdown          = CartState.getDiscountBreakdown();
+    const member             = CartState._getMember();
     // subtotal 變數仍指「商品小計 (未含折扣)」,讓免運判斷用原始消費額
-    const subtotal        = rawSubtotal;
+    const subtotal           = rawSubtotal;
+
+    // Tier label lookup
+    const TIER_LBL_SH = (window.DiscountEngine && window.DiscountEngine.TIER_LABELS) || {
+      bronze:  { emoji: '🥉', label: '銅卡' },
+      silver:  { emoji: '🥈', label: '銀卡' },
+      gold:    { emoji: '🥇', label: '金卡' },
+      diamond: { emoji: '💎', label: '鑽石卡' },
+      black:   { emoji: '🖤', label: '黑卡' },
+    };
+    const tierMetaSH = TIER_LBL_SH[discountResult.tier_key] || TIER_LBL_SH.bronze;
+    const tierPctSH  = Math.round(discountResult.tier_rate * 100);
 
     // ── 運費設定 ──
     const SHIPPING_FEE_CVS  = 70;   // 超商取貨運費
@@ -1906,19 +2041,62 @@
       `;
     });
 
-    // 滿額折扣明細 (每組顯示已套用 / 差多少升級)
-    let tierLines = '';
-    breakdown.forEach((g) => {
-      const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
-      if (g.tier) {
-        tierLines += `<div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px"><span>${label} ${g.tier.label} 優惠</span><span>-NT$ ${g.discount.toLocaleString()}</span></div>`;
-      } else if (g.nextTier) {
-        const gap = g.nextTier.min - g.subtotal;
-        tierLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${gap.toLocaleString()}</span><span>即享 ${g.nextTier.label}</span></div>`;
-      }
-    });
+    // 每組滿額現折提示行 (差多少 / 已套用) — 僅會員
+    let groupLines = '';
+    if (member) {
+      breakdown.forEach((g) => {
+        const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
+        if (g.bulk_discount > 0) {
+          groupLines += `<div class="neon-checkout-summary-row" style="color:#4ade80;font-size:12px"><span>${label} 已套用滿額現折</span><span>-NT$ ${g.bulk_discount.toLocaleString()}</span></div>`;
+        } else if (g.nextRung) {
+          groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${g.nextRung.gap.toLocaleString()}</span><span>即享 -NT$ ${g.nextRung.discount.toLocaleString()}</span></div>`;
+        }
+      });
+    }
+
+    // 等級折扣行 (僅會員 + 有折扣率時)
+    const tierRowSH = (member && discountResult.tier_discount > 0) ? `
+      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
+        <span>${tierMetaSH.emoji} ${tierMetaSH.label} 折扣 (${tierPctSH}折):</span>
+        <span>-NT$ ${discountResult.tier_discount.toLocaleString()}</span>
+      </div>` : '';
+
+    // 生日 9 折行
+    const birthdayRowSH = discountResult.birthday_discount > 0 ? `
+      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
+        <span>🎂 生日月 9 折:</span>
+        <span>-NT$ ${discountResult.birthday_discount.toLocaleString()}</span>
+      </div>` : '';
+
+    // 滿額現折合計行
+    const bulkRowSH = discountResult.bulk_discount_total > 0 ? `
+      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
+        <span>🛍 滿額現折合計:</span>
+        <span>-NT$ ${discountResult.bulk_discount_total.toLocaleString()}</span>
+      </div>` : '';
+
+    // 折抵金行
+    const creditRowSH = discountResult.credit_used > 0 ? `
+      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
+        <span>💴 註冊禮金折抵:</span>
+        <span>-NT$ ${discountResult.credit_used.toLocaleString()}</span>
+      </div>` : '';
+
+    // 樓地板拉回行
+    const floorRowSH = discountResult.floor_clamped ? `
+      <div class="neon-checkout-summary-row" style="color:#fbbf24;font-size:12px">
+        <span>⛔ 等級樓地板 (${Math.round(discountResult.floor_rate * 100)}%):</span>
+        <span>折扣已封頂</span>
+      </div>` : '';
+
+    // 訪客誘因 banner
+    const guestBannerSH = (!member) ? `
+      <div class="neon-checkout-summary-row" style="background:rgba(192,132,252,0.08);border:1px solid ${colors.border};border-radius:8px;padding:8px 10px;font-size:12px;color:${colors.accent};line-height:1.5;display:block">
+        🔓 登入會員享 95–85 折 + 滿額現折最高 -NT$2,500 + 註冊禮金 NT$100
+      </div>` : '';
+
     const discountRow = totalDiscount > 0
-      ? `<div class="neon-checkout-summary-row" style="color:#4ade80"><span>滿額折扣合計:</span><span>-NT$ ${totalDiscount.toLocaleString()}</span></div>`
+      ? `<div class="neon-checkout-summary-row" style="color:${colors.accent};font-size:12px"><span>您共省下:</span><span>NT$ ${totalDiscount.toLocaleString()}</span></div>`
       : '';
 
     const freeShippingNote = isFreeShipping
@@ -2000,7 +2178,13 @@
                 <span class="neon-checkout-summary-label">商品小計:</span>
                 <span class="neon-checkout-summary-value">NT$ ${subtotal.toLocaleString()}</span>
               </div>
-              ${tierLines}
+              ${guestBannerSH}
+              ${groupLines}
+              ${tierRowSH}
+              ${birthdayRowSH}
+              ${bulkRowSH}
+              ${creditRowSH}
+              ${floorRowSH}
               ${discountRow}
               <div class="neon-checkout-summary-row" id="checkout-shipping-row">
                 <span class="neon-checkout-summary-label">運費 (超商取貨):</span>
@@ -2154,11 +2338,22 @@
           : '宅配到府';
 
         // 若登入會員,把 member_id 寫進訂單 — Phase 2.2 累積消費 / 消費次數要用
-        const _shipMemberId = (window.AuthSystem && typeof window.AuthSystem.getMember === 'function')
-          ? (window.AuthSystem.getMember()?.id || null)
+        const _shipMember   = (window.AuthSystem && typeof window.AuthSystem.getMember === 'function')
+          ? (window.AuthSystem.getMember() || null)
           : null;
+        const _shipMemberId = _shipMember?.id || null;
 
-        // Insert order (含滿額折扣明細)
+        // Phase 2.2 訂單欄位拆解 (與 carryback 一致):
+        //   tier_at_purchase     = 下單當下會員等級 (歷史快照)
+        //   tier_discount        = 等級折扣 + 滿額現折 - 樓地板補回 (折抵金、生日除外)
+        //   birthday_discount    = 生日月 9 折金額
+        //   signup_credit_used   = 註冊禮金扣抵
+        const _shTierKey    = _shipMember ? (discountResult.tier_key || null) : null;
+        const _shBirthday   = discountResult.birthday_discount || 0;
+        const _shCredit     = discountResult.credit_used || 0;
+        const _shTierBundle = Math.max(0, (totalDiscount - _shBirthday - _shCredit));
+
+        // Insert order (含 Phase 2.2 折扣拆解)
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert([
@@ -2173,7 +2368,10 @@
               status: 'pending',
               subtotal: subtotal,                            // 商品原價小計
               shipping_fee: currentShippingFee,
-              tier_discount: totalDiscount,                  // 滿額折扣金額 (對應 migration 002)
+              tier_at_purchase:   _shTierKey,
+              tier_discount:      _shTierBundle,             // 等級+滿額-樓地板
+              birthday_discount:  _shBirthday,
+              signup_credit_used: _shCredit,
               total: discountedSubtotal + currentShippingFee,// 應付總額
               note: note,
               line_notified: false,
@@ -2249,6 +2447,10 @@
             totalAmount: grandTotal,
             shippingFee: currentShippingFee,
             discount:    totalDiscount,
+            // Phase 2.2 — 傳會員上下文讓 server 重算 + 驗證金額 (±NT$5 容差)
+            memberId:    _shipMemberId,
+            tierKey:     _shTierKey,
+            useCredit:   _shCredit > 0,
             buyerName:   name,
             buyerEmail:  email,
             buyerPhone:  phone,

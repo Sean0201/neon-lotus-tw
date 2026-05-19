@@ -2,7 +2,22 @@
  * /api/newebpay-create.js — Vercel Serverless Function (Node.js)
  * 建立藍新金流 (NewebPay) 訂單,回傳 HTML 表單讓前端自動 POST 至藍新
  *
- * POST body: { items, totalAmount, buyerName, buyerEmail, buyerPhone, orderId? }
+ * POST body: {
+ *   items: [{ name, quantity, price, shipping_method? }],
+ *   totalAmount,   // 前端宣告的應付總額 (折後 + 運費)
+ *   shippingFee,
+ *   discount,      // 前端宣告的折扣 (僅供日誌比對)
+ *   memberId?,     // Phase 2.2: 若會員下單,server 重新撈會員資料算折扣
+ *   tierKey?,      // Phase 2.2: 客戶端聲明的等級,僅供 audit log
+ *   useCredit?,    // Phase 2.2: 是否使用註冊禮金 (預設 true)
+ *   buyerName, buyerEmail, buyerPhone,
+ *   orderId?
+ * }
+ *
+ * Phase 2.2 折扣驗證:
+ *   - 後端用 lib/discount.js (computeCart) 重新計算,以「server 自行從 DB 撈的會員資料」
+ *     為單一信任來源 — 客戶端聲明的 tierKey 只是 hint。
+ *   - 容忍 ±NT$5 rounding 誤差。
  *
  * 環境變數 (Vercel Dashboard → Settings → Environment Variables):
  *   NEWEBPAY_MERCHANT_ID — 商店代碼 (e.g. MS159001264)
@@ -11,87 +26,85 @@
  *   NEWEBPAY_API_URL     — 測試: https://ccore.newebpay.com/MPG/mpg_gateway
  *                          正式: https://core.newebpay.com/MPG/mpg_gateway
  *   SITE_URL             — e.g. https://neon-lotus-tw.vercel.app
- *   NEWEBPAY_PAYMENT_METHODS — 開放付款方式 (逗號分隔,依商店實際開通狀態)
- *                              測試示例: CREDIT,APPLEPAY,GOOGLEPAY,SAMSUNGPAY,WEBATM,VACC,CVS,BARCODE
- *                              正式示例: CREDIT,APPLEPAY,UNIONPAY,VACC,CVS
- *                              支援: CREDIT, APPLEPAY, GOOGLEPAY, SAMSUNGPAY,
- *                                    UNIONPAY, VACC, WEBATM, CVS, BARCODE, LINEPAY
+ *   SUPABASE_URL / SUPABASE_SERVICE_KEY — for member lookup
+ *   NEWEBPAY_PAYMENT_METHODS — 開放付款方式 (逗號分隔)
  */
 
 import crypto from 'crypto';
+import D from './lib/discount.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
-/* ── 滿額折扣 (TIER DISCOUNTS) ───────────────────────
-   * 必須與 cart.js DISCOUNT_TIERS 保持同步。
-   * 用於 server-side 重新驗證 totalAmount,避免前端被竄改後送錯金額。 */
-const DISCOUNT_TIERS = {
-  // ⚠️ 必須與 cart.js DISCOUNT_TIERS 完全同步, 否則 server 重新驗證會 reject
-  shipping: [
-    { min: 5000,  rate: 0.95 },
-    { min: 10000, rate: 0.92 },
-    { min: 19000, rate: 0.88 },
-  ],
-  carryback: [
-    { min: 4000,  rate: 0.95 },
-    { min: 8000,  rate: 0.92 },
-    { min: 15000, rate: 0.88 },
-  ],
-  default: [
-    { min: 4000,  rate: 0.95 },
-    { min: 8000,  rate: 0.92 },
-    { min: 15000, rate: 0.88 },
-  ],
-};
-
-function serverPickTier(shippingMethod, subtotal) {
-  const tiers = DISCOUNT_TIERS[shippingMethod] || DISCOUNT_TIERS.default;
-  let best = null;
-  for (let i = 0; i < tiers.length; i++) {
-    const t = tiers[i];
-    if (subtotal >= t.min) {
-      if (!best || t.rate < best.rate) best = t;
-    }
-  }
-  return best;
+/* ── Supabase service-role client (lazily import to keep cold start fast) ── */
+async function getSupabaseAdmin() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
+  const { createClient } = await import('@supabase/supabase-js');
+  return createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY,
+    { auth: { persistSession: false } }
+  );
 }
 
-/* Recalculate expected total from items + shippingFee. Returns
-   { expectedTotal, expectedDiscount, groups: [{shipping_method, subtotal, tier, total}] }. */
-function recalculateOrder(items, shippingFee) {
-  const groups = {};
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i] || {};
-    const sm = it.shipping_method || 'default';
-    if (!groups[sm]) groups[sm] = 0;
-    const qty = Number(it.quantity) || 0;
-    const price = Number(it.price) || 0;
-    groups[sm] += price * qty;
+/**
+ * 後端重新計算訂單金額。
+ *   - 從 DB 撈會員資料 (tier / founding_credit_balance / birthday / birthday_used_year)
+ *   - 用 lib/discount.computeCart 算最終金額
+ *   - 加上運費 = expectedTotal
+ *
+ * @returns {Promise<{
+ *   rawSubtotal, discountedSubtotal, expectedDiscount, expectedTotal, shippingFee,
+ *   member, result
+ * }>}
+ */
+async function recalculateOrder(items, shippingFee, memberId, useCredit) {
+  // 1. 從 DB 撈最新會員資料 (server 為信任來源)
+  let member = null;
+  if (memberId) {
+    try {
+      const supabase = await getSupabaseAdmin();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('members')
+          .select('id, tier, accumulated_spend, founding_credit_balance, birthday, birthday_used_year, purchase_count')
+          .eq('id', memberId)
+          .maybeSingle();
+        if (!error && data) member = data;
+      }
+    } catch (err) {
+      console.warn('[newebpay-create] member lookup failed:', err && err.message ? err.message : err);
+    }
   }
-  const groupSummaries = [];
-  let discountedSubtotal = 0;
-  let rawSubtotal = 0;
-  Object.keys(groups).forEach((sm) => {
-    const sub = groups[sm];
-    rawSubtotal += sub;
-    const tier = serverPickTier(sm, sub);
-    const groupTotal = tier ? Math.round(sub * tier.rate) : sub;
-    discountedSubtotal += groupTotal;
-    groupSummaries.push({
-      shipping_method: sm,
-      subtotal: sub,
-      tier_rate: tier ? tier.rate : 1,
-      total: groupTotal,
-    });
+
+  // 2. 確保 config 是從 site_config 載入的最新版 (best-effort,失敗 fallback 預設)
+  try {
+    const supabase = await getSupabaseAdmin();
+    if (supabase) await D.loadConfig(supabase);
+  } catch (err) {
+    // 預設值 ok
+  }
+
+  // 3. 折扣計算
+  const engineItems = items.map((it) => ({
+    unit_price:      Number(it.price) || 0,
+    quantity:        Number(it.quantity) || 0,
+    shipping_method: it.shipping_method === 'carryback' ? 'carryback' : 'shipping',
+  }));
+  const result = D.computeCart({
+    items: engineItems,
+    member,
+    useCredit: useCredit !== false,
   });
+
   const fee = Number(shippingFee) || 0;
   return {
-    rawSubtotal,
-    discountedSubtotal,
-    expectedDiscount: rawSubtotal - discountedSubtotal,
-    expectedTotal: discountedSubtotal + fee,
-    shippingFee: fee,
-    groups: groupSummaries,
+    rawSubtotal:        result.raw_subtotal,
+    discountedSubtotal: result.final_subtotal,
+    expectedDiscount:   result.total_savings,
+    expectedTotal:      result.final_subtotal + fee,
+    shippingFee:        fee,
+    member,
+    result,
   };
 }
 
@@ -152,13 +165,16 @@ export default async function handler(req, res) {
   try {
     const {
       items,        // [{ name, quantity, price, shipping_method? }]
-      totalAmount,  // 整數 (TWD) — 應為折扣後 + 運費的「應付總額」
-      shippingFee,  // 整數 (TWD) — 域內運費 (超商 70 / 宅配 120 / 親送 0)
-      discount,     // 整數 (TWD) — 前端宣告的滿額折扣金額,後台再核對
+      totalAmount,  // 整數 (TWD) — 前端宣告之應付總額
+      shippingFee,  // 整數 (TWD) — 域內運費
+      discount,     // 整數 (TWD) — 前端宣告的折扣 (僅供 audit)
+      memberId,     // Phase 2.2 — server 用此撈會員等級 / 折抵金 / 生日
+      tierKey,      // Phase 2.2 — 前端聲明的等級 (僅 audit log)
+      useCredit,    // Phase 2.2 — 是否使用註冊禮金 (預設 true)
       buyerName,
       buyerEmail,
       buyerPhone,
-      orderId,      // 可選: 前端已建立的訂單號
+      orderId,
     } = req.body;
 
     const MERCHANT_ID = process.env.NEWEBPAY_MERCHANT_ID;
@@ -186,11 +202,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'totalAmount must be positive' });
     }
 
-    /* ── Server-side 滿額折扣重新驗證 ────────────────
-       * 前端送來 totalAmount + items[].shipping_method,後端重新計算
-       * 並比對。容忍 ±5 元 rounding 誤差。若舊版前端沒送 shipping_method,
-       * default group fallback (4K/8K/15K) 會被用,通常仍能正確匹配。 */
-    const recalc = recalculateOrder(items, shippingFee);
+    /* ── Phase 2.2 — Server-side 折扣重新驗證 ────────────────
+       * server 從 DB 撈最新會員資料 (信任來源),用同一 computeCart
+       * 重新算金額。容忍 ±5 元 rounding 誤差。
+       *
+       * 為什麼以 server 撈的會員為準?
+       *   - 防止前端被竄改後送錯 tier / founding_credit_balance / birthday_used_year
+       *   - 累積消費 / 等級會由 newebpay-notify 在「付款成功」後才升等,
+       *     create 階段該以「下單前的等級」為準
+       */
+    const recalc = await recalculateOrder(items, shippingFee, memberId, useCredit);
     const declaredTotal = Math.round(Number(totalAmount));
     const expectedTotal = Math.round(recalc.expectedTotal);
     const totalDiff = Math.abs(declaredTotal - expectedTotal);
@@ -200,12 +221,26 @@ export default async function handler(req, res) {
         declared: declaredTotal,
         expected: expectedTotal,
         diff: totalDiff,
-        recalc,
+        memberId,
+        clientTierKey: tierKey,
+        serverTierKey: recalc.result.tier_key,
+        clientDiscount: discount,
+        serverDiscount: recalc.expectedDiscount,
+        result: recalc.result,
         items,
       });
       return res.status(400).json({
         error: '訂單金額計算不一致,請重新整理購物車再試',
         debug: { declared: declaredTotal, expected: expectedTotal },
+      });
+    }
+
+    // Audit: 客戶端聲明的 tier 跟 server 算的不一樣 (可能是會員剛升等 cache 沒同步)
+    if (tierKey && recalc.member && tierKey !== recalc.result.tier_key) {
+      console.warn('[NewebPay create] tierKey hint mismatch', {
+        memberId,
+        client_says: tierKey,
+        server_says: recalc.result.tier_key,
       });
     }
 
