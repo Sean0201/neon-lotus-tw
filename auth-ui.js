@@ -15,14 +15,21 @@
    * 在 provider 還沒接通之前,登入按鈕點下去會跳 "Invalid login provider"。
    * 暫時把整個 nav 登入 UI 隱藏 — 改成 true 即可重新啟用。
    * (modal API 仍然透過 window.AuthUI 暴露,僅 nav 按鈕被隱藏) */
-  const AUTH_UI_ENABLED = false;
+  const AUTH_UI_ENABLED = true;
 
+  /* 等級顯示對照表 — schema 用的 key 是 bronze/silver/gold/diamond */
   const TIER_LABELS = {
-    bronze:  { name: '銅卡', emoji: '🥉', color: '#cd7f32' },
-    silver:  { name: '銀卡', emoji: '🥈', color: '#c0c0c0' },
-    gold:    { name: '金卡', emoji: '🥇', color: '#ffd700' },
-    diamond: { name: '鑽石', emoji: '💎', color: '#c084fc' },
+    bronze:  { emoji: '🥉', label: '銅卡' },
+    silver:  { emoji: '🥈', label: '銀卡' },
+    gold:    { emoji: '🥇', label: '金卡' },
+    diamond: { emoji: '💎', label: '鑽石卡' },
   };
+
+  /* 格式化 TWD 數字 — 1234 → "1,234" */
+  function fmtNT(n) {
+    const v = Number(n || 0);
+    return v.toLocaleString('en-US');
+  }
 
   const colors = {
     bg:       '#0a0a0f',
@@ -247,16 +254,16 @@
       <div class="neon-auth-modal" role="dialog">
         <button class="neon-auth-modal-close" aria-label="關閉">×</button>
         <h2 class="neon-auth-title">登入 / 註冊 NEON LOTUS</h2>
-        <p class="neon-auth-subtitle">登入即可累積消費、享會員等級折扣、生日月優惠 🎂</p>
+        <p class="neon-auth-subtitle">登入即可累積消費次數、生日月享 9 折優惠 🎂</p>
 
         <button class="neon-auth-provider-btn" data-provider="google">
           <svg viewBox="0 0 48 48"><path fill="#fbc02d" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.2-.1-2.3-.3-3.5z"/><path fill="#e53935" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4caf50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3C29.3 35 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1565c0" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.6l6.3 5.3C40.7 35 44 30 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
           使用 Google 登入
         </button>
 
-        <button class="neon-auth-provider-btn" data-provider="facebook">
+        <button class="neon-auth-provider-btn" data-provider="facebook" disabled title="即將推出">
           <svg viewBox="0 0 24 24"><path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0 5.373 0 0 5.405 0 12.073c0 6.019 4.388 11.011 10.125 11.927v-8.437H7.078v-3.49h3.047V9.418c0-3.017 1.792-4.687 4.533-4.687 1.312 0 2.686.235 2.686.235v2.971h-1.513c-1.491 0-1.953.93-1.953 1.886v2.252h3.328l-.532 3.49h-2.796v8.437C19.612 23.084 24 18.092 24 12.073z"/></svg>
-          使用 Facebook 登入
+          使用 Facebook 登入(即將推出)
         </button>
 
         <button class="neon-auth-provider-btn" data-provider="line" disabled title="即將推出">
@@ -264,25 +271,11 @@
           使用 LINE 登入(即將推出)
         </button>
 
-        <div class="neon-auth-divider"><span>或用 Email 收件箱魔法連結</span></div>
-
-        <form class="neon-auth-email-form" id="neon-auth-email-form">
-          <input
-            type="email"
-            class="neon-auth-email-input"
-            id="neon-auth-email-input"
-            placeholder="your@email.com"
-            required
-            autocomplete="email"
-          />
-          <button type="submit" class="neon-auth-email-submit">寄送登入連結</button>
-        </form>
-
         <div class="neon-auth-msg" id="neon-auth-msg" style="display:none"></div>
 
         <div class="neon-auth-footer">
           登入即同意 NEON LOTUS 個資使用條款。<br/>
-          首次登入會在 60 天創始期內自動成為「銀卡會員」,並獲 NT$500 折抵金 🎁
+          登入後可累積消費次數,並於生日月享 9 折優惠 🎂
         </div>
       </div>
     `;
@@ -309,25 +302,6 @@
           showMsg(err.message || '登入失敗', 'error');
         }
       });
-    });
-
-    _modal.querySelector('#neon-auth-email-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const input = _modal.querySelector('#neon-auth-email-input');
-      const submitBtn = _modal.querySelector('.neon-auth-email-submit');
-      const email = input.value.trim();
-      submitBtn.disabled = true;
-      submitBtn.textContent = '寄送中...';
-      try {
-        await window.AuthSystem.signInWithEmail(email);
-        showMsg(`登入連結已寄至 ${email} — 請至信箱點擊連結 ✉️`, 'success');
-        input.disabled = true;
-      } catch (err) {
-        showMsg(err.message || '寄送失敗', 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '寄送登入連結';
-      }
     });
   }
 
@@ -382,11 +356,13 @@
     }
 
     // Logged in — show badge + dropdown menu
-    const tier = member && TIER_LABELS[member.tier] ? TIER_LABELS[member.tier] : TIER_LABELS.bronze;
+    // badge 顯示「等級 emoji + 顯示名稱」
+    const tierKey = (member && member.tier) || 'bronze';
+    const tier = TIER_LABELS[tierKey] || TIER_LABELS.bronze;
     const displayName = (member && member.display_name) || (user.email || '').split('@')[0] || '會員';
 
     container.innerHTML = `
-      <button class="neon-auth-badge" id="neon-auth-badge">
+      <button class="neon-auth-badge" id="neon-auth-badge" title="${tier.label}">
         <span style="font-size:14px">${tier.emoji}</span>
         <span style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${displayName}</span>
       </button>
@@ -406,23 +382,41 @@
 
     const member = state.member;
     const user = state.user;
-    const tier = member && TIER_LABELS[member.tier] ? TIER_LABELS[member.tier] : TIER_LABELS.bronze;
-    const spend = member ? (member.accumulated_spend || 0) : 0;
-    const credit = member ? (member.founding_credit_balance || 0) : 0;
+    const tierKey = (member && member.tier) || 'bronze';
+    const tier = TIER_LABELS[tierKey] || TIER_LABELS.bronze;
+    const displayName = (member && member.display_name) || (user.email || '').split('@')[0] || '會員';
+    const accSpend = member ? Number(member.accumulated_spend || 0) : 0;
+    const purchaseCount = member ? (member.purchase_count || 0) : 0;
+    const creditBalance = member ? Number(member.founding_credit_balance || 0) : 0;
+    const phone = (member && member.phone) || '';
+    const birthday = (member && member.birthday) || '';
 
     const menu = document.createElement('div');
     menu.className = 'neon-auth-menu';
     menu.innerHTML = `
       <div class="neon-auth-menu-info">
-        <div class="neon-auth-menu-info-email">${user.email || ''}</div>
-        <div class="neon-auth-menu-info-tier" style="color:${tier.color}">${tier.emoji} ${tier.name}</div>
-        <div class="neon-auth-menu-info-spend">累積消費 NT$ ${spend.toLocaleString()}</div>
-        ${credit > 0 ? `<div class="neon-auth-menu-info-spend" style="color:#4ade80">🎁 折抵金 NT$ ${credit.toLocaleString()}</div>` : ''}
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${tier.emoji} ${displayName}</div>
+        <div class="neon-auth-menu-info-tier">${tier.label}</div>
+        <div class="neon-auth-menu-info-spend">累積消費 NT$ ${fmtNT(accSpend)}</div>
+        <div class="neon-auth-menu-info-spend">消費次數 ${purchaseCount} 次</div>
+        <div class="neon-auth-menu-info-spend">折抵金 NT$ ${fmtNT(creditBalance)}</div>
+        <div class="neon-auth-menu-info-spend">電話 ${phone || '尚未填寫'}</div>
+        <div class="neon-auth-menu-info-spend">生日 ${birthday || '尚未設定'}</div>
       </div>
+      <button class="neon-auth-menu-item" data-action="profile">會員中心</button>
       <button class="neon-auth-menu-item" data-action="logout">登出</button>
     `;
     container.appendChild(menu);
     _menuOpen = true;
+
+    // 「會員中心」按鈕 — Phase 2.1c 才會做真正的會員中心頁。
+    // 暫時先彈個訊息,讓使用者知道之後可以在這邊改電話 / 看歷史訂單。
+    const profileBtn = menu.querySelector('[data-action="profile"]');
+    if (profileBtn) {
+      profileBtn.addEventListener('click', () => {
+        alert('會員中心建設中 🛠\n之後可在這裡編輯電話、查看歷史訂單。\n若需修改生日,請透過 IG / Email 聯絡客服。');
+      });
+    }
 
     menu.querySelector('[data-action="logout"]').addEventListener('click', async () => {
       await window.AuthSystem.signOut();

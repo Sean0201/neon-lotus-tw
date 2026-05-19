@@ -69,9 +69,12 @@
       return null;
     }
     try {
+      // (Phase 2.1a-fixup v2) 等級 + 累積消費 + 消費次數 + 註冊禮金。
+      // founding_credit_balance 欄位名沒改 (避免大型 schema migration),
+      // 但語意已改成「註冊禮金餘額」— 每位新會員一律拿 NT$100。
       const { data, error } = await sb
         .from('members')
-        .select('id, email, display_name, phone, birthday, accumulated_spend, tier, founding_member, founding_credit_balance, birthday_used_year')
+        .select('id, email, display_name, phone, birthday, accumulated_spend, tier, purchase_count, founding_credit_balance, birthday_used_year')
         .eq('user_id', _user.id)
         .maybeSingle();
       if (error) {
