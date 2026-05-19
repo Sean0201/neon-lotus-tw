@@ -31,7 +31,9 @@
  *
  * 環境變數:
  *   NEWEBPAY_HASH_KEY, NEWEBPAY_HASH_IV — 解密用
- *   SUPABASE_URL, SUPABASE_SERVICE_KEY  — 寫 orders / members / audit_log
+ *   SUPABASE_URL (或 NEXT_PUBLIC_SUPABASE_URL)        — Supabase project URL
+ *   SUPABASE_SERVICE_KEY (或 SUPABASE_SERVICE_ROLE_KEY) — service role
+ *     (寫 orders / members / audit_log,需 service role 才能 bypass RLS)
  */
 
 import crypto from 'crypto';
@@ -240,7 +242,9 @@ export default async function handler(req, res) {
     });
 
     // 3. 更新 Supabase 訂單狀態 + 會員副作用 (Phase 2.2)
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    const _sbUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const _sbKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!_sbUrl || !_sbKey) {
       console.warn('[NewebPay Notify] Supabase env vars missing — skipping order/member updates');
       return res.status(200).send('OK');
     }
@@ -248,8 +252,8 @@ export default async function handler(req, res) {
     try {
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_KEY,
+        _sbUrl,
+        _sbKey,
         { auth: { persistSession: false } }
       );
 

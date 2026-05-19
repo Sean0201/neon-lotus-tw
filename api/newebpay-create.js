@@ -26,7 +26,8 @@
  *   NEWEBPAY_API_URL     — 測試: https://ccore.newebpay.com/MPG/mpg_gateway
  *                          正式: https://core.newebpay.com/MPG/mpg_gateway
  *   SITE_URL             — e.g. https://neon-lotus-tw.vercel.app
- *   SUPABASE_URL / SUPABASE_SERVICE_KEY — for member lookup
+ *   SUPABASE_URL (或 NEXT_PUBLIC_SUPABASE_URL)        — for member lookup
+ *   SUPABASE_SERVICE_KEY (或 SUPABASE_SERVICE_ROLE_KEY) — service role
  *   NEWEBPAY_PAYMENT_METHODS — 開放付款方式 (逗號分隔)
  */
 
@@ -35,15 +36,22 @@ import D from './lib/discount.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
-/* ── Supabase service-role client (lazily import to keep cold start fast) ── */
+/* ── Supabase service-role client (lazily import to keep cold start fast) ──
+ * 同時支援兩種 env var 命名 (新 Vercel 上常見的 NEXT_PUBLIC_/_ROLE_ 跟舊版簡名)
+ */
+function getSupabaseEnv() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return { url, key };
+}
 async function getSupabaseAdmin() {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
+  const { url, key } = getSupabaseEnv();
+  if (!url || !key) {
+    console.warn('[newebpay-create] Supabase env vars missing (need SUPABASE_URL+SERVICE_KEY or NEXT_PUBLIC_SUPABASE_URL+SUPABASE_SERVICE_ROLE_KEY)');
+    return null;
+  }
   const { createClient } = await import('@supabase/supabase-js');
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY,
-    { auth: { persistSession: false } }
-  );
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
 /**
