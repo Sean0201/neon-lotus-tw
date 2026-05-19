@@ -1738,6 +1738,11 @@
         // 親自帶回訂單前綴用 NLC,讓付款成功頁可以顯示對應的取貨說明
         const orderNumber = `NLC-${dateStr}-${rand}`;
 
+        // 若登入會員,把 member_id 寫進訂單 — Phase 2.2 累積消費 / 消費次數要用
+        const _carryMemberId = (window.AuthSystem && typeof window.AuthSystem.getMember === 'function')
+          ? (window.AuthSystem.getMember()?.id || null)
+          : null;
+
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert([{
@@ -1755,6 +1760,7 @@
             total: total,
             note: note,
             line_notified: false,
+            member_id: _carryMemberId,
           }])
           .select();
 
@@ -2147,6 +2153,11 @@
           ? `超商取貨 (${cvsSubTypeLabel[selectedCvsSubType] || '超商'}) - ${cvsStoreName}`
           : '宅配到府';
 
+        // 若登入會員,把 member_id 寫進訂單 — Phase 2.2 累積消費 / 消費次數要用
+        const _shipMemberId = (window.AuthSystem && typeof window.AuthSystem.getMember === 'function')
+          ? (window.AuthSystem.getMember()?.id || null)
+          : null;
+
         // Insert order (含滿額折扣明細)
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
@@ -2166,6 +2177,7 @@
               total: discountedSubtotal + currentShippingFee,// 應付總額
               note: note,
               line_notified: false,
+              member_id: _shipMemberId,
             },
           ])
           .select();

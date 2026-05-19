@@ -409,12 +409,18 @@
     container.appendChild(menu);
     _menuOpen = true;
 
-    // 「會員中心」按鈕 — Phase 2.1c 才會做真正的會員中心頁。
-    // 暫時先彈個訊息,讓使用者知道之後可以在這邊改電話 / 看歷史訂單。
+    // 「會員中心」按鈕 — 開啟 MemberCenter modal (member-center.js)
     const profileBtn = menu.querySelector('[data-action="profile"]');
     if (profileBtn) {
       profileBtn.addEventListener('click', () => {
-        alert('會員中心建設中 🛠\n之後可在這裡編輯電話、查看歷史訂單。\n若需修改生日,請透過 IG / Email 聯絡客服。');
+        // 先把 dropdown 關掉
+        menu.remove();
+        _menuOpen = false;
+        if (window.MemberCenter && typeof window.MemberCenter.open === 'function') {
+          window.MemberCenter.open();
+        } else {
+          alert('會員中心載入中,請稍候再試 🙏');
+        }
       });
     }
 
