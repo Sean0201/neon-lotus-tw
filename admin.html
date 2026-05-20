@@ -2263,9 +2263,30 @@
         // ============================================================================
         async function loadProducts() {
             try {
-                const { data, error } = await sb.from('products').select('*').order('sort_order', { ascending: true });
-                if (error) throw error;
-                allProducts = data || [];
+                // 1. 先確保 brands 已載入 (否則所有商品都會被歸類成 ORPHAN)
+                if (!allBrands || allBrands.length === 0) {
+                    const { data: brandData, error: brandErr } = await sb
+                        .from('brands').select('*').order('sort_order', { ascending: true });
+                    if (brandErr) throw brandErr;
+                    allBrands = brandData || [];
+                }
+
+                // 2. 分頁載入 products (Supabase JS 預設一次最多 1000 筆,
+                //    用 .range() 抓完所有 ~6000+ 筆,每批 1000)
+                const PAGE = 1000;
+                const all = [];
+                for (let offset = 0; ; offset += PAGE) {
+                    const { data, error } = await sb
+                        .from('products')
+                        .select('*')
+                        .order('sort_order', { ascending: true })
+                        .range(offset, offset + PAGE - 1);
+                    if (error) throw error;
+                    if (!data || data.length === 0) break;
+                    all.push(...data);
+                    if (data.length < PAGE) break; // 最後一批
+                }
+                allProducts = all;
 
                 const brandsSelect = document.getElementById('productBrand');
                 brandsSelect.innerHTML = '<option value="">選擇品牌</option>';
