@@ -990,6 +990,10 @@
                         <span class="nav-icon">🛒</span>
                         <span>訂單管理</span>
                     </div>
+                    <div class="nav-item" data-page="member-backfill">
+                        <span class="nav-icon">📝</span>
+                        <span>會員補登</span>
+                    </div>
                     <div class="nav-item" data-page="settings">
                         <span class="nav-icon">⚙️</span>
                         <span>SEO 設定</span>
@@ -1232,6 +1236,67 @@
                                 <tbody id="ordersTableBody">
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Member History Backfill Page -->
+                    <div id="member-backfill" class="page">
+                        <div class="table-container">
+                            <div class="table-header">
+                                <h2>會員歷史訂單補登</h2>
+                                <div style="display:flex;gap:8px;align-items:center;">
+                                    <button class="btn-secondary" onclick="loadMemberBackfillHistory()">重新整理紀錄</button>
+                                </div>
+                            </div>
+                            <div style="padding:1.5rem;">
+                                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1.5rem;">
+                                    <h3 style="margin:0 0 1rem 0;font-size:15px;">新增補登</h3>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                        <div>
+                                            <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px;">會員 (Email 搜尋)</label>
+                                            <input type="text" id="bf_memberSearch" placeholder="輸入 email 部分字串..." style="width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+                                            <div id="bf_memberResults" style="margin-top:6px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;display:none;"></div>
+                                            <div id="bf_memberSelected" style="margin-top:8px;font-size:12px;color:var(--text-secondary);"></div>
+                                        </div>
+                                        <div>
+                                            <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px;">購買金額 (NT$)</label>
+                                            <input type="number" id="bf_amount" min="1" step="1" placeholder="例: 5000" style="width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+                                            <label style="display:block;font-size:12px;color:var(--text-secondary);margin:12px 0 6px 0;">購買日期 (選填,預設今天)</label>
+                                            <input type="date" id="bf_date" style="width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+                                        </div>
+                                    </div>
+                                    <div style="margin-bottom:1rem;">
+                                        <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px;">備註 (選填)</label>
+                                        <input type="text" id="bf_note" placeholder="例: LINE 私訊訂單 / 實體店面消費" style="width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+                                    </div>
+                                    <div id="bf_preview" style="font-size:12px;color:var(--text-secondary);margin-bottom:1rem;display:none;padding:10px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:6px;"></div>
+                                    <div style="display:flex;gap:8px;align-items:center;">
+                                        <button id="bf_submitBtn" class="btn-primary" onclick="submitMemberBackfill()" disabled>送出補登</button>
+                                        <button class="btn-secondary" onclick="resetMemberBackfillForm()">清除</button>
+                                        <div id="bf_status" style="font-size:12px;margin-left:auto;"></div>
+                                    </div>
+                                </div>
+
+                                <h3 style="margin:0 0 0.75rem 0;font-size:15px;">最近補登紀錄</h3>
+                                <div style="overflow-x:auto;">
+                                    <table class="data-table" style="font-size:12px;">
+                                        <thead>
+                                            <tr>
+                                                <th>訂單號</th>
+                                                <th>會員 Email</th>
+                                                <th>金額</th>
+                                                <th>購買日期</th>
+                                                <th>操作者</th>
+                                                <th>備註</th>
+                                                <th>建立時間</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="bf_historyBody">
+                                            <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-secondary);">尚未載入</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1938,6 +2003,7 @@
             else if (page === 'banners') loadBanners();
             else if (page === 'featured') loadFeatured();
             else if (page === 'orders') loadOrders();
+            else if (page === 'member-backfill') initMemberBackfill();
             else if (page === 'settings') loadSettings();
             else if (page === 'deploy') loadDeploy();
         }
@@ -1950,6 +2016,7 @@
                 'banners': 'Banner 管理',
                 'featured': '本週精選',
                 'orders': '訂單管理',
+                'member-backfill': '會員補登',
                 'settings': 'SEO 設定',
                 'deploy':   '發布部署'
             };
@@ -3879,6 +3946,238 @@
                 toast.style.animation = 'slideInRight 0.3s reverse';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+        }
+
+        // ============================================================================
+        // MEMBER HISTORY BACKFILL
+        // ============================================================================
+        let bf_selectedMember = null;
+        let bf_searchTimer = null;
+
+        function initMemberBackfill() {
+            // 綁定搜尋 (只綁一次)
+            const searchInput = document.getElementById('bf_memberSearch');
+            const amountInput = document.getElementById('bf_amount');
+            const dateInput   = document.getElementById('bf_date');
+
+            if (!searchInput.dataset.bound) {
+                searchInput.dataset.bound = '1';
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(bf_searchTimer);
+                    bf_searchTimer = setTimeout(() => searchMembersForBackfill(searchInput.value), 250);
+                });
+                amountInput.addEventListener('input', updateBackfillPreview);
+                // 預設今天
+                dateInput.value = new Date().toISOString().slice(0, 10);
+            }
+            loadMemberBackfillHistory();
+        }
+
+        async function searchMembersForBackfill(q) {
+            const resultsDiv = document.getElementById('bf_memberResults');
+            const queryStr = (q || '').trim();
+            if (queryStr.length < 2) {
+                resultsDiv.style.display = 'none';
+                resultsDiv.innerHTML = '';
+                return;
+            }
+            try {
+                const { data, error } = await sb
+                    .from('members')
+                    .select('id, email, name, tier, accumulated_spend, purchase_count, founding_credit_balance')
+                    .ilike('email', `%${queryStr}%`)
+                    .order('email', { ascending: true })
+                    .limit(10);
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    resultsDiv.innerHTML = '<div style="padding:8px 12px;color:var(--text-secondary);font-size:12px;">無符合會員</div>';
+                    resultsDiv.style.display = 'block';
+                    return;
+                }
+                resultsDiv.innerHTML = data.map(m => `
+                    <div data-id="${m.id}"
+                         data-email="${escapeHtml(m.email||'')}"
+                         data-name="${escapeHtml(m.name||'')}"
+                         data-tier="${m.tier||'bronze'}"
+                         data-spend="${m.accumulated_spend||0}"
+                         data-count="${m.purchase_count||0}"
+                         data-credit="${m.founding_credit_balance||0}"
+                         style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px;"
+                         onmouseover="this.style.background='rgba(96,165,250,0.1)'"
+                         onmouseout="this.style.background=''"
+                         onclick="selectMemberForBackfill(this)">
+                        <div style="font-weight:600;">${escapeHtml(m.email || '(無 email)')}</div>
+                        <div style="color:var(--text-secondary);font-size:11px;">
+                            ${escapeHtml(m.name || '')} · ${m.tier||'bronze'} · 累積 NT$ ${m.accumulated_spend||0} · ${m.purchase_count||0}次
+                        </div>
+                    </div>
+                `).join('');
+                resultsDiv.style.display = 'block';
+            } catch (err) {
+                console.error('member search failed', err);
+                resultsDiv.innerHTML = `<div style="padding:8px 12px;color:#f87171;font-size:12px;">搜尋失敗: ${err.message}</div>`;
+                resultsDiv.style.display = 'block';
+            }
+        }
+
+        function selectMemberForBackfill(el) {
+            bf_selectedMember = {
+                id:    el.dataset.id,
+                email: el.dataset.email,
+                name:  el.dataset.name,
+                tier:  el.dataset.tier,
+                spend: Number(el.dataset.spend) || 0,
+                count: Number(el.dataset.count) || 0,
+                credit: Number(el.dataset.credit) || 0,
+            };
+            document.getElementById('bf_memberSelected').innerHTML = `
+                <div style="padding:8px 10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:6px;">
+                    已選: <strong>${escapeHtml(bf_selectedMember.email)}</strong> ·
+                    ${bf_selectedMember.tier} · 累積 NT$ ${bf_selectedMember.spend} · ${bf_selectedMember.count}次
+                </div>
+            `;
+            document.getElementById('bf_memberResults').style.display = 'none';
+            document.getElementById('bf_memberSearch').value = bf_selectedMember.email;
+            document.getElementById('bf_submitBtn').disabled = false;
+            updateBackfillPreview();
+        }
+
+        function updateBackfillPreview() {
+            const preview = document.getElementById('bf_preview');
+            if (!bf_selectedMember) { preview.style.display = 'none'; return; }
+            const amt = Number(document.getElementById('bf_amount').value) || 0;
+            if (amt <= 0) { preview.style.display = 'none'; return; }
+            const newSpend = bf_selectedMember.spend + amt;
+            const newCount = bf_selectedMember.count + 1;
+            // 簡化 tier 預估 (用預設門檻;真正計算在 server)
+            const tierOf = (s) =>
+                s >= 300000 ? 'black' :
+                s >= 100000 ? 'diamond' :
+                s >=  30000 ? 'gold' :
+                s >=   5000 ? 'silver' : 'bronze';
+            const newTier = tierOf(newSpend);
+            const tierChanged = newTier !== bf_selectedMember.tier;
+            preview.style.display = 'block';
+            preview.innerHTML = `
+                預計變動:
+                累積消費 ${bf_selectedMember.spend.toLocaleString()} → <strong>${newSpend.toLocaleString()}</strong> ·
+                次數 ${bf_selectedMember.count} → <strong>${newCount}</strong>
+                ${tierChanged ? ` · 等級 <strong style="color:#fbbf24;">${bf_selectedMember.tier} → ${newTier}</strong>` : ` · 等級 ${newTier} (不變)`}
+            `;
+        }
+
+        async function submitMemberBackfill() {
+            const submitBtn = document.getElementById('bf_submitBtn');
+            const statusDiv = document.getElementById('bf_status');
+            if (!bf_selectedMember) {
+                statusDiv.textContent = '請先選擇會員'; statusDiv.style.color = '#f87171'; return;
+            }
+            const amount = Number(document.getElementById('bf_amount').value);
+            if (!Number.isFinite(amount) || amount <= 0) {
+                statusDiv.textContent = '金額需 > 0'; statusDiv.style.color = '#f87171'; return;
+            }
+            const purchaseDate = document.getElementById('bf_date').value || null;
+            const note         = document.getElementById('bf_note').value.trim() || null;
+
+            if (!confirm(`確認補登:\n會員: ${bf_selectedMember.email}\n金額: NT$ ${amount.toLocaleString()}\n日期: ${purchaseDate || '今天'}\n\n此動作會即時更新會員累積消費與等級,且不可自動撤銷。確定送出?`)) return;
+
+            submitBtn.disabled = true;
+            statusDiv.textContent = '處理中...'; statusDiv.style.color = 'var(--text-secondary)';
+
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) throw new Error('未登入');
+                const r = await fetch('/api/admin-backfill-purchase', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + session.access_token,
+                    },
+                    body: JSON.stringify({
+                        member_id:     bf_selectedMember.id,
+                        amount:        amount,
+                        purchase_date: purchaseDate,
+                        note:          note,
+                    }),
+                });
+                const body = await r.json();
+                if (!r.ok) throw new Error(body.error + (body.message ? ': ' + body.message : ''));
+
+                const result = body.result || {};
+                statusDiv.textContent = `✅ 補登成功 (${result.order_number}) · 累積 ${result.old_spend} → ${result.new_spend}` +
+                    (result.tier_changed ? ` · 升等 ${result.old_tier} → ${result.new_tier}` : '');
+                statusDiv.style.color = '#22c55e';
+                showToast(`已補登 NT$ ${amount.toLocaleString()} 給 ${bf_selectedMember.email}`);
+                resetMemberBackfillForm();
+                loadMemberBackfillHistory();
+            } catch (err) {
+                console.error('backfill failed', err);
+                statusDiv.textContent = `❌ ${err.message}`;
+                statusDiv.style.color = '#f87171';
+                submitBtn.disabled = false;
+            }
+        }
+
+        function resetMemberBackfillForm() {
+            bf_selectedMember = null;
+            document.getElementById('bf_memberSearch').value = '';
+            document.getElementById('bf_memberSelected').innerHTML = '';
+            document.getElementById('bf_memberResults').style.display = 'none';
+            document.getElementById('bf_amount').value = '';
+            document.getElementById('bf_note').value = '';
+            document.getElementById('bf_date').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('bf_preview').style.display = 'none';
+            document.getElementById('bf_submitBtn').disabled = true;
+        }
+
+        async function loadMemberBackfillHistory() {
+            const tbody = document.getElementById('bf_historyBody');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-secondary);">載入中...</td></tr>';
+            try {
+                const { data, error } = await sb
+                    .from('orders')
+                    .select('order_number, member_id, customer_email, total, note, created_at')
+                    .eq('status', 'historical')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-secondary);">尚無補登紀錄</td></tr>';
+                    return;
+                }
+                // 順手撈 audit log 找 operator_email
+                const orderNos = data.map(o => o.order_number);
+                const { data: audit } = await sb
+                    .from('member_audit_log')
+                    .select('ref_order_number, operator_email, reason')
+                    .in('ref_order_number', orderNos)
+                    .eq('field', 'accumulated_spend');
+                const auditByNo = Object.fromEntries((audit || []).map(a => [a.ref_order_number, a]));
+
+                tbody.innerHTML = data.map(o => {
+                    const a = auditByNo[o.order_number] || {};
+                    return `
+                        <tr>
+                            <td style="font-family:monospace;">${escapeHtml(o.order_number)}</td>
+                            <td>${escapeHtml(o.customer_email || '')}</td>
+                            <td>NT$ ${Number(o.total).toLocaleString()}</td>
+                            <td>${new Date(o.created_at).toISOString().slice(0,10)}</td>
+                            <td>${escapeHtml(a.operator_email || '-')}</td>
+                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(o.note||'')}">${escapeHtml(o.note || '')}</td>
+                            <td style="font-size:11px;color:var(--text-secondary);">${new Date(o.created_at).toLocaleString('zh-TW')}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error('load history failed', err);
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#f87171;">載入失敗: ${escapeHtml(err.message)}</td></tr>`;
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         // ============================================================================
