@@ -89,6 +89,24 @@ function verifyTradeSha(tradeInfo, receivedSha, key, iv) {
   return computed === String(receivedSha || '').toUpperCase();
 }
 
+/* ── Order number 還原 ─────────────────────────
+ * cart.js 寫進 DB 的 order_number 有 dash (`NLC-20260520-6724`),
+ * 但藍新限制 MerchantOrderNo 1-20 碼英數+底線,所以 newebpay-create.js 用
+ * sanitizeOrderNo() 把 dash 拿掉送過去。藍新 notify 回傳的也是 dashless。
+ * 這個 helper 把 dashless 還原成 dashed,讓 notify 可以找到原訂單。
+ *
+ *   NLC202605206724 → NLC-20260520-6724  (carryback)
+ *   NL202605206724  → NL-20260520-6724   (shipping)
+ */
+function reconstructDashedOrderNo(dashless) {
+  if (!dashless) return null;
+  let m = dashless.match(/^(NLC)(\d{8})(\w{4})$/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = dashless.match(/^(NL)(\d{8})(\w{4})$/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  return null;
+}
+
 /**
  * Phase 2.2 — 付款成功時對會員的副作用 (server-only,trusted)
  *
@@ -296,12 +314,28 @@ export default async function handler(req, res) {
 
       const orderNo = result.MerchantOrderNo;
 
-      /* ── 撈訂單 (用 order_number,Phase 2.2 訂單 schema) ── */
-      const { data: order, error: orderErr } = await supabase
-        .from('orders')
-        .select('id, order_number, status, member_id, subtotal, shipping_fee, total, tier_at_purchase, tier_discount, birthday_discount, signup_credit_used')
-        .eq('order_number', orderNo)
-        .maybeSingle();
+      /* ── 撈訂單 (用 order_number,Phase 2.2 訂單 schema)
+       * 先試 dashless (藍新原樣),沒中再試還原成 dashed (cart.js DB 格式)
+       */
+      const ORDER_COLS = 'id, order_number, status, member_id, subtotal, shipping_fee, total, tier_at_purchase, tier_discount, birthday_discount, signup_credit_used';
+      let order = null;
+      let orderErr = null;
+      {
+        const r1 = await supabase.from('orders').select(ORDER_COLS).eq('order_number', orderNo).maybeSingle();
+        if (r1.error) orderErr = r1.error;
+        else order = r1.data;
+      }
+      if (!order && !orderErr) {
+        const dashed = reconstructDashedOrderNo(orderNo);
+        if (dashed) {
+          const r2 = await supabase.from('orders').select(ORDER_COLS).eq('order_number', dashed).maybeSingle();
+          if (r2.error) orderErr = r2.error;
+          else if (r2.data) {
+            order = r2.data;
+            console.log('[NewebPay Notify] resolved order via dashed fallback:', orderNo, '→', dashed);
+          }
+        }
+      }
 
       if (orderErr) {
         console.error('[NewebPay Notify] order lookup error:', orderErr);
@@ -333,9 +367,12 @@ export default async function handler(req, res) {
         return res.status(200).send('OK');
       }
 
-      /* ── 成功:先跑會員副作用,最後再 mark paid ── */
+      /* ── 成功:先跑會員副作用,最後再 mark paid ──
+       * 用 DB 裡的 order.order_number (有 dash) 寫進 audit log,
+       * 讓客服 / 對帳人員看到的訂單號跟其他地方一致。
+       */
       if (order.member_id) {
-        await applyMemberSideEffects(supabase, order, orderNo);
+        await applyMemberSideEffects(supabase, order, order.order_number);
       }
 
       /* ── 最後一步:標記 order 為 paid (idempotency 信號) ── */
