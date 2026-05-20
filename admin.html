@@ -3982,13 +3982,15 @@
                 return;
             }
             try {
-                const { data, error } = await sb
-                    .from('members')
-                    .select('id, email, display_name, tier, accumulated_spend, purchase_count, founding_credit_balance')
-                    .ilike('email', `%${queryStr}%`)
-                    .order('email', { ascending: true })
-                    .limit(10);
-                if (error) throw error;
+                // 走後端 service_role endpoint,因為 members RLS 只允許讀自己那筆
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) throw new Error('未登入');
+                const r = await fetch('/api/admin-search-members?q=' + encodeURIComponent(queryStr), {
+                    headers: { 'Authorization': 'Bearer ' + session.access_token },
+                });
+                const body = await r.json();
+                if (!r.ok) throw new Error(body.error + (body.message ? ': ' + body.message : ''));
+                const data = body.members || [];
                 if (!data || data.length === 0) {
                     resultsDiv.innerHTML = '<div style="padding:8px 12px;color:var(--text-secondary);font-size:12px;">無符合會員</div>';
                     resultsDiv.style.display = 'block';
