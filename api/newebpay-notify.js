@@ -41,13 +41,45 @@ import D from './lib/discount.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
-/* ── AES-256-CBC 解密 ─────────────────────────── */
+/* ── AES-256-CBC 解密 ───────────────────────────
+ * NewebPay 文件雖然講 PKCS#7,但實務上有些商店帳號回傳的 TradeInfo 是
+ * zero-padding。setAutoPadding(true) 對 zero-padding 會在 final() 噴
+ * "bad decrypt" (1C800064)。所以先試 PKCS#7,失敗 fallback 到 manual
+ * zero-padding strip。
+ */
 function aesDecrypt(encryptedHex, key, iv) {
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  decipher.setAutoPadding(true);
-  let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+  // 嘗試 1: PKCS#7 padding (官方文件規格)
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    decipher.setAutoPadding(true);
+    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (err1) {
+    // 嘗試 2: 關掉 auto-padding,自己 strip null bytes / 控制字元
+    try {
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      decipher.setAutoPadding(false);
+      const buf = Buffer.concat([
+        decipher.update(Buffer.from(encryptedHex, 'hex')),
+        decipher.final(),
+      ]);
+      // 去尾端 null bytes + ASCII 控制字元 (zero-padding / pkcs#7 padding bytes)
+      let endIdx = buf.length;
+      while (endIdx > 0 && buf[endIdx - 1] < 0x20) endIdx--;
+      const decrypted = buf.slice(0, endIdx).toString('utf8');
+      console.warn('[NewebPay Notify] AES decrypt: PKCS#7 failed, recovered with zero-padding strip');
+      return decrypted;
+    } catch (err2) {
+      // 兩種都失敗 — 重 throw 原本的錯,並補充 key/iv 長度資訊方便診斷
+      const e = new Error(
+        `${err1.message} (key_len=${key && key.length}, iv_len=${iv && iv.length}, ciphertext_hex_len=${encryptedHex && encryptedHex.length}, fallback_err=${err2.message})`
+      );
+      e.code = err1.code;
+      e.stack = err1.stack;
+      throw e;
+    }
+  }
 }
 
 /* ── 重新計算 TradeSha 比對 ──────────────────── */
@@ -204,6 +236,11 @@ export default async function handler(req, res) {
 
     console.log('[NewebPay Notify] Received:', JSON.stringify({
       Status, MerchantID, Version, hasTradeInfo: !!TradeInfo,
+      // 診斷用 (不洩漏 secret) — 確認 env var 長度是否為 AES-256-CBC 要求的 32/16
+      keyLen: HASH_KEY.length,
+      ivLen:  HASH_IV.length,
+      tradeInfoLen: TradeInfo ? TradeInfo.length : 0,
+      tradeInfoHexValid: TradeInfo ? /^[0-9a-fA-F]+$/.test(TradeInfo) : false,
     }));
 
     if (!TradeInfo || !TradeSha) {
