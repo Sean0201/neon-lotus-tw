@@ -224,23 +224,36 @@
     const subtotal_after_bulk = groups.carryback.after_bulk + groups.shipping.after_bulk;
     const bulk_discount_total = groups.carryback.bulk_discount + groups.shipping.bulk_discount;
 
-    /* ── E. 折抵金 (B1 自動扣 — 餘額 > 0 就用) ── */
-    let credit_used = 0;
-    const credit_balance = member ? Math.max(0, Number(member.founding_credit_balance) || 0) : 0;
-    if (useCredit && credit_balance > 0 && subtotal_after_bulk > 0) {
-      credit_used = Math.min(credit_balance, subtotal_after_bulk);
-    }
-    const subtotal_after_credit = Math.max(0, subtotal_after_bulk - credit_used);
-
-    /* ── F. 樓地板 (按等級分;訪客視同 bronze 75%,但訪客本來就沒折扣不會觸發) ── */
+    /* ── F (預先算樓地板). 樓地板金額 (raw × tier_floor_rate)
+     *   先算樓地板,因為 E (折抵金) 需要知道地板才能避免「折抵金被樓地板吃掉」的帳務 bug。
+     *   例: raw=200, floor_rate=0.75 → floor_amount=150
+     *       若用戶有 100 折抵金,理論上扣完是 100,但被樓地板拉回 150,
+     *       實際只省 50,但 credit_balance 卻被扣 100 — 多扣 50。
+     *   修法:credit_used 上限 = subtotal_after_bulk - floor_amount,
+     *       超出地板的部分不要扣折抵金,留給使用者下次用。
+     */
     const floorRate = (_config.tier_floor_rates[tierKey] != null)
       ? _config.tier_floor_rates[tierKey]
       : 0.75;
     const floor_amount = Math.round(raw_subtotal * floorRate);
 
+    /* ── E. 折抵金 (B1 自動扣 — 餘額 > 0 就用,但不超過地板能吸收的量) ── */
+    let credit_used = 0;
+    const credit_balance = member ? Math.max(0, Number(member.founding_credit_balance) || 0) : 0;
+    if (useCredit && credit_balance > 0 && subtotal_after_bulk > 0) {
+      const intended_credit  = Math.min(credit_balance, subtotal_after_bulk);
+      // 折抵金最多只能讓總額降到地板,超出的部分等於「沒用到」
+      const useful_credit_cap = Math.max(0, subtotal_after_bulk - floor_amount);
+      credit_used = Math.min(intended_credit, useful_credit_cap);
+    }
+    const subtotal_after_credit = Math.max(0, subtotal_after_bulk - credit_used);
+
+    /* ── F. 樓地板實際 clamp (理論上 E 修正後不會再觸發,但保留為安全網
+     *   — 若 tier+birthday+bulk 自己就已經降到地板下,credit 套不上來時還是會 clamp)
+     */
     let final_subtotal = subtotal_after_credit;
     let floor_clamped = false;
-    let floor_refund = 0; // 為了拉到樓地板額外被加回多少
+    let floor_refund = 0;
     if (final_subtotal < floor_amount) {
       floor_refund = floor_amount - final_subtotal;
       final_subtotal = floor_amount;

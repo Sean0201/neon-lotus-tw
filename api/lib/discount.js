@@ -196,20 +196,27 @@ function computeCart(args) {
   const subtotal_after_bulk = groups.carryback.after_bulk + groups.shipping.after_bulk;
   const bulk_discount_total = groups.carryback.bulk_discount + groups.shipping.bulk_discount;
 
-  /* E. 折抵金 (B1 自動扣) */
-  let credit_used = 0;
-  const credit_balance = member ? Math.max(0, Number(member.founding_credit_balance) || 0) : 0;
-  if (useCredit && credit_balance > 0 && subtotal_after_bulk > 0) {
-    credit_used = Math.min(credit_balance, subtotal_after_bulk);
-  }
-  const subtotal_after_credit = Math.max(0, subtotal_after_bulk - credit_used);
-
-  /* F. 樓地板 */
+  /* F (預先算樓地板). 樓地板金額 — E 折抵金需要它來避免「折抵金被樓地板吃掉」帳務 bug
+   *   例: raw=200, floor_rate=0.75 → floor_amount=150;若用戶有 100 credit,
+   *   直接扣會降到 100,但被樓地板拉回 150,實際只省 50 卻扣了 100 credit。
+   *   修法:credit_used 上限 = subtotal_after_bulk - floor_amount。
+   */
   const floorRate = (_config.tier_floor_rates[tierKey] != null)
     ? _config.tier_floor_rates[tierKey]
     : 0.75;
   const floor_amount = Math.round(raw_subtotal * floorRate);
 
+  /* E. 折抵金 (B1 自動扣,但不超過地板能吸收的量) */
+  let credit_used = 0;
+  const credit_balance = member ? Math.max(0, Number(member.founding_credit_balance) || 0) : 0;
+  if (useCredit && credit_balance > 0 && subtotal_after_bulk > 0) {
+    const intended_credit   = Math.min(credit_balance, subtotal_after_bulk);
+    const useful_credit_cap = Math.max(0, subtotal_after_bulk - floor_amount);
+    credit_used = Math.min(intended_credit, useful_credit_cap);
+  }
+  const subtotal_after_credit = Math.max(0, subtotal_after_bulk - credit_used);
+
+  /* F. 樓地板實際 clamp (E 修正後通常不會再觸發,但保留為安全網) */
   let final_subtotal = subtotal_after_credit;
   let floor_clamped = false;
   let floor_refund = 0;
