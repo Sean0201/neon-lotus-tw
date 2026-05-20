@@ -3984,7 +3984,7 @@
             try {
                 const { data, error } = await sb
                     .from('members')
-                    .select('id, email, name, tier, accumulated_spend, purchase_count, founding_credit_balance')
+                    .select('id, email, display_name, tier, accumulated_spend, purchase_count, founding_credit_balance')
                     .ilike('email', `%${queryStr}%`)
                     .order('email', { ascending: true })
                     .limit(10);
@@ -3997,7 +3997,7 @@
                 resultsDiv.innerHTML = data.map(m => `
                     <div data-id="${m.id}"
                          data-email="${escapeHtml(m.email||'')}"
-                         data-name="${escapeHtml(m.name||'')}"
+                         data-name="${escapeHtml(m.display_name||'')}"
                          data-tier="${m.tier||'bronze'}"
                          data-spend="${m.accumulated_spend||0}"
                          data-count="${m.purchase_count||0}"
@@ -4008,7 +4008,7 @@
                          onclick="selectMemberForBackfill(this)">
                         <div style="font-weight:600;">${escapeHtml(m.email || '(無 email)')}</div>
                         <div style="color:var(--text-secondary);font-size:11px;">
-                            ${escapeHtml(m.name || '')} · ${m.tier||'bronze'} · 累積 NT$ ${m.accumulated_spend||0} · ${m.purchase_count||0}次
+                            ${escapeHtml(m.display_name || '')} · ${m.tier||'bronze'} · 累積 NT$ ${m.accumulated_spend||0} · ${m.purchase_count||0}次
                         </div>
                     </div>
                 `).join('');

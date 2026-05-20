@@ -93,7 +93,7 @@ BEGIN
     note,
     created_at, updated_at
   ) VALUES (
-    v_order_number, p_member_id, v_member.name, v_member.email,
+    v_order_number, p_member_id, v_member.display_name, v_member.email,
     p_amount, 0, p_amount,
     0, v_old_tier, 0, 0,
     'historical', '歷史補登', '已完成',
