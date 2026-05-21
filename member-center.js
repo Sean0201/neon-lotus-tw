@@ -36,12 +36,14 @@
   };
 
   const STATUS_LABELS = {
-    pending:   { emoji: '⏳', text: '處理中',   color: '#fbbf24' },
-    paid:      { emoji: '✓',  text: '已付款',   color: '#4ade80' },
-    shipped:   { emoji: '📦', text: '已出貨',   color: '#60a5fa' },
-    delivered: { emoji: '🎉', text: '已送達',   color: '#4ade80' },
-    cancelled: { emoji: '✕',  text: '已取消',   color: '#9ca3af' },
-    refunded:  { emoji: '↩',  text: '已退款',   color: '#f87171' },
+    pending:           { emoji: '⏳', text: '處理中',   color: '#fbbf24' },
+    paid:              { emoji: '✓',  text: '已付款',   color: '#4ade80' },
+    confirmed:         { emoji: '✓',  text: '已確認',   color: '#60a5fa' },
+    shipped:           { emoji: '📦', text: '已出貨',   color: '#60a5fa' },
+    delivered:         { emoji: '🎉', text: '已送達',   color: '#4ade80' },
+    cancelled:         { emoji: '✕',  text: '已取消',   color: '#9ca3af' },
+    partial_refunded:  { emoji: '↩',  text: '部分退款', color: '#ff9800' },
+    refunded:          { emoji: '↩',  text: '已退款',   color: '#9e9e9e' },
   };
 
   function fmtNT(n) {
