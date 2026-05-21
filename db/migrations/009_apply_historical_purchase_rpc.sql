@@ -86,14 +86,16 @@ BEGIN
 
   -- 6. 插入 orders row
   INSERT INTO orders (
-    order_number, member_id, customer_name, customer_email,
+    order_number, member_id,
+    customer_name, customer_email, customer_phone, customer_address,
     subtotal, shipping_fee, total,
     signup_credit_used, tier_at_purchase, tier_discount, birthday_discount,
     status, payment_method, shipping_method,
     note,
     created_at, updated_at
   ) VALUES (
-    v_order_number, p_member_id, v_member.display_name, v_member.email,
+    v_order_number, p_member_id,
+    COALESCE(v_member.display_name, ''), v_member.email, COALESCE(v_member.phone, ''), '',
     p_amount, 0, p_amount,
     0, v_old_tier, 0, 0,
     'historical', '歷史補登', '已完成',
