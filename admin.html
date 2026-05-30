@@ -1218,7 +1218,8 @@
                                         <option value="cancelled">Cancelled</option>
                                     </select>
                                     <button class="btn-secondary" onclick="loadOrders()">Refresh</button>
-                                    <button class="btn-secondary" onclick="exportOrdersCSV()" title="匯出當月訂單為 CSV,可直接貼到成本利潤表 A5">📥 匯出 CSV</button>
+                                    <button class="btn-secondary" onclick="exportOrdersCSV()" title="匯出當月訂單品項為 CSV,可直接貼到成本利潤表 訂單記錄 A5">📥 訂單記錄 CSV</button>
+                                    <button class="btn-secondary" onclick="exportOrderCashflowCSV()" title="匯出當月訂單金流為 CSV (含折扣/付款方式),貼到成本利潤表 訂單金流 A5">📥 訂單金流 CSV</button>
                                 </div>
                             </div>
                             <table class="data-table">
@@ -3624,6 +3625,125 @@
                 showToast('已匯出 ' + rows.length + ' 列 (共 ' + orders.length + ' 筆訂單)');
             } catch (err) {
                 console.error('Failed to export orders:', err);
+                showToast('匯出失敗: ' + err.message, 'error');
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // 匯出「訂單金流」CSV — 一筆訂單一列,含折扣/付款/總額
+        // 對應 成本利潤表.xlsx → 訂單金流 分頁 (A:P 共 16 欄)
+        // 欄位順序: 訂單日期 | 訂單編號 | 客戶名 | 客戶 Email |
+        //          折扣前小計 | 等級折扣 | 生日折扣 | 註冊金抵用 |
+        //          (折扣後小計 留空,xlsx 公式自動算) | 運費 | 訂單總額 |
+        //          付款方式 | (金流手續費 留空,手填) | (實際入帳 留空) |
+        //          狀態 | 備註
+        // ─────────────────────────────────────────────────────────────
+        async function exportOrderCashflowCSV() {
+            const now = new Date();
+            const tpeNow = new Date(now.getTime() + 8 * 3600 * 1000);
+            const defaultMonth = tpeNow.toISOString().slice(0, 7);
+
+            const monthInput = prompt(
+                '匯出哪個月的訂單金流?\n格式: yyyy-mm (例: 2026-05)\n\n會排除 cancelled / rejected 訂單。',
+                defaultMonth
+            );
+            if (!monthInput) return;
+
+            const m = monthInput.match(/^(\d{4})-(\d{1,2})$/);
+            if (!m) {
+                showToast('格式錯誤,請用 yyyy-mm', 'error');
+                return;
+            }
+            const year = parseInt(m[1], 10);
+            const month = parseInt(m[2], 10);
+            if (month < 1 || month > 12) {
+                showToast('月份必須是 1-12', 'error');
+                return;
+            }
+
+            const startISO = new Date(Date.UTC(year, month - 1, 1, -8, 0, 0)).toISOString();
+            const endISO   = new Date(Date.UTC(year, month, 1, -8, 0, 0)).toISOString();
+
+            showToast('匯出中...');
+            try {
+                const { data: orders, error: ordersErr } = await sb
+                    .from('orders')
+                    .select('order_number, customer_name, customer_email, created_at, ' +
+                            'subtotal, tier_discount, birthday_discount, signup_credit_used, ' +
+                            'shipping_fee, total, payment_method, status, note')
+                    .gte('created_at', startISO)
+                    .lt('created_at', endISO)
+                    .not('status', 'in', '(cancelled,rejected)')
+                    .order('created_at', { ascending: true })
+                    .limit(10000);
+                if (ordersErr) throw ordersErr;
+
+                if (!orders || orders.length === 0) {
+                    showToast(monthInput + ' 沒有訂單', 'error');
+                    return;
+                }
+
+                // 把 created_at (UTC) 轉成 Asia/Taipei 的 yyyy-mm-dd HH:MM
+                const dateTimeStr = (utcIso) => {
+                    const t = new Date(utcIso).getTime() + 8 * 3600 * 1000;
+                    const d = new Date(t);
+                    return d.toISOString().slice(0, 16).replace('T', ' ');
+                };
+
+                const rows = orders.map(o => {
+                    const subtotal = Number(o.subtotal) || 0;
+                    const td = Number(o.tier_discount) || 0;
+                    const bd = Number(o.birthday_discount) || 0;
+                    const scu = Number(o.signup_credit_used) || 0;
+                    const afterDiscount = subtotal - td - bd - scu;
+                    return [
+                        dateTimeStr(o.created_at),
+                        o.order_number || '',
+                        o.customer_name || '',
+                        o.customer_email || '',
+                        subtotal,
+                        td,
+                        bd,
+                        scu,
+                        afterDiscount,            // I: 折扣後小計 (預先算好)
+                        o.shipping_fee ?? 0,
+                        o.total ?? '',
+                        o.payment_method || '',
+                        '',                       // M: 金流手續費 (手填)
+                        '',                       // N: 實際入帳 (月度彙總用 K-M 算)
+                        o.status || '',
+                        o.note || '',
+                    ];
+                });
+
+                const csvEscape = (v) => {
+                    const s = (v === null || v === undefined) ? '' : String(v);
+                    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+                };
+                const header = [
+                    '訂單日期', '訂單編號', '客戶名', '客戶 Email',
+                    '折扣前小計', '等級折扣', '生日折扣', '註冊金抵用',
+                    '折扣後小計', '運費', '訂單總額',
+                    '付款方式', '金流手續費', '實際入帳',
+                    '狀態', '備註',
+                ];
+                const csv = '\uFEFF' + [header, ...rows]
+                    .map(r => r.map(csvEscape).join(','))
+                    .join('\r\n');
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'order_cashflow_' + monthInput + '.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showToast('已匯出 ' + rows.length + ' 筆訂單金流');
+            } catch (err) {
+                console.error('Failed to export order cashflow:', err);
                 showToast('匯出失敗: ' + err.message, 'error');
             }
         }
