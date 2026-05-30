@@ -3670,7 +3670,7 @@
                     .from('orders')
                     .select('order_number, customer_name, customer_email, created_at, ' +
                             'subtotal, tier_discount, birthday_discount, signup_credit_used, ' +
-                            'shipping_fee, total, payment_method, status, note')
+                            'shipping_fee, total, payment_method, status, note, refund_amount')
                     .gte('created_at', startISO)
                     .lt('created_at', endISO)
                     .not('status', 'in', '(cancelled,rejected)')
@@ -3710,9 +3710,10 @@
                         o.total ?? '',
                         o.payment_method || '',
                         '',                       // M: 金流手續費 (手填)
-                        '',                       // N: 實際入帳 (月度彙總用 K-M 算)
+                        '',                       // N: 實際入帳 (xlsx 公式 = K-M-Q)
                         o.status || '',
                         o.note || '',
+                        Number(o.refund_amount) || 0,  // Q: 退款金額 (from refund RPC)
                     ];
                 });
 
@@ -3725,7 +3726,7 @@
                     '折扣前小計', '等級折扣', '生日折扣', '註冊金抵用',
                     '折扣後小計', '運費', '訂單總額',
                     '付款方式', '金流手續費', '實際入帳',
-                    '狀態', '備註',
+                    '狀態', '備註', '退款金額',
                 ];
                 const csv = '\uFEFF' + [header, ...rows]
                     .map(r => r.map(csvEscape).join(','))
