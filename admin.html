@@ -990,6 +990,10 @@
                         <span class="nav-icon">🛒</span>
                         <span>訂單管理</span>
                     </div>
+                    <div class="nav-item" data-page="members">
+                        <span class="nav-icon">👥</span>
+                        <span>會員管理</span>
+                    </div>
                     <div class="nav-item" data-page="member-backfill">
                         <span class="nav-icon">📝</span>
                         <span>會員補登</span>
@@ -1240,6 +1244,58 @@
                         </div>
                     </div>
 
+                    <!-- Member Management Page -->
+                    <div id="members" class="page">
+                        <div class="table-container">
+                            <div class="table-header">
+                                <h2>會員管理</h2>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <input id="memSearchInput" type="text" placeholder="搜尋 email / 暱稱 (≥2 字)"
+                                           style="padding:6px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;width:220px;">
+                                    <select id="memTierFilter"
+                                            style="padding:6px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+                                        <option value="">全部等級</option>
+                                        <option value="bronze">🥉 銅卡</option>
+                                        <option value="silver">🥈 銀卡</option>
+                                        <option value="gold">🥇 金卡</option>
+                                        <option value="diamond">💎 鑽石卡</option>
+                                        <option value="black">🖤 黑卡</option>
+                                    </select>
+                                    <select id="memSortBy"
+                                            style="padding:6px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+                                        <option value="accumulated_spend|desc">累積消費 ↓</option>
+                                        <option value="accumulated_spend|asc">累積消費 ↑</option>
+                                        <option value="created_at|desc">註冊時間 ↓</option>
+                                        <option value="created_at|asc">註冊時間 ↑</option>
+                                        <option value="purchase_count|desc">消費次數 ↓</option>
+                                        <option value="display_name|asc">暱稱 A→Z</option>
+                                        <option value="email|asc">Email A→Z</option>
+                                    </select>
+                                    <button class="btn-secondary" onclick="loadMembersList(0)">查詢</button>
+                                    <button class="btn-secondary" onclick="exportMembersCSV()" title="匯出當前篩選結果為 CSV (全部頁面,最多 1000 筆)">📥 匯出 CSV</button>
+                                </div>
+                            </div>
+                            <div id="memStats" style="padding:0.75rem 1.5rem;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--border);"></div>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Email</th>
+                                        <th>暱稱</th>
+                                        <th>等級</th>
+                                        <th style="text-align:right;">累積消費</th>
+                                        <th style="text-align:right;">次數</th>
+                                        <th style="text-align:right;">折抵金</th>
+                                        <th>註冊</th>
+                                        <th>最後消費</th>
+                                        <th>動作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="membersTableBody"></tbody>
+                            </table>
+                            <div id="memPagination" style="padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);"></div>
+                        </div>
+                    </div>
+
                     <!-- Member History Backfill Page -->
                     <div id="member-backfill" class="page">
                         <div class="table-container">
@@ -1348,6 +1404,54 @@
                                     <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;padding:8px;background:rgba(239,83,80,0.06);border-left:3px solid #ef5350;">
                                         ⚠️ 本操作僅更新會員帳本 + 訂單狀態。實際金流退款請至 NewebPay 後台手動執行。
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Member Detail Modal -->
+                    <div id="memberDetailModal" class="modal-overlay" style="display:none;">
+                        <div class="modal" style="max-width:880px;max-height:90vh;display:flex;flex-direction:column;">
+                            <div class="modal-header">
+                                <h2 id="memberDetailTitle">會員詳細</h2>
+                                <button class="modal-close" onclick="closeMemberDetail()">×</button>
+                            </div>
+                            <div class="modal-body" id="memberDetailBody" style="padding:1.5rem;overflow-y:auto;">
+                                <div style="text-align:center;color:var(--text-muted);padding:2rem;">載入中...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Member Quick Backfill (Inline) Modal -->
+                    <div id="memberQuickBackfillModal" class="modal-overlay" style="display:none;">
+                        <div class="modal" style="max-width:480px;">
+                            <div class="modal-header">
+                                <h2>手動加值 — 累積消費</h2>
+                                <button class="modal-close" onclick="closeMemberQuickBackfill()">×</button>
+                            </div>
+                            <div class="modal-body" style="padding:1.5rem;">
+                                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:0.75rem;margin-bottom:1rem;font-size:13px;">
+                                    <div><strong>會員:</strong> <span id="mqb_memberDesc"></span></div>
+                                    <div><strong>目前等級:</strong> <span id="mqb_currentTier"></span></div>
+                                    <div><strong>目前累積:</strong> NT$ <span id="mqb_currentSpend"></span></div>
+                                </div>
+                                <div class="form-group full" style="margin-bottom:1rem;">
+                                    <label>補登金額 (TWD)</label>
+                                    <input type="number" id="mqb_amount" min="1" placeholder="例: 1500" style="width:100%;">
+                                </div>
+                                <div class="form-group full" style="margin-bottom:1rem;">
+                                    <label>消費日期 (選填,預設今天)</label>
+                                    <input type="date" id="mqb_purchaseDate" style="width:100%;">
+                                </div>
+                                <div class="form-group full" style="margin-bottom:1rem;">
+                                    <label>備註 (選填)</label>
+                                    <input type="text" id="mqb_note" placeholder="例: 線下實體店成交,Receipt #1234" style="width:100%;">
+                                </div>
+                                <div id="mqb_preview" style="display:none;background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.3);border-radius:6px;padding:0.75rem;margin-bottom:1rem;font-size:13px;"></div>
+                                <div id="mqb_msg" style="display:none;font-size:13px;margin-bottom:1rem;"></div>
+                                <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+                                    <button class="btn-secondary" onclick="closeMemberQuickBackfill()">取消</button>
+                                    <button class="btn-primary" id="mqb_submitBtn" onclick="submitMemberQuickBackfill()">確認加值</button>
                                 </div>
                             </div>
                         </div>
@@ -2044,6 +2148,7 @@
             else if (page === 'banners') loadBanners();
             else if (page === 'featured') loadFeatured();
             else if (page === 'orders') loadOrders();
+            else if (page === 'members') initMembersPage();
             else if (page === 'member-backfill') initMemberBackfill();
             else if (page === 'settings') loadSettings();
             else if (page === 'deploy') loadDeploy();
@@ -2057,6 +2162,7 @@
                 'banners': 'Banner 管理',
                 'featured': '本週精選',
                 'orders': '訂單管理',
+                'members': '會員管理',
                 'member-backfill': '會員補登',
                 'settings': 'SEO 設定',
                 'deploy':   '發布部署'
@@ -4516,6 +4622,496 @@
             return String(s == null ? '' : s)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // ============================================================================
+        // MEMBER MANAGEMENT  (Members list + detail modal + quick backfill)
+        // ============================================================================
+        const MEM_TIER_META = {
+            bronze:  { emoji: '🥉', label: '銅卡',   threshold: 0,     color: '#a16207' },
+            silver:  { emoji: '🥈', label: '銀卡',   threshold: 5000,  color: '#9ca3af' },
+            gold:    { emoji: '🥇', label: '金卡',   threshold: 15000, color: '#facc15' },
+            diamond: { emoji: '💎', label: '鑽石卡', threshold: 30000, color: '#60a5fa' },
+            black:   { emoji: '🖤', label: '黑卡',   threshold: 60000, color: '#c084fc' },
+        };
+
+        let _memCurrentPage     = 0;
+        let _memCurrentPageSize = 50;
+        let _memInitialized     = false;
+        let _memQuickBackfillMember = null;  // 開啟 quick backfill 時暫存的會員 obj
+
+        function mem_fmtNT(n) {
+            return Number(n || 0).toLocaleString('en-US');
+        }
+        function mem_fmtDate(iso, withTime) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            if (!withTime) return y + '-' + m + '-' + day;
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            return y + '-' + m + '-' + day + ' ' + hh + ':' + mm;
+        }
+        function mem_tierBadge(tier) {
+            const meta = MEM_TIER_META[tier] || MEM_TIER_META.bronze;
+            return '<span style="background:' + meta.color + '22;color:' + meta.color +
+                   ';padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap;">' +
+                   meta.emoji + ' ' + meta.label + '</span>';
+        }
+        function mem_statusBadge(status) {
+            const map = {
+                pending:           { txt: '處理中',    color: '#fbbf24' },
+                paid:              { txt: '已付款',    color: '#4ade80' },
+                confirmed:         { txt: '已確認',    color: '#60a5fa' },
+                shipped:           { txt: '已出貨',    color: '#60a5fa' },
+                delivered:         { txt: '已送達',    color: '#4ade80' },
+                cancelled:         { txt: '已取消',    color: '#9ca3af' },
+                rejected:          { txt: '已駁回',    color: '#f87171' },
+                partial_refunded:  { txt: '部分退款',  color: '#ff9800' },
+                refunded:          { txt: '已退款',    color: '#9e9e9e' },
+            };
+            const s = map[status] || { txt: status || '—', color: '#9ca3af' };
+            return '<span style="color:' + s.color + ';font-size:12px;">' + s.txt + '</span>';
+        }
+
+        function initMembersPage() {
+            if (!_memInitialized) {
+                _memInitialized = true;
+                // 搜尋框 Enter 即查
+                const inp = document.getElementById('memSearchInput');
+                if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') loadMembersList(0); });
+                const tf = document.getElementById('memTierFilter');
+                if (tf) tf.addEventListener('change', () => loadMembersList(0));
+                const sb_ = document.getElementById('memSortBy');
+                if (sb_) sb_.addEventListener('change', () => loadMembersList(0));
+            }
+            loadMembersList(0);
+        }
+
+        async function loadMembersList(page) {
+            _memCurrentPage = Math.max(0, page || 0);
+            const tbody = document.getElementById('membersTableBody');
+            const stats = document.getElementById('memStats');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted);">載入中...</td></tr>';
+
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) throw new Error('未登入');
+
+                const q       = (document.getElementById('memSearchInput').value || '').trim();
+                const tier    = (document.getElementById('memTierFilter').value || '').trim();
+                const sortVal = (document.getElementById('memSortBy').value || 'accumulated_spend|desc');
+                const [sortField, sortOrder] = sortVal.split('|');
+
+                const params = new URLSearchParams({
+                    sort:     sortField,
+                    order:    sortOrder,
+                    page:     String(_memCurrentPage),
+                    pageSize: String(_memCurrentPageSize),
+                });
+                if (tier) params.set('tier', tier);
+                if (q.length >= 2) params.set('q', q);
+
+                const r = await fetch('/api/admin-list-members?' + params.toString(), {
+                    headers: { 'Authorization': 'Bearer ' + session.access_token },
+                });
+                if (!r.ok) {
+                    const body = await r.json().catch(() => ({}));
+                    throw new Error(body.error || ('HTTP ' + r.status));
+                }
+                const body = await r.json();
+                renderMembersTable(body.members || []);
+                renderMemPagination(body.total || 0, body.page || 0, body.pageSize || _memCurrentPageSize);
+                if (stats) {
+                    const start = body.total === 0 ? 0 : (body.page * body.pageSize + 1);
+                    const end   = Math.min((body.page + 1) * body.pageSize, body.total);
+                    stats.textContent = '顯示 ' + start + '–' + end + ' / 共 ' + (body.total || 0) + ' 位會員';
+                }
+            } catch (err) {
+                console.error('loadMembersList failed', err);
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#f87171;">載入失敗: ' + escapeHtml(err.message) + '</td></tr>';
+                if (stats) stats.textContent = '';
+            }
+        }
+
+        function renderMembersTable(members) {
+            const tbody = document.getElementById('membersTableBody');
+            if (!tbody) return;
+            if (members.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted);">沒有符合條件的會員</td></tr>';
+                return;
+            }
+            tbody.innerHTML = members.map(m => {
+                const founding = m.founding_member ? ' <span title="創始會員" style="color:#c084fc;">★</span>' : '';
+                return '<tr>' +
+                    '<td style="font-size:12px;">' + escapeHtml(m.email || '') + founding + '</td>' +
+                    '<td>' + escapeHtml(m.display_name || '—') + '</td>' +
+                    '<td>' + mem_tierBadge(m.tier) + '</td>' +
+                    '<td style="text-align:right;font-variant-numeric:tabular-nums;">NT$ ' + mem_fmtNT(m.accumulated_spend) + '</td>' +
+                    '<td style="text-align:right;">' + (m.purchase_count || 0) + '</td>' +
+                    '<td style="text-align:right;font-variant-numeric:tabular-nums;">' + mem_fmtNT(m.founding_credit_balance) + '</td>' +
+                    '<td style="font-size:12px;color:var(--text-muted);">' + mem_fmtDate(m.created_at) + '</td>' +
+                    '<td style="font-size:12px;color:var(--text-muted);">' + mem_fmtDate(m.last_order_at) + '</td>' +
+                    '<td><button class="btn-secondary" style="font-size:12px;padding:4px 10px;" onclick="openMemberDetail(\'' +
+                    escapeHtml(m.id) + '\')">查看</button></td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        function renderMemPagination(total, page, pageSize) {
+            const wrap = document.getElementById('memPagination');
+            if (!wrap) return;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            const cur = page + 1;
+            wrap.innerHTML =
+                '<div style="font-size:13px;color:var(--text-muted);">第 ' + cur + ' / ' + totalPages + ' 頁</div>' +
+                '<div style="display:flex;gap:6px;">' +
+                '<button class="btn-secondary" style="font-size:12px;" ' + (page <= 0 ? 'disabled' : '') +
+                ' onclick="loadMembersList(' + Math.max(0, page - 1) + ')">← 上一頁</button>' +
+                '<button class="btn-secondary" style="font-size:12px;" ' + (page >= totalPages - 1 ? 'disabled' : '') +
+                ' onclick="loadMembersList(' + (page + 1) + ')">下一頁 →</button>' +
+                '</div>';
+        }
+
+        async function openMemberDetail(memberId) {
+            const modal = document.getElementById('memberDetailModal');
+            const body  = document.getElementById('memberDetailBody');
+            const title = document.getElementById('memberDetailTitle');
+            if (!modal || !body) return;
+            modal.style.display = 'flex';
+            body.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;">載入中...</div>';
+            title.textContent = '會員詳細';
+
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) throw new Error('未登入');
+
+                const r = await fetch('/api/admin-member-detail?id=' + encodeURIComponent(memberId), {
+                    headers: { 'Authorization': 'Bearer ' + session.access_token },
+                });
+                if (!r.ok) {
+                    const eb = await r.json().catch(() => ({}));
+                    throw new Error(eb.error || ('HTTP ' + r.status));
+                }
+                const data = await r.json();
+                renderMemberDetail(data);
+            } catch (err) {
+                console.error('openMemberDetail failed', err);
+                body.innerHTML = '<div style="text-align:center;color:#f87171;padding:2rem;">載入失敗: ' + escapeHtml(err.message) + '</div>';
+            }
+        }
+        function closeMemberDetail() {
+            const modal = document.getElementById('memberDetailModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function renderMemberDetail(data) {
+            const m       = data.member || {};
+            const orders  = data.orders || [];
+            const audit   = data.audit_log || [];
+            const tierLog = audit.filter(a => a.field === 'tier');
+            const credLog = audit.filter(a => a.field === 'founding_credit_balance');
+            const spendLog = audit.filter(a => a.field === 'accumulated_spend');
+
+            // 計算到下一級還差多少
+            const TIER_ORDER = ['bronze', 'silver', 'gold', 'diamond', 'black'];
+            const curIdx = TIER_ORDER.indexOf(m.tier || 'bronze');
+            const nextTier = curIdx >= 0 && curIdx < TIER_ORDER.length - 1 ? TIER_ORDER[curIdx + 1] : null;
+            const nextMeta = nextTier ? MEM_TIER_META[nextTier] : null;
+            const remaining = nextMeta ? Math.max(0, nextMeta.threshold - (m.accumulated_spend || 0)) : 0;
+
+            document.getElementById('memberDetailTitle').textContent =
+                (m.display_name || m.email || '會員') + ' — 詳細資料';
+
+            const memberJson = JSON.stringify({
+                id: m.id, email: m.email, display_name: m.display_name,
+                tier: m.tier, accumulated_spend: m.accumulated_spend,
+            }).replace(/"/g, '&quot;');
+
+            const html =
+                // 基本資料區
+                '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;">' +
+                  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;font-size:13px;">' +
+                    '<div><strong>Email:</strong> ' + escapeHtml(m.email || '—') + '</div>' +
+                    '<div><strong>暱稱:</strong> ' + escapeHtml(m.display_name || '—') + '</div>' +
+                    '<div><strong>電話:</strong> ' + escapeHtml(m.phone || '—') + '</div>' +
+                    '<div><strong>生日:</strong> ' + (m.birthday || '—') + '</div>' +
+                    '<div><strong>等級:</strong> ' + mem_tierBadge(m.tier) +
+                      (nextMeta ? ' <span style="color:var(--text-muted);font-size:11px;">(再 NT$' + mem_fmtNT(remaining) + ' 升 ' + nextMeta.emoji + nextMeta.label + ')</span>' :
+                                  ' <span style="color:var(--text-muted);font-size:11px;">(已達最高)</span>') +
+                    '</div>' +
+                    '<div><strong>創始會員:</strong> ' + (m.founding_member ? '★ 是' : '否') + '</div>' +
+                    '<div><strong>累積消費:</strong> NT$ ' + mem_fmtNT(m.accumulated_spend) + '</div>' +
+                    '<div><strong>消費次數:</strong> ' + (m.purchase_count || 0) + '</div>' +
+                    '<div><strong>折抵金餘額:</strong> NT$ ' + mem_fmtNT(m.founding_credit_balance) + '</div>' +
+                    '<div><strong>今年生日已用:</strong> ' + (m.birthday_used_year ? '是 (' + m.birthday_used_year + ')' : '否') + '</div>' +
+                    '<div><strong>註冊時間:</strong> ' + mem_fmtDate(m.created_at, true) + '</div>' +
+                    '<div><strong>最後更新:</strong> ' + mem_fmtDate(m.updated_at, true) + '</div>' +
+                  '</div>' +
+                  '<div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' +
+                    '<button class="btn-primary" style="font-size:12px;padding:6px 12px;" ' +
+                      'onclick="openMemberQuickBackfill(JSON.parse(this.dataset.member))" ' +
+                      'data-member="' + memberJson + '">💰 手動加值</button>' +
+                  '</div>' +
+                '</div>' +
+
+                // 訂單歷史
+                '<details open style="margin-bottom:1rem;">' +
+                  '<summary style="cursor:pointer;font-size:14px;font-weight:600;padding:0.5rem 0;">📦 訂單歷史 (最近 ' + orders.length + ' 筆)</summary>' +
+                  (orders.length === 0 ?
+                    '<div style="color:var(--text-muted);font-size:13px;padding:0.5rem 1rem;">沒有訂單</div>' :
+                    '<table class="data-table" style="margin-top:0.5rem;font-size:12px;">' +
+                      '<thead><tr><th>訂單號</th><th>日期</th><th>狀態</th><th style="text-align:right;">小計</th><th style="text-align:right;">等級折</th><th style="text-align:right;">生日折</th><th style="text-align:right;">折抵金</th><th style="text-align:right;">總額</th><th style="text-align:right;">退款</th></tr></thead>' +
+                      '<tbody>' + orders.map(o =>
+                        '<tr>' +
+                          '<td style="font-family:monospace;">' + escapeHtml(o.order_number || '') + '</td>' +
+                          '<td>' + mem_fmtDate(o.created_at) + '</td>' +
+                          '<td>' + mem_statusBadge(o.status) + '</td>' +
+                          '<td style="text-align:right;">' + mem_fmtNT(o.subtotal) + '</td>' +
+                          '<td style="text-align:right;color:#9ca3af;">' + (o.tier_discount ? '-' + mem_fmtNT(o.tier_discount) : '—') + '</td>' +
+                          '<td style="text-align:right;color:#9ca3af;">' + (o.birthday_discount ? '-' + mem_fmtNT(o.birthday_discount) : '—') + '</td>' +
+                          '<td style="text-align:right;color:#9ca3af;">' + (o.signup_credit_used ? '-' + mem_fmtNT(o.signup_credit_used) : '—') + '</td>' +
+                          '<td style="text-align:right;font-weight:600;">' + mem_fmtNT(o.total) + '</td>' +
+                          '<td style="text-align:right;color:#ff9800;">' + (o.refund_amount ? '-' + mem_fmtNT(o.refund_amount) : '—') + '</td>' +
+                        '</tr>'
+                      ).join('') + '</tbody>' +
+                    '</table>') +
+                '</details>' +
+
+                // 等級升降歷史
+                '<details ' + (tierLog.length > 0 ? 'open' : '') + ' style="margin-bottom:1rem;">' +
+                  '<summary style="cursor:pointer;font-size:14px;font-weight:600;padding:0.5rem 0;">🏅 等級升降歷史 (' + tierLog.length + ' 筆)</summary>' +
+                  (tierLog.length === 0 ?
+                    '<div style="color:var(--text-muted);font-size:13px;padding:0.5rem 1rem;">沒有等級變動紀錄</div>' :
+                    '<table class="data-table" style="margin-top:0.5rem;font-size:12px;">' +
+                      '<thead><tr><th>時間</th><th>變動</th><th>原因</th><th>關聯訂單</th><th>操作者</th></tr></thead>' +
+                      '<tbody>' + tierLog.map(a =>
+                        '<tr>' +
+                          '<td>' + mem_fmtDate(a.created_at, true) + '</td>' +
+                          '<td>' + escapeHtml(String(a.delta || '')) + '</td>' +
+                          '<td>' + escapeHtml(a.reason || '—') + '</td>' +
+                          '<td style="font-family:monospace;">' + escapeHtml(a.ref_order_number || '—') + '</td>' +
+                          '<td style="color:var(--text-muted);">' + escapeHtml(a.operator_email || 'system') + '</td>' +
+                        '</tr>'
+                      ).join('') + '</tbody>' +
+                    '</table>') +
+                '</details>' +
+
+                // 折抵金變動歷史
+                '<details ' + (credLog.length > 0 ? 'open' : '') + ' style="margin-bottom:1rem;">' +
+                  '<summary style="cursor:pointer;font-size:14px;font-weight:600;padding:0.5rem 0;">💳 折抵金變動歷史 (' + credLog.length + ' 筆)</summary>' +
+                  (credLog.length === 0 ?
+                    '<div style="color:var(--text-muted);font-size:13px;padding:0.5rem 1rem;">沒有折抵金變動</div>' :
+                    '<table class="data-table" style="margin-top:0.5rem;font-size:12px;">' +
+                      '<thead><tr><th>時間</th><th style="text-align:right;">變動 NT$</th><th>原因</th><th>關聯訂單</th><th>操作者</th></tr></thead>' +
+                      '<tbody>' + credLog.map(a => {
+                        const delta = Number(a.delta || 0);
+                        const sign = delta >= 0 ? '+' : '';
+                        const color = delta >= 0 ? '#4ade80' : '#f87171';
+                        return '<tr>' +
+                          '<td>' + mem_fmtDate(a.created_at, true) + '</td>' +
+                          '<td style="text-align:right;color:' + color + ';font-weight:600;">' + sign + mem_fmtNT(delta) + '</td>' +
+                          '<td>' + escapeHtml(a.reason || '—') + '</td>' +
+                          '<td style="font-family:monospace;">' + escapeHtml(a.ref_order_number || '—') + '</td>' +
+                          '<td style="color:var(--text-muted);">' + escapeHtml(a.operator_email || 'system') + '</td>' +
+                          '</tr>';
+                      }).join('') + '</tbody>' +
+                    '</table>') +
+                '</details>' +
+
+                // 累積消費變動歷史 (展開但預設折疊,避免太雜訊)
+                '<details style="margin-bottom:1rem;">' +
+                  '<summary style="cursor:pointer;font-size:14px;font-weight:600;padding:0.5rem 0;">📊 累積消費變動歷史 (' + spendLog.length + ' 筆) — 點開展開</summary>' +
+                  (spendLog.length === 0 ?
+                    '<div style="color:var(--text-muted);font-size:13px;padding:0.5rem 1rem;">沒有累積消費變動</div>' :
+                    '<table class="data-table" style="margin-top:0.5rem;font-size:12px;">' +
+                      '<thead><tr><th>時間</th><th style="text-align:right;">變動 NT$</th><th>原因</th><th>關聯訂單</th><th>操作者</th></tr></thead>' +
+                      '<tbody>' + spendLog.map(a => {
+                        const delta = Number(a.delta || 0);
+                        const sign = delta >= 0 ? '+' : '';
+                        const color = delta >= 0 ? '#4ade80' : '#f87171';
+                        return '<tr>' +
+                          '<td>' + mem_fmtDate(a.created_at, true) + '</td>' +
+                          '<td style="text-align:right;color:' + color + ';font-weight:600;">' + sign + mem_fmtNT(delta) + '</td>' +
+                          '<td>' + escapeHtml(a.reason || '—') + '</td>' +
+                          '<td style="font-family:monospace;">' + escapeHtml(a.ref_order_number || '—') + '</td>' +
+                          '<td style="color:var(--text-muted);">' + escapeHtml(a.operator_email || 'system') + '</td>' +
+                          '</tr>';
+                      }).join('') + '</tbody>' +
+                    '</table>') +
+                '</details>';
+
+            document.getElementById('memberDetailBody').innerHTML = html;
+        }
+
+        // ── Quick Backfill modal — 從會員詳細頁喚起 ──
+        function openMemberQuickBackfill(member) {
+            _memQuickBackfillMember = member;
+            document.getElementById('mqb_memberDesc').textContent =
+                (member.display_name || '—') + ' (' + (member.email || '') + ')';
+            document.getElementById('mqb_currentTier').innerHTML  = mem_tierBadge(member.tier);
+            document.getElementById('mqb_currentSpend').textContent = mem_fmtNT(member.accumulated_spend);
+            document.getElementById('mqb_amount').value       = '';
+            document.getElementById('mqb_purchaseDate').value = '';
+            document.getElementById('mqb_note').value         = '';
+            document.getElementById('mqb_preview').style.display = 'none';
+            document.getElementById('mqb_msg').style.display = 'none';
+            document.getElementById('memberQuickBackfillModal').style.display = 'flex';
+
+            // 即時預覽升降級
+            const amtInp = document.getElementById('mqb_amount');
+            amtInp.oninput = () => {
+                const amt = Number(amtInp.value) || 0;
+                const preview = document.getElementById('mqb_preview');
+                if (amt <= 0) { preview.style.display = 'none'; return; }
+                const newSpend = (member.accumulated_spend || 0) + amt;
+                const TIER_ORDER = ['bronze', 'silver', 'gold', 'diamond', 'black'];
+                const tierOf = (s) =>
+                    s >=  60000 ? 'black' :
+                    s >=  30000 ? 'diamond' :
+                    s >=  15000 ? 'gold' :
+                    s >=   5000 ? 'silver' : 'bronze';
+                const newTier = tierOf(newSpend);
+                const changed = newTier !== member.tier;
+                preview.style.display = 'block';
+                preview.innerHTML = '加值後累積:NT$ ' + mem_fmtNT(newSpend) +
+                    ' · 等級:' + mem_tierBadge(member.tier) + ' → ' + mem_tierBadge(newTier) +
+                    (changed ? ' <span style="color:#4ade80;">⬆ 升等!</span>' : '');
+            };
+        }
+        function closeMemberQuickBackfill() {
+            document.getElementById('memberQuickBackfillModal').style.display = 'none';
+            _memQuickBackfillMember = null;
+        }
+        async function submitMemberQuickBackfill() {
+            if (!_memQuickBackfillMember) return;
+            const amt  = Number(document.getElementById('mqb_amount').value) || 0;
+            const date = document.getElementById('mqb_purchaseDate').value || null;
+            const note = document.getElementById('mqb_note').value.trim();
+            const msgEl = document.getElementById('mqb_msg');
+            msgEl.style.display = 'none';
+
+            if (amt <= 0) {
+                msgEl.style.display = 'block';
+                msgEl.style.color = '#f87171';
+                msgEl.textContent = '請輸入大於 0 的金額';
+                return;
+            }
+            const btn = document.getElementById('mqb_submitBtn');
+            btn.disabled = true;
+            btn.textContent = '處理中...';
+
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) throw new Error('未登入');
+
+                const r = await fetch('/api/admin-backfill-purchase', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + session.access_token,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        member_id: _memQuickBackfillMember.id,
+                        amount: amt,
+                        purchase_date: date || undefined,
+                        note: note || ('admin 快速加值 — 由會員管理頁'),
+                    }),
+                });
+                const body = await r.json();
+                if (!r.ok) throw new Error(body.error || ('HTTP ' + r.status));
+
+                msgEl.style.display = 'block';
+                msgEl.style.color = '#4ade80';
+                msgEl.textContent = '✓ 加值成功!正在更新...';
+                setTimeout(() => {
+                    closeMemberQuickBackfill();
+                    // 同時更新列表跟詳細頁
+                    if (_memQuickBackfillMember) openMemberDetail(_memQuickBackfillMember.id);
+                    loadMembersList(_memCurrentPage);
+                }, 800);
+            } catch (err) {
+                console.error('quick backfill failed', err);
+                msgEl.style.display = 'block';
+                msgEl.style.color = '#f87171';
+                msgEl.textContent = '失敗: ' + err.message;
+                btn.disabled = false;
+                btn.textContent = '確認加值';
+            }
+        }
+
+        async function exportMembersCSV() {
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) throw new Error('未登入');
+
+                const q       = (document.getElementById('memSearchInput').value || '').trim();
+                const tier    = (document.getElementById('memTierFilter').value || '').trim();
+                const sortVal = (document.getElementById('memSortBy').value || 'accumulated_spend|desc');
+                const [sortField, sortOrder] = sortVal.split('|');
+
+                // 撈一大頁 (最多 1000),避免分頁多次往返
+                const params = new URLSearchParams({
+                    sort: sortField, order: sortOrder, page: '0', pageSize: '200',
+                });
+                if (tier) params.set('tier', tier);
+                if (q.length >= 2) params.set('q', q);
+
+                let all = [];
+                let p = 0;
+                while (p < 5) {  // 上限 5 * 200 = 1000 筆
+                    params.set('page', String(p));
+                    const r = await fetch('/api/admin-list-members?' + params.toString(), {
+                        headers: { 'Authorization': 'Bearer ' + session.access_token },
+                    });
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    const body = await r.json();
+                    const batch = body.members || [];
+                    all = all.concat(batch);
+                    if (batch.length < 200) break;
+                    p++;
+                }
+
+                const csvEscape = v => {
+                    const s = String(v == null ? '' : v);
+                    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+                };
+                const header = [
+                    'Email', '暱稱', '電話', '生日', '等級', '創始會員',
+                    '累積消費 (TWD)', '消費次數', '折抵金餘額', '註冊時間', '最後消費',
+                ];
+                const rows = all.map(m => [
+                    m.email || '',
+                    m.display_name || '',
+                    m.phone || '',
+                    m.birthday || '',
+                    (MEM_TIER_META[m.tier] || {}).label || m.tier || '',
+                    m.founding_member ? '是' : '',
+                    m.accumulated_spend ?? 0,
+                    m.purchase_count ?? 0,
+                    m.founding_credit_balance ?? 0,
+                    m.created_at ? mem_fmtDate(m.created_at, true) : '',
+                    m.last_order_at ? mem_fmtDate(m.last_order_at, true) : '',
+                ]);
+                const csv = '\uFEFF' + [header, ...rows].map(r => r.map(csvEscape).join(',')).join('\n');
+
+                const today = new Date();
+                const fn = 'members_' + today.getFullYear() + String(today.getMonth() + 1).padStart(2, '0') +
+                    String(today.getDate()).padStart(2, '0') + '.csv';
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = fn;
+                link.click();
+                URL.revokeObjectURL(link.href);
+            } catch (err) {
+                console.error('export members CSV failed', err);
+                alert('匯出失敗: ' + err.message);
+            }
         }
 
         // ============================================================================
