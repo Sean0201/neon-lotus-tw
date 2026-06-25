@@ -18,7 +18,7 @@
  *   { ok: true,
  *     member: { id, email, display_name, phone, birthday, tier,
  *               accumulated_spend, purchase_count, founding_credit_balance,
- *               founding_member, birthday_used_year, created_at, updated_at },
+ *               birthday_used_year, created_at, updated_at },
  *     orders: [{ order_number, created_at, status, subtotal, total,
  *                tier_at_purchase, tier_discount, birthday_discount,
  *                signup_credit_used, refund_amount, payment_method, note }, ...],
@@ -93,7 +93,7 @@ export default async function handler(req, res) {
         .from('members')
         .select('id, email, display_name, phone, birthday, tier, ' +
                 'accumulated_spend, purchase_count, founding_credit_balance, ' +
-                'founding_member, birthday_used_year, created_at, updated_at')
+                'birthday_used_year, created_at, updated_at')
         .eq('id', id)
         .maybeSingle(),
 

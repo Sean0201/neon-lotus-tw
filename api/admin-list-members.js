@@ -27,7 +27,7 @@
  *   { ok: true,
  *     members: [{ id, email, display_name, phone, tier,
  *                 accumulated_spend, purchase_count, founding_credit_balance,
- *                 founding_member, birthday, created_at, last_order_at }, ...],
+ *                 birthday, created_at, last_order_at }, ...],
  *     total:    <整體筆數>,
  *     page:     0,
  *     pageSize: 50 }
@@ -104,7 +104,7 @@ export default async function handler(req, res) {
       .from('members')
       .select(
         'id, email, display_name, phone, tier, accumulated_spend, ' +
-          'purchase_count, founding_credit_balance, founding_member, ' +
+          'purchase_count, founding_credit_balance, ' +
           'birthday, created_at',
         { count: 'exact' }
       );

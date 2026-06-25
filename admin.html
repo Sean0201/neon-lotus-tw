@@ -4721,7 +4721,7 @@
                 });
                 if (!r.ok) {
                     const body = await r.json().catch(() => ({}));
-                    throw new Error(body.error || ('HTTP ' + r.status));
+                    throw new Error((body.error || ('HTTP ' + r.status)) + (body.message ? ': ' + body.message : ''));
                 }
                 const body = await r.json();
                 renderMembersTable(body.members || []);
@@ -4746,9 +4746,8 @@
                 return;
             }
             tbody.innerHTML = members.map(m => {
-                const founding = m.founding_member ? ' <span title="創始會員" style="color:#c084fc;">★</span>' : '';
                 return '<tr>' +
-                    '<td style="font-size:12px;">' + escapeHtml(m.email || '') + founding + '</td>' +
+                    '<td style="font-size:12px;">' + escapeHtml(m.email || '') + '</td>' +
                     '<td>' + escapeHtml(m.display_name || '—') + '</td>' +
                     '<td>' + mem_tierBadge(m.tier) + '</td>' +
                     '<td style="text-align:right;font-variant-numeric:tabular-nums;">NT$ ' + mem_fmtNT(m.accumulated_spend) + '</td>' +
@@ -4844,7 +4843,6 @@
                       (nextMeta ? ' <span style="color:var(--text-muted);font-size:11px;">(再 NT$' + mem_fmtNT(remaining) + ' 升 ' + nextMeta.emoji + nextMeta.label + ')</span>' :
                                   ' <span style="color:var(--text-muted);font-size:11px;">(已達最高)</span>') +
                     '</div>' +
-                    '<div><strong>創始會員:</strong> ' + (m.founding_member ? '★ 是' : '否') + '</div>' +
                     '<div><strong>累積消費:</strong> NT$ ' + mem_fmtNT(m.accumulated_spend) + '</div>' +
                     '<div><strong>消費次數:</strong> ' + (m.purchase_count || 0) + '</div>' +
                     '<div><strong>折抵金餘額:</strong> NT$ ' + mem_fmtNT(m.founding_credit_balance) + '</div>' +
@@ -5023,7 +5021,7 @@
                     }),
                 });
                 const body = await r.json();
-                if (!r.ok) throw new Error(body.error || ('HTTP ' + r.status));
+                if (!r.ok) throw new Error((body.error || ('HTTP ' + r.status)) + (body.message ? ': ' + body.message : ''));
 
                 msgEl.style.display = 'block';
                 msgEl.style.color = '#4ade80';
@@ -5081,7 +5079,7 @@
                     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
                 };
                 const header = [
-                    'Email', '暱稱', '電話', '生日', '等級', '創始會員',
+                    'Email', '暱稱', '電話', '生日', '等級',
                     '累積消費 (TWD)', '消費次數', '折抵金餘額', '註冊時間', '最後消費',
                 ];
                 const rows = all.map(m => [
@@ -5090,7 +5088,6 @@
                     m.phone || '',
                     m.birthday || '',
                     (MEM_TIER_META[m.tier] || {}).label || m.tier || '',
-                    m.founding_member ? '是' : '',
                     m.accumulated_spend ?? 0,
                     m.purchase_count ?? 0,
                     m.founding_credit_balance ?? 0,
