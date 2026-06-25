@@ -16,10 +16,10 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /** Price formula constants — edit here to update all prices */
-const RATE = 1 / 800;         // 1 TWD = 800 VND  (匯率)
+const RATE = 1 / 790;         // 1 TWD = 790 VND  (匯率 v5)
 
 // 國際運費 (NT$ flat,各品相一個固定 NT$) — 不再吃倍率
-// 公式: 國際運送 NT$ = (VND × 累進倍率 ÷ 800) + SHIP_NTD[cat]
+// 公式: 國際運送 NT$ = (VND × 累進倍率 ÷ 790) + SHIP_NTD[cat]
 // 使用者指定 (2026-05-05 v2):
 //   上衣 130 / 外套 150 / 褲子 150 / 套裝 200 / 配件 100 / 通用 100
 const SHIP_NTD = {
@@ -32,13 +32,13 @@ const SHIP_NTD = {
 };
 
 // 加成倍率 (含台灣進口關稅 + 營業稅後的合理售價)
-// v4 (2026-05-09): 中價段微調 — 30-50萬 1.5→1.65, 50-130萬 1.4→1.5
+// v5 (2026-06-25): 全段倍率 -0.1,因應同業價格戰
 const TIERS = [
-  { max:    300_000, mult: 1.75 },   // 0-30萬      → x1.75
-  { max:    500_000, mult: 1.65 },   // 30-50萬     → x1.65 (v4)
-  { max:  1_300_000, mult: 1.5  },   // 50-130萬    → x1.5  (v4)
-  { max:  2_000_000, mult: 1.4  },   // 130-200萬   → x1.4
-  { max:  Infinity,  mult: 1.35 },   // > 200萬     → x1.35
+  { max:    300_000, mult: 1.65 },   // 0-30萬      → x1.65 (v5)
+  { max:    500_000, mult: 1.55 },   // 30-50萬     → x1.55 (v5)
+  { max:  1_300_000, mult: 1.4  },   // 50-130萬    → x1.4  (v5)
+  { max:  2_000_000, mult: 1.3  },   // 130-200萬   → x1.3  (v5)
+  { max:  Infinity,  mult: 1.25 },   // > 200萬     → x1.25 (v5)
 ];
 
 /**
@@ -178,8 +178,8 @@ function psychPrice(n) {
 /**
  * 計算 TWD 報價 (新公式 — 國際運費以 NT$ 平加,不吃倍率).
  *
- *   親自帶回 NT$ = roundTo10( marginalAdjVnd(VND) ÷ 800 )                ← 四捨五入到 10
- *   國際運送 NT$ = psychPrice( marginalAdjVnd(VND) ÷ 800 + SHIP_NTD[品相] ) ← 50/90 結尾
+ *   親自帶回 NT$ = roundTo10( marginalAdjVnd(VND) ÷ 790 )                ← 四捨五入到 10
+ *   國際運送 NT$ = psychPrice( marginalAdjVnd(VND) ÷ 790 + SHIP_NTD[品相] ) ← 50/90 結尾
  *
  * 結尾規則:
  *   - 親帶 直接四捨五入到 10 (透明顯示真實成本)
