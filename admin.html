@@ -4387,10 +4387,11 @@
             const newSpend = bf_selectedMember.spend + amt;
             const newCount = bf_selectedMember.count + 1;
             // 簡化 tier 預估 (用預設門檻;真正計算在 server)
+            // 門檻同步自 discount-engine.js DEFAULT_CONFIG.tier_thresholds
             const tierOf = (s) =>
-                s >= 300000 ? 'black' :
-                s >= 100000 ? 'diamond' :
-                s >=  30000 ? 'gold' :
+                s >=  60000 ? 'black' :
+                s >=  30000 ? 'diamond' :
+                s >=  15000 ? 'gold' :
                 s >=   5000 ? 'silver' : 'bronze';
             const newTier = tierOf(newSpend);
             const tierChanged = newTier !== bf_selectedMember.tier;

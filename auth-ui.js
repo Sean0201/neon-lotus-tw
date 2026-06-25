@@ -17,12 +17,14 @@
    * (modal API 仍然透過 window.AuthUI 暴露,僅 nav 按鈕被隱藏) */
   const AUTH_UI_ENABLED = true;
 
-  /* 等級顯示對照表 — schema 用的 key 是 bronze/silver/gold/diamond */
+  /* 等級顯示對照表 — schema 用的 key 是 bronze/silver/gold/diamond/black
+     (與 discount-engine.js DEFAULT_CONFIG.tier_thresholds 同步) */
   const TIER_LABELS = {
     bronze:  { emoji: '🥉', label: '銅卡' },
     silver:  { emoji: '🥈', label: '銀卡' },
     gold:    { emoji: '🥇', label: '金卡' },
     diamond: { emoji: '💎', label: '鑽石卡' },
+    black:   { emoji: '🖤', label: '黑卡' },
   };
 
   /* 格式化 TWD 數字 — 1234 → "1,234" */

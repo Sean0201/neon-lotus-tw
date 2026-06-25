@@ -15,24 +15,27 @@
 'use strict';
 
 (function () {
-  /* 等級門檻 (累積消費 TWD)
-   *   bronze   0 起跳
-   *   silver   5,000
+  /* 等級門檻 (累積消費 TWD) — 與 discount-engine.js DEFAULT_CONFIG.tier_thresholds 同步
+   *   bronze    0 起跳
+   *   silver    5,000
    *   gold     15,000
    *   diamond  30,000
+   *   black    60,000
    * Phase 2.2 可改成從 site_config 讀。 */
   const TIER_THRESHOLDS = {
     bronze:  0,
     silver:  5000,
     gold:    15000,
     diamond: 30000,
+    black:   60000,
   };
 
   const TIER_LABELS = {
     bronze:  { emoji: '🥉', label: '銅卡',   next: 'silver'  },
     silver:  { emoji: '🥈', label: '銀卡',   next: 'gold'    },
     gold:    { emoji: '🥇', label: '金卡',   next: 'diamond' },
-    diamond: { emoji: '💎', label: '鑽石卡', next: null      },
+    diamond: { emoji: '💎', label: '鑽石卡', next: 'black'   },
+    black:   { emoji: '🖤', label: '黑卡',   next: null      },
   };
 
   const STATUS_LABELS = {
