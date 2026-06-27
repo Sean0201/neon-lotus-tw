@@ -4107,9 +4107,47 @@
                             `).join('')}
                         </tbody>
                     </table>
-                    <div style="text-align:right;font-size:18px;font-weight:700;color:var(--primary);">
-                        Total: NT$ ${(o.total || 0).toLocaleString()}
-                    </div>
+                    ${(() => {
+                        // ── 金額拆解 (Phase 2.2) ──
+                        // orders 欄位: subtotal(=折扣後小計,已扣 tier+bulk+birthday+credit) / tier_discount /
+                        //   birthday_discount / signup_credit_used / shipping_fee / total(=subtotal+shipping)
+                        const itemsRaw     = items.reduce((s, it) => s + ((it.unit_price || 0) * (it.quantity || 0)), 0);
+                        const subtotalDB   = Number(o.subtotal) || 0;
+                        const tierDisc     = Math.max(0, Number(o.tier_discount) || 0);
+                        const birthdayDisc = Math.max(0, Number(o.birthday_discount) || 0);
+                        const creditUsed   = Math.max(0, Number(o.signup_credit_used) || 0);
+                        const shippingFee  = Math.max(0, Number(o.shipping_fee) || 0);
+                        const orderTotal   = Number(o.total) || 0;
+                        const rows = [];
+                        rows.push(['商品原價總和', '+ NT$ ' + itemsRaw.toLocaleString(), null]);
+                        if (tierDisc > 0)     rows.push(['等級／滿額折扣', '- NT$ ' + tierDisc.toLocaleString(), '#4ade80']);
+                        if (birthdayDisc > 0) rows.push(['🎂 生日優惠',     '- NT$ ' + birthdayDisc.toLocaleString(), '#4ade80']);
+                        if (creditUsed > 0)   rows.push(['💴 折抵金',       '- NT$ ' + creditUsed.toLocaleString(), '#4ade80']);
+                        rows.push(['折扣後小計 (subtotal)', 'NT$ ' + subtotalDB.toLocaleString(), 'var(--text-secondary)']);
+                        rows.push(['🚚 運費 (' + (o.shipping_method || '—') + ')', '+ NT$ ' + shippingFee.toLocaleString(), null]);
+                        // 一致性檢查 — subtotal + shipping 應等於 total,差 > 1 元就警示
+                        const calc  = subtotalDB + shippingFee;
+                        const drift = Math.abs(calc - orderTotal);
+                        const warn  = drift > 1
+                            ? `<div style="margin-top:8px;padding:8px 12px;background:#ef535022;border:1px solid #ef535044;border-radius:6px;color:#ef5350;font-size:12px;">⚠️ subtotal + shipping = NT$ ${calc.toLocaleString()},但 order.total = NT$ ${orderTotal.toLocaleString()},差 ${drift} 元</div>`
+                            : '';
+                        return `
+                            <div style="margin-top:8px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;">
+                                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;font-weight:600;">金額拆解</div>
+                                ${rows.map(([label, val, color]) => `
+                                    <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;${color ? 'color:' + color + ';' : ''}">
+                                        <span>${label}</span>
+                                        <span style="font-variant-numeric:tabular-nums;">${val}</span>
+                                    </div>
+                                `).join('')}
+                                <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:16px;font-weight:700;color:var(--primary);">
+                                    <span>Total</span>
+                                    <span style="font-variant-numeric:tabular-nums;">NT$ ${orderTotal.toLocaleString()}</span>
+                                </div>
+                                ${warn}
+                            </div>
+                        `;
+                    })()}
                 `;
             } catch (err) {
                 body.innerHTML = `<p style="color:#ef5350;">Error loading order: ${err.message}</p>`;

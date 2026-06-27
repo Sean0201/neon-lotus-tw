@@ -26,6 +26,7 @@
   // ─────────────────────────────────────────────────────────────────
 
   const CART_KEY = 'NEON_LOTUS_CART';
+  const USE_CREDIT_KEY = 'NEON_LOTUS_USE_CREDIT';  // Phase 2.2 — 客戶是否使用折抵金 (預設 true)
   const LINE_OFFICIAL = '@590eckna';
   const LINE_URL = 'https://line.me/R/ti/p/@590eckna';
 
@@ -193,6 +194,21 @@
     },
 
     /**
+     * 折抵金開關 — 客戶可在購物車 / 結帳頁勾選是否使用註冊禮金折抵。
+     * 預設 true (保留舊行為:有禮金就自動扣),沒勾就跳過折抵步驟。
+     * 用 localStorage 持久化,避免重新整理就重置造成體驗不一致。
+     */
+    getUseCredit() {
+      try {
+        const v = localStorage.getItem(USE_CREDIT_KEY);
+        return v === null ? true : v !== 'false';   // 預設 true
+      } catch { return true; }
+    },
+    setUseCredit(use) {
+      try { localStorage.setItem(USE_CREDIT_KEY, use ? 'true' : 'false'); } catch {}
+    },
+
+    /**
      * 完整折扣計算結果 — 委派給 DiscountEngine。
      * 若 DiscountEngine 還沒載入,使用內建 fallback (純加總,沒折扣)。
      */
@@ -202,6 +218,7 @@
         return window.DiscountEngine.computeCart({
           items,
           member: this._getMember(),
+          useCredit: this.getUseCredit(),
         });
       }
       // Fallback — 引擎沒載入,純加總
@@ -1422,13 +1439,32 @@
       </div>
     ` : '';
 
-    // 折抵金行
-    const creditRow = discountResult.credit_used > 0 ? `
-      <div class="neon-cart-subtotal" style="margin-top:6px;color:#4ade80">
-        <span class="neon-cart-subtotal-label">💴 折抵金:</span>
-        <span class="neon-cart-subtotal-value">- NT$ ${discountResult.credit_used.toLocaleString()}</span>
-      </div>
-    ` : '';
+    // 折抵金行 — 只要有餘額就顯示 toggle (含未使用狀態),讓客戶自行選擇
+    const _useCreditNow = CartState.getUseCredit();
+    const _creditBalance = Number(discountResult.credit_balance) || 0;
+    const _creditUsed    = Number(discountResult.credit_used) || 0;
+    let creditRow = '';
+    if (_creditBalance > 0) {
+      const checkedAttr = _useCreditNow ? 'checked' : '';
+      const valueColor  = _useCreditNow && _creditUsed > 0 ? '#4ade80' : colors.lightgrey;
+      const valueText   = _useCreditNow && _creditUsed > 0 ? '- NT$ ' + _creditUsed.toLocaleString() : '未使用';
+      // 樓地板把折抵金擠掉的提示 (有勾選但實際扣 0)
+      const cappedHint = (_useCreditNow && _creditUsed === 0)
+        ? `<div style="font-size:11px;color:#fbbf24;margin-top:2px">已勾選,但折扣已達樓地板無法再扣抵</div>`
+        : '';
+      creditRow = `
+        <div class="neon-cart-subtotal" style="margin-top:6px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:${colors.white};line-height:1.4">
+            <input type="checkbox" ${checkedAttr}
+                   onchange="window.CartSystem.setUseCredit(this.checked)"
+                   style="width:14px;height:14px;cursor:pointer;accent-color:${colors.accent}">
+            <span>💴 折抵金 (餘額 NT$ ${_creditBalance.toLocaleString()})</span>
+          </label>
+          <span style="color:${valueColor};font-size:13px;text-align:right;white-space:nowrap">${valueText}</span>
+        </div>
+        ${cappedHint}
+      `;
+    }
 
     // 樓地板拉回行 (有觸發時顯示為「保護線」)
     const floorRow = discountResult.floor_clamped ? `
@@ -1650,6 +1686,7 @@
     const pageDiv = document.createElement('div');
     pageDiv.className = 'page neon-checkout-page';
     pageDiv.id = 'neon-checkout-page';
+    pageDiv.dataset.checkoutMode = 'carryback';   // 給 setUseCredit re-render 用
 
     const items           = CartState.get();
     const rawSubtotal     = CartState.getRawSubtotal();
@@ -1716,12 +1753,31 @@
         <span>-NT$ ${discountResult.bulk_discount_total.toLocaleString()}</span>
       </div>` : '';
 
-    // 折抵金行
-    const creditRowCB = discountResult.credit_used > 0 ? `
-      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
-        <span>💴 註冊禮金折抵:</span>
-        <span>-NT$ ${discountResult.credit_used.toLocaleString()}</span>
-      </div>` : '';
+    // 折抵金行 — 有餘額就顯示 toggle (含未使用狀態)
+    const _useCreditNowCB  = CartState.getUseCredit();
+    const _creditBalanceCB = Number(discountResult.credit_balance) || 0;
+    const _creditUsedCB    = Number(discountResult.credit_used) || 0;
+    let creditRowCB = '';
+    if (_creditBalanceCB > 0) {
+      const _checkedCB = _useCreditNowCB ? 'checked' : '';
+      const _valueColorCB = _useCreditNowCB && _creditUsedCB > 0 ? '#4ade80' : (colors.muted || colors.lightgrey);
+      const _valueTextCB  = _useCreditNowCB && _creditUsedCB > 0 ? '-NT$ ' + _creditUsedCB.toLocaleString() : '未使用';
+      const _cappedHintCB = (_useCreditNowCB && _creditUsedCB === 0)
+        ? `<div class="neon-checkout-summary-row" style="color:#fbbf24;font-size:11px"><span>已勾選但折扣已達樓地板,本次無法扣抵</span><span></span></div>`
+        : '';
+      creditRowCB = `
+        <div class="neon-checkout-summary-row" style="font-size:13px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1">
+            <input type="checkbox" ${_checkedCB}
+                   onchange="window.CartSystem.setUseCredit(this.checked)"
+                   style="width:14px;height:14px;cursor:pointer;accent-color:${colors.accent}">
+            💴 使用註冊禮金折抵 (餘額 NT$ ${_creditBalanceCB.toLocaleString()})
+          </label>
+          <span style="color:${_valueColorCB};white-space:nowrap">${_valueTextCB}</span>
+        </div>
+        ${_cappedHintCB}
+      `;
+    }
 
     // 樓地板拉回行
     const floorRowCB = discountResult.floor_clamped ? `
@@ -2000,6 +2056,7 @@
     const pageDiv = document.createElement('div');
     pageDiv.className = 'page neon-checkout-page';
     pageDiv.id = 'neon-checkout-page';
+    pageDiv.dataset.checkoutMode = 'shipping';    // 給 setUseCredit re-render 用
 
     const items              = CartState.get();
     const rawSubtotal        = CartState.getRawSubtotal();
@@ -2780,6 +2837,39 @@
     clearCart: () => CartState.clear(),
     openCart: openCartDrawer,
     closeCart: closeCartDrawer,
+    // Phase 2.2 — 折抵金開關 (購物車抽屜 / 結帳頁的 checkbox 直接呼叫)
+    getUseCredit: () => CartState.getUseCredit(),
+    setUseCredit: async (use) => {
+      CartState.setUseCredit(!!use);
+      // 1) 抽屜如果開著就重畫
+      try { if (typeof cartDrawerOpen !== 'undefined' && cartDrawerOpen) renderCartContent(); } catch {}
+      // 2) 結帳頁存在就重畫 (保留已填寫的表單值)
+      try {
+        const page = document.getElementById('neon-checkout-page');
+        if (!page) return;
+        const mode = page.dataset.checkoutMode || 'shipping';
+        // snapshot 所有 input / textarea / select 的值,等重畫完再灌回去
+        const snap = {};
+        page.querySelectorAll('input, textarea, select').forEach(el => {
+          if (!el.id) return;
+          if (el.type === 'checkbox' || el.type === 'radio') snap[el.id] = { checked: el.checked };
+          else                                                snap[el.id] = { value: el.value };
+        });
+        page.remove();
+        document.body.style.overflow = '';
+        const reopener = mode === 'carryback' ? showCarrybackCheckoutPage : showCheckoutPage;
+        await reopener();
+        // restore form values
+        Object.entries(snap).forEach(([id, saved]) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if ('checked' in saved) el.checked = saved.checked;
+          else if (saved.value)   el.value   = saved.value;
+        });
+      } catch (err) {
+        console.warn('[CartSystem] setUseCredit re-render failed:', err);
+      }
+    },
   };
 
   window.renderCartIcon = renderCartIcon;
