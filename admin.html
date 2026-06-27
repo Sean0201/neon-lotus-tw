@@ -6,6 +6,8 @@
     <meta name="robots" content="noindex, nofollow">
     <title>NEON LOTUS TW - Admin Panel</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- SheetJS (community) — 用於匯出商品 XLSX (Phase 2.2) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1125,6 +1127,7 @@
                                         </select>
                                         <button id="batchApplyBtn" class="btn-small">套用</button>
                                     </div>
+                                    <button class="btn-secondary" onclick="exportProductsXLSX()" title="匯出全站商品為 XLSX,可用 Excel 打開逐筆比對品牌方狀態">📥 匯出 XLSX</button>
                                     <button id="addProductBtn" class="btn-primary">+ 新增商品</button>
                                 </div>
                             </div>
@@ -5146,6 +5149,149 @@
             } catch (err) {
                 console.error('export members CSV failed', err);
                 alert('匯出失敗: ' + err.message);
+            }
+        }
+
+        // ─── 匯出全站商品 XLSX (Phase 2.2 — 品牌方狀態盤點用) ─────────
+        // 撈所有 products + brands(join)+ 統計每商品售出次數 / 最後下單日,
+        // 寫入單一 sheet,凍結首列,並預留三個空白欄供 Sean 在 Excel 標記:
+        //   品牌方狀態(在/缺貨/過季/下架)、處理動作(維持/標記售完/下架/降價)、備註
+        // 之所以不在 SheetJS 端加 data validation,是因為 community 版不支援寫入
+        // dataValidations，要由 Sean 在 Excel 開啟後自行加下拉。
+        async function exportProductsXLSX() {
+            try {
+                if (typeof XLSX === 'undefined') {
+                    throw new Error('SheetJS 未載入,請重新整理頁面');
+                }
+                // 1) 撈所有商品 + brand_name
+                const { data: products, error: pErr } = await sb
+                    .from('products')
+                    .select('id, name, brand_id, category, price_vnd, price_twd, is_active, sold_out, needs_review, created_at, brands(name)')
+                    .order('created_at', { ascending: false });
+                if (pErr) throw pErr;
+
+                // 2) 統計售出次數 (從 order_items aggregate)
+                //    用 Map(product_id => { qty, last_at }) 一次掃完
+                const salesByProduct = new Map();
+                const { data: items, error: iErr } = await sb
+                    .from('order_items')
+                    .select('product_id, quantity, created_at')
+                    .limit(50000);
+                if (iErr) console.warn('order_items 統計失敗,售出次數欄會空白:', iErr.message);
+                else {
+                    for (const it of (items || [])) {
+                        if (!it.product_id) continue;
+                        const cur = salesByProduct.get(it.product_id) || { qty: 0, last_at: null };
+                        cur.qty += Number(it.quantity) || 0;
+                        if (it.created_at && (!cur.last_at || it.created_at > cur.last_at)) {
+                            cur.last_at = it.created_at;
+                        }
+                        salesByProduct.set(it.product_id, cur);
+                    }
+                }
+
+                // 3) 組合 row data
+                const fmtDate = iso => {
+                    if (!iso) return '';
+                    const d = new Date(iso);
+                    if (isNaN(d)) return '';
+                    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                };
+                const ynYesNo = b => b ? '是' : '否';
+                const today = new Date();
+                const ageDays = iso => {
+                    if (!iso) return '';
+                    const d = new Date(iso);
+                    if (isNaN(d)) return '';
+                    return Math.floor((today - d) / 86400000);
+                };
+
+                const headers = [
+                    'ID', '品牌', '商品名稱', '分類',
+                    'VND 原價', 'TWD 售價', '上架日期', '上架天數',
+                    '上架中', '已售完', '待審',
+                    '累積售出', '最後下單日',
+                    '品牌方狀態', '處理動作', '備註',
+                ];
+                const rows = (products || []).map(p => [
+                    p.id || '',
+                    p.brands?.name || p.brand_id || '',
+                    p.name || '',
+                    p.category || '',
+                    p.price_vnd ?? '',
+                    p.price_twd ?? '',
+                    fmtDate(p.created_at),
+                    ageDays(p.created_at),
+                    ynYesNo(p.is_active),
+                    ynYesNo(p.sold_out),
+                    ynYesNo(p.needs_review),
+                    salesByProduct.get(p.id)?.qty ?? 0,
+                    fmtDate(salesByProduct.get(p.id)?.last_at),
+                    '',  // 品牌方狀態 — 留給 Sean 填:在 / 缺貨 / 過季 / 下架
+                    '',  // 處理動作 — 留給 Sean 填:維持 / 標記售完 / 下架 / 降價
+                    '',  // 備註
+                ]);
+
+                // 4) 用 SheetJS 寫 XLSX
+                const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+                // 凍結首列
+                ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+                ws['!views'] = [{ state: 'frozen', ySplit: 1 }];
+                // 欄寬建議
+                ws['!cols'] = [
+                    { wch: 14 },  // ID
+                    { wch: 12 },  // 品牌
+                    { wch: 32 },  // 商品名稱
+                    { wch: 10 },  // 分類
+                    { wch: 12 },  // VND
+                    { wch: 10 },  // TWD
+                    { wch: 12 },  // 上架日期
+                    { wch: 10 },  // 上架天數
+                    { wch: 8 },   // 上架中
+                    { wch: 8 },   // 已售完
+                    { wch: 8 },   // 待審
+                    { wch: 10 },  // 累積售出
+                    { wch: 12 },  // 最後下單日
+                    { wch: 14 },  // 品牌方狀態
+                    { wch: 14 },  // 處理動作
+                    { wch: 20 },  // 備註
+                ];
+
+                // 5) README 分頁,提示 Sean 怎麼用
+                const readme = [
+                    ['NEON LOTUS TW — 商品盤點表'],
+                    ['匯出時間', new Date().toLocaleString('zh-TW')],
+                    ['商品總數', (products || []).length],
+                    [''],
+                    ['使用方式:'],
+                    ['1.  逐筆 (或抽樣) 比對品牌方官網,在 N 欄「品牌方狀態」標記:在 / 缺貨 / 過季 / 下架'],
+                    ['2.  在 O 欄「處理動作」決定:維持 / 標記售完 / 下架 / 降價'],
+                    ['3.  完成後回到 Admin 用「批次操作」或單筆操作更新 sold_out / is_active'],
+                    [''],
+                    ['欄位說明:'],
+                    ['上架中 (是/否)',   'products.is_active'],
+                    ['已售完 (是/否)',   'products.sold_out — 商品仍顯示但無法購買'],
+                    ['待審 (是/否)',     'products.needs_review — 標記為需人工檢視'],
+                    ['累積售出',         '從 order_items 統計所有狀態的訂單數量總和'],
+                    ['最後下單日',       '此商品最後一次被加入訂單的日期'],
+                    [''],
+                    ['小提示:'],
+                    ['• 上架超過 180 天但累積售出 = 0 → 高機率是過季或品牌方斷貨'],
+                    ['• 用 Excel 的「資料 → 資料驗證」幫 N 欄 / O 欄加下拉選單會更好填'],
+                    ['• 改完不要直接刪商品,標 sold_out=是 保留頁面對 SEO 跟客人收藏比較友善'],
+                ];
+                const wsReadme = XLSX.utils.aoa_to_sheet(readme);
+                wsReadme['!cols'] = [{ wch: 22 }, { wch: 60 }];
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, '商品清單');
+                XLSX.utils.book_append_sheet(wb, wsReadme, '說明');
+
+                const stamp = today.getFullYear() + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+                XLSX.writeFile(wb, 'products_inventory_' + stamp + '.xlsx');
+            } catch (err) {
+                console.error('export products XLSX failed', err);
+                alert('匯出失敗: ' + (err.message || err));
             }
         }
 

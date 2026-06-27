@@ -2769,6 +2769,21 @@
       ? `<button type="button" class="neon-sizechart-btn"
            onclick="event.stopPropagation();window.showSizeChart('${product.id}')">\ud83d\udccf \u5c3a\u5bf8\u8868</button>`
       : '';
+
+    // sold_out 商品 — 加入購物車按鈕 disabled 並改顯示「已售完」
+    // 仍保留尺寸表按鈕,讓客人可以先看尺碼以便等補貨時參考
+    if (product && product.sold_out) {
+      return `
+        <div class="neon-card-actions">
+          ${scBtn}
+          <button type="button" class="neon-add-to-cart-btn is-sold-out" disabled
+                  aria-label="\u5df2\u552e\u5b8c">
+            \u5df2\u552e\u5b8c
+          </button>
+        </div>
+      `;
+    }
+
     const html = `
       <div class="neon-card-actions">
         ${scBtn}

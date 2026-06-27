@@ -978,7 +978,15 @@ function _buildProductCard(p) {
          <div class="placeholder-text">NO IMAGE</div>
        </div>`;
 
-  const soldOverlay = '';
+  // Sold-out 視覺處理 — 灰階遮罩 + 中央「已售完」標籤,點圖庫仍可看大圖但 add-to-cart 會 disabled
+  const isSoldOut = !!p.sold_out;
+  const soldOverlay = isSoldOut
+    ? `<div class="sold-out-overlay" aria-hidden="true">
+         <div class="sold-out-badge">
+           <div class="sold-out-label">${currentLang === 'tw' ? '已售完' : 'SOLD OUT'}</div>
+           <div class="sold-out-sub">${currentLang === 'tw' ? '品牌方目前缺貨' : 'Brand currently out of stock'}</div>
+         </div>
+       </div>` : '';
 
   const countBadge = imgUrls.length > 1
     ? `<div class="photo-count-badge">📷 ${imgUrls.length}</div>` : '';
@@ -1007,7 +1015,7 @@ function _buildProductCard(p) {
     </div>`;
 
   return `
-    <div class="product-card">
+    <div class="product-card${isSoldOut ? ' is-sold-out' : ''}">
       <div class="product-img-box" data-imgs="${imgsAttr}" data-pname="${p.name}" onclick="lbOpen(this)">
         ${mainImg}${soldOverlay}${countBadge}
       </div>

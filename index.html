@@ -1354,6 +1354,41 @@
       display:flex; align-items:center; gap:4px; pointer-events:none;
     }
 
+    /* ── SOLD-OUT TREATMENT (Phase 2.2) ─────────────────────────
+       原則:不刪商品頁,保留 SEO / 收藏連結,但讓客人一眼看出無法購買。
+       灰階濾鏡 + 中央標籤,hover 仍可 zoom 但不 highlight。 */
+    .product-card.is-sold-out .product-img-box img,
+    .product-card.is-sold-out .product-img-placeholder { filter:grayscale(1) brightness(0.78); transition:filter 0.3s ease; }
+    .product-card.is-sold-out:hover .product-img-box img,
+    .product-card.is-sold-out:hover .product-img-placeholder { filter:grayscale(0.6) brightness(0.85); }
+    .product-card.is-sold-out:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,0.25); }
+    .product-card.is-sold-out:hover::before { opacity:0; }   /* 取消霓虹光暈 */
+
+    .sold-out-overlay {
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      pointer-events:none; z-index:3;
+    }
+    .sold-out-badge {
+      background:rgba(15,15,25,0.78); backdrop-filter:blur(6px);
+      border:1px solid rgba(248,113,113,0.45);
+      color:#fca5a5; padding:10px 18px; border-radius:6px;
+      text-align:center; letter-spacing:0.18em; text-transform:uppercase;
+      box-shadow:0 4px 16px rgba(0,0,0,0.4);
+      transform:rotate(-4deg);
+    }
+    .sold-out-label { font-size:0.85rem; font-weight:700; }
+    .sold-out-sub   { font-size:0.55rem; margin-top:3px; opacity:0.85; letter-spacing:0.08em; text-transform:none; color:#f1f5f9; }
+
+    /* sold-out 加入購物車按鈕 — disabled 樣式 */
+    .neon-add-to-cart-btn.is-sold-out {
+      background:rgba(148,163,184,0.15) !important;
+      color:#94a3b8 !important;
+      border-color:rgba(148,163,184,0.3) !important;
+      cursor:not-allowed !important;
+      letter-spacing:0.2em;
+    }
+    .neon-add-to-cart-btn.is-sold-out:hover { transform:none !important; box-shadow:none !important; }
+
     /* ── LIGHTBOX ── */
     #lightbox {
       position:fixed; inset:0; z-index:9000;
