@@ -375,6 +375,56 @@ export default async function handler(req, res) {
         await applyMemberSideEffects(supabase, order, order.order_number);
       }
 
+      /* ── Phase 2.2 migration 014 — 用 products.is_promo 權威覆寫 order_items.is_promo ──
+       * cart.js 寫進 order_items 的 is_promo 是 client 端值 (best-effort)。
+       * 付款確認後,以 DB 為信任來源,把每筆 line item 的 is_promo 同步成
+       * 「下單當下 products 表的真值」(訂單後若管理員改 products.is_promo,歷史不變)。
+       * 失敗只 log,不影響主流程 (歷史紀錄錯誤可後續手動修正,不能擋付款)。
+       */
+      try {
+        const { data: oiRows, error: oiErr } = await supabase
+          .from('order_items')
+          .select('id, product_id, is_promo')
+          .eq('order_id', order.id);
+        if (oiErr) {
+          console.warn('[NewebPay Notify] order_items is_promo backfill: lookup failed:', oiErr.message);
+        } else if (Array.isArray(oiRows) && oiRows.length) {
+          const pidsToCheck = [...new Set(oiRows.map(r => r.product_id).filter(Boolean))];
+          if (pidsToCheck.length) {
+            const { data: prodRows, error: prodErr } = await supabase
+              .from('products')
+              .select('id, is_promo')
+              .in('id', pidsToCheck);
+            if (prodErr) {
+              console.warn('[NewebPay Notify] products is_promo lookup failed:', prodErr.message);
+            } else if (Array.isArray(prodRows)) {
+              const truth = new Map(prodRows.map(p => [String(p.id), !!p.is_promo]));
+              const drift = oiRows.filter(r => {
+                const t = r.product_id != null ? truth.get(String(r.product_id)) : undefined;
+                return t !== undefined && !!r.is_promo !== t;
+              });
+              for (const row of drift) {
+                const truthVal = truth.get(String(row.product_id));
+                const { error: updErr } = await supabase
+                  .from('order_items')
+                  .update({ is_promo: truthVal })
+                  .eq('id', row.id);
+                if (updErr) {
+                  console.warn('[NewebPay Notify] order_items is_promo update failed:', { id: row.id, updErr: updErr.message });
+                } else {
+                  console.log('[NewebPay Notify] order_items is_promo synced:', {
+                    order_number: orderNo, line_id: row.id,
+                    was: !!row.is_promo, now: truthVal,
+                  });
+                }
+              }
+            }
+          }
+        }
+      } catch (promoErr) {
+        console.warn('[NewebPay Notify] is_promo backfill threw:', promoErr && promoErr.message ? promoErr.message : promoErr);
+      }
+
       /* ── 最後一步:標記 order 為 paid (idempotency 信號) ── */
       const { error: paidErr } = await supabase
         .from('orders')

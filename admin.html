@@ -481,6 +481,7 @@
         .status-badge.soldout  { background: rgba(248,113,113,0.15); color: #f87171; }
         .status-badge.active   { background: rgba(74,222,128,0.15);  color: #4ade80; }
         .status-badge.inactive { background: rgba(148,163,184,0.15); color: #94a3b8; }
+        .status-badge.promo    { background: rgba(244,114,182,0.15); color: #f472b6; border:1px solid rgba(244,114,182,0.3); cursor:help; }
 
         .btn-small {
             padding: 0.5rem 1rem;
@@ -1870,11 +1871,22 @@
                                 Needs Review
                             </label>
                         </div>
+                        <div class="form-group">
+                            <label class="toggle-switch" title="開啟後此商品完全不參與站內 tier / 滿額 / 生日 / 折抵金,按 unit_price 原價成交">
+                                <input type="checkbox" id="productIsPromo">
+                                <span class="slider"></span>
+                                ⚡ 品牌方特價
+                            </label>
+                        </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="productSortOrder">Sort Order</label>
                             <input type="number" id="productSortOrder" value="0">
+                        </div>
+                        <div class="form-group" style="flex:2">
+                            <label for="productPromoNote">特價說明 (顯示在前台徽章)</label>
+                            <input type="text" id="productPromoNote" placeholder="例:品牌方季末促銷 / 節慶限定" maxlength="40">
                         </div>
                     </div>
                 </div>
@@ -2573,12 +2585,16 @@
                     ? `<img class="table-thumb" style="width:60px;height:60px;" src="${cover.replace(/"/g,'&quot;')}" alt="" onerror="this.outerHTML='<div class=\\'table-thumb-empty\\' style=\\'width:60px;height:60px;\\'>無圖</div>'">`
                     : `<div class="table-thumb-empty" style="width:60px;height:60px;">無圖</div>`;
 
-                // 狀態 badge:優先 needs_review > sold_out > is_active
-                let badge;
-                if (product.needs_review) badge = `<span class="status-badge review">待審</span>`;
-                else if (product.sold_out) badge = `<span class="status-badge soldout">已售完</span>`;
-                else if (product.is_active) badge = `<span class="status-badge active">上架中</span>`;
-                else badge = `<span class="status-badge inactive">已下架</span>`;
+                // 狀態 badge:優先 needs_review > sold_out > is_active,promo 為附加標籤
+                let mainBadge;
+                if (product.needs_review) mainBadge = `<span class="status-badge review">待審</span>`;
+                else if (product.sold_out) mainBadge = `<span class="status-badge soldout">已售完</span>`;
+                else if (product.is_active) mainBadge = `<span class="status-badge active">上架中</span>`;
+                else mainBadge = `<span class="status-badge inactive">已下架</span>`;
+                const promoBadge = product.is_promo
+                    ? `<span class="status-badge promo" title="${(product.promo_note || '品牌方特價').replace(/"/g,'&quot;')}">⚡特價</span>`
+                    : '';
+                const badge = `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">${mainBadge}${promoBadge}</div>`;
 
                 const safeId = (product.id || '').replace(/'/g, "\\'");
 
@@ -2782,6 +2798,8 @@
             document.getElementById('productActive').checked = product.is_active !== false;
             document.getElementById('productSoldOut').checked = product.sold_out || false;
             document.getElementById('productNeedsReview').checked = product.needs_review || false;
+            document.getElementById('productIsPromo').checked = product.is_promo || false;
+            document.getElementById('productPromoNote').value = product.promo_note || '';
             document.getElementById('productSortOrder').value = product.sort_order || 0;
             // 多語描述 (中文 + 英文)
             document.getElementById('productDescZh').value = product.description_zh || '';
@@ -2871,6 +2889,8 @@
                 is_active: document.getElementById('productActive').checked,
                 sold_out: document.getElementById('productSoldOut').checked,
                 needs_review: document.getElementById('productNeedsReview').checked,
+                is_promo: document.getElementById('productIsPromo').checked,
+                promo_note: (document.getElementById('productPromoNote').value || '').trim() || null,
                 sort_order: parseInt(document.getElementById('productSortOrder').value) || 0,
                 // 多語描述 (Migration 20260501 後新增) — 此站只寫中文 + 英文
                 description_zh: document.getElementById('productDescZh').value || null,

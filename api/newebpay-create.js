@@ -66,38 +66,70 @@ async function getSupabaseAdmin() {
  * }>}
  */
 async function recalculateOrder(items, shippingFee, memberId, useCredit) {
+  const supabase = await getSupabaseAdmin();
+
   // 1. 從 DB 撈最新會員資料 (server 為信任來源)
   let member = null;
-  if (memberId) {
+  if (memberId && supabase) {
     try {
-      const supabase = await getSupabaseAdmin();
-      if (supabase) {
-        const { data, error } = await supabase
-          .from('members')
-          .select('id, tier, accumulated_spend, founding_credit_balance, birthday, birthday_used_year, purchase_count')
-          .eq('id', memberId)
-          .maybeSingle();
-        if (!error && data) member = data;
-      }
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, tier, accumulated_spend, founding_credit_balance, birthday, birthday_used_year, purchase_count')
+        .eq('id', memberId)
+        .maybeSingle();
+      if (!error && data) member = data;
     } catch (err) {
       console.warn('[newebpay-create] member lookup failed:', err && err.message ? err.message : err);
     }
   }
 
   // 2. 確保 config 是從 site_config 載入的最新版 (best-effort,失敗 fallback 預設)
-  try {
-    const supabase = await getSupabaseAdmin();
-    if (supabase) await D.loadConfig(supabase);
-  } catch (err) {
-    // 預設值 ok
+  if (supabase) {
+    try { await D.loadConfig(supabase); } catch (err) { /* 預設值 ok */ }
   }
 
-  // 3. 折扣計算
-  const engineItems = items.map((it) => ({
-    unit_price:      Number(it.price) || 0,
-    quantity:        Number(it.quantity) || 0,
-    shipping_method: it.shipping_method === 'carryback' ? 'carryback' : 'shipping',
-  }));
+  /* 3. Phase 2.2 migration 014 — 後端用 product_id 重撈 is_promo
+     - 客戶端送來的 is_promo 不可信 (可能被竄改成 false 來吃折扣)
+     - server 從 DB 撈 products.is_promo 為唯一信任來源
+     - 若 product_id 缺失/查無,fallback is_promo = false (寬鬆,但會記 log) */
+  const productIds = items.map(it => it.product_id).filter(Boolean);
+  const promoMap = new Map(); // product_id (string) -> is_promo (boolean)
+  if (productIds.length && supabase) {
+    try {
+      const { data: prodRows, error: prodErr } = await supabase
+        .from('products')
+        .select('id, is_promo')
+        .in('id', productIds);
+      if (!prodErr && Array.isArray(prodRows)) {
+        prodRows.forEach(row => promoMap.set(String(row.id), !!row.is_promo));
+      } else if (prodErr) {
+        console.warn('[newebpay-create] products is_promo lookup failed:', prodErr.message);
+      }
+    } catch (err) {
+      console.warn('[newebpay-create] products is_promo lookup threw:', err && err.message ? err.message : err);
+    }
+  }
+
+  // 4. 折扣計算 — 把 server 撈到的 is_promo 注入到 engine items
+  const engineItems = items.map((it) => {
+    const pid = it.product_id != null ? String(it.product_id) : null;
+    const serverIsPromo = pid && promoMap.has(pid) ? promoMap.get(pid) : false;
+    if (pid && !promoMap.has(pid)) {
+      console.warn('[newebpay-create] product_id not found in DB, treating as non-promo:', pid);
+    }
+    if (it.is_promo != null && !!it.is_promo !== serverIsPromo) {
+      console.warn('[newebpay-create] is_promo client/server mismatch', {
+        product_id: pid, client: !!it.is_promo, server: serverIsPromo,
+      });
+    }
+    return {
+      product_id:      pid,
+      unit_price:      Number(it.price) || 0,
+      quantity:        Number(it.quantity) || 0,
+      shipping_method: it.shipping_method === 'carryback' ? 'carryback' : 'shipping',
+      is_promo:        serverIsPromo,
+    };
+  });
   const result = D.computeCart({
     items: engineItems,
     member,
@@ -113,6 +145,8 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
     shippingFee:        fee,
     member,
     result,
+    engineItems,        // 給上層 audit / 持久化 is_promo 用
+    promoMap,           // 給 notify 寫 order_items.is_promo 用
   };
 }
 

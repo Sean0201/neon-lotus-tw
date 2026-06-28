@@ -1389,6 +1389,41 @@
     }
     .neon-add-to-cart-btn.is-sold-out:hover { transform:none !important; box-shadow:none !important; }
 
+    /* ── PROMO (BRAND SALE) BADGE (Phase 2.2 — migration 014) ─────
+       品牌方特價商品專用。粉紅色徽章貼在圖片左上角,
+       提示客人此商品不參與站內折扣 (tier/birthday/bulk/credit)。
+       樣式跟 sold-out 區隔:粉紅 vs 紅。 */
+    .promo-badge {
+      position:absolute; top:12px; left:12px; z-index:4;
+      display:inline-flex; align-items:center; gap:4px;
+      padding:5px 10px; border-radius:4px;
+      background:rgba(244,114,182,0.18); backdrop-filter:blur(6px);
+      border:1px solid rgba(244,114,182,0.55);
+      color:#fbcfe8;
+      font-size:0.68rem; font-weight:700;
+      letter-spacing:0.16em; text-transform:uppercase;
+      box-shadow:0 2px 10px rgba(244,114,182,0.18);
+      pointer-events:none;
+    }
+    .promo-badge-icon { font-size:0.85rem; line-height:1; }
+    .promo-badge-text { line-height:1; }
+
+    /* 售完徽章在中央,promo 徽章在左上角 — 兩者可能同時存在,
+       sold-out 時把 promo 淡掉避免視覺打架 */
+    .product-card.is-sold-out .promo-badge { opacity:0.4; }
+
+    /* 商品名稱底下的「不參與站內折扣」說明列 */
+    .product-promo-note {
+      font-size:0.7rem; letter-spacing:0.04em;
+      color:#fbcfe8; opacity:0.85;
+      margin:6px 0 8px;
+      padding:5px 8px;
+      background:rgba(244,114,182,0.08);
+      border-left:2px solid rgba(244,114,182,0.55);
+      border-radius:2px;
+      line-height:1.4;
+    }
+
     /* ── LIGHTBOX ── */
     #lightbox {
       position:fixed; inset:0; z-index:9000;

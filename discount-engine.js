@@ -171,9 +171,19 @@
     const today   = args.today || new Date();
     const useCredit = args.useCredit !== false; // 預設 true
 
-    /* ── A. 原價 + 按 shipping_method 分組 ── */
-    let raw_subtotal = 0;
-    const groups = {
+    /* ── A. 原價 + 按 shipping_method 分組 + 拆 regular vs promo
+     *   政策 (migration 014):it.is_promo === true 的商品為「品牌方特價」,
+     *   不參與站內任何優惠 (tier / birthday / bulk / credit / floor),
+     *   按 unit_price 原價成交,只計入最終 final_subtotal。
+     *   groups 只代表 regular_items,promo_groups 獨立呈現給 UI 顯示。
+     */
+    let raw_subtotal = 0;     // 整車 (含 promo)
+    let promo_subtotal = 0;   // 特價品原價合計
+    const groups = {          // ← 只含 regular items
+      carryback: { raw: 0, items_count: 0 },
+      shipping:  { raw: 0, items_count: 0 },
+    };
+    const promo_groups = {    // ← 只含 promo items
       carryback: { raw: 0, items_count: 0 },
       shipping:  { raw: 0, items_count: 0 },
     };
@@ -181,11 +191,18 @@
       const line = (Number(it.unit_price) || 0) * (Number(it.quantity) || 0);
       raw_subtotal += line;
       const m = (it.shipping_method === 'carryback') ? 'carryback' : 'shipping';
-      groups[m].raw += line;
-      groups[m].items_count += 1;
+      if (it.is_promo) {
+        promo_subtotal += line;
+        promo_groups[m].raw += line;
+        promo_groups[m].items_count += 1;
+      } else {
+        groups[m].raw += line;
+        groups[m].items_count += 1;
+      }
     });
+    const regular_subtotal = raw_subtotal - promo_subtotal;
 
-    /* ── B. 等級折扣 (訪客 = 1.0, 全價) ── */
+    /* ── B. 等級折扣 (訪客 = 1.0, 全價) — 只套到 regular_items ── */
     const tierKey = member ? (member.tier || 'bronze') : 'bronze';
     const tierRate = (_config.tier_discount_rates[tierKey] != null)
       ? _config.tier_discount_rates[tierKey]
@@ -196,7 +213,7 @@
     groups.shipping.after_tier  = Math.round(groups.shipping.raw  * tierRate);
 
     const subtotal_after_tier = groups.carryback.after_tier + groups.shipping.after_tier;
-    const tier_discount = raw_subtotal - subtotal_after_tier;
+    const tier_discount = regular_subtotal - subtotal_after_tier;
 
     /* ── C. 生日 9 折 (僅會員 + 生日月 + 本年未用) ── */
     const birthday_eligible = !!member && isBirthdayEligible(member, today);
@@ -235,7 +252,8 @@
     const floorRate = (_config.tier_floor_rates[tierKey] != null)
       ? _config.tier_floor_rates[tierKey]
       : 0.75;
-    const floor_amount = Math.round(raw_subtotal * floorRate);
+    // 樓地板基準 = 正常品原價 × floor_rate (不含 promo,因為 promo 不參與折扣)
+    const floor_amount = Math.round(regular_subtotal * floorRate);
 
     /* ── E. 折抵金 (B1 自動扣 — 餘額 > 0 就用,但不超過地板能吸收的量) ── */
     let credit_used = 0;
@@ -248,17 +266,19 @@
     }
     const subtotal_after_credit = Math.max(0, subtotal_after_bulk - credit_used);
 
-    /* ── F. 樓地板實際 clamp (理論上 E 修正後不會再觸發,但保留為安全網
-     *   — 若 tier+birthday+bulk 自己就已經降到地板下,credit 套不上來時還是會 clamp)
+    /* ── F. 樓地板實際 clamp — 只對 regular_items 部分 clamp
+     *   regular_final 是 regular 部分跑完所有 pipeline 的金額,
+     *   final_subtotal = regular_final + promo_subtotal (promo 永遠按原價)。
      */
-    let final_subtotal = subtotal_after_credit;
+    let regular_final = subtotal_after_credit;
     let floor_clamped = false;
     let floor_refund = 0;
-    if (final_subtotal < floor_amount) {
-      floor_refund = floor_amount - final_subtotal;
-      final_subtotal = floor_amount;
+    if (regular_final < floor_amount) {
+      floor_refund = floor_amount - regular_final;
+      regular_final = floor_amount;
       floor_clamped = true;
     }
+    const final_subtotal = regular_final + promo_subtotal;
 
     const total_savings = raw_subtotal - final_subtotal;
 
@@ -269,8 +289,11 @@
       tier_eligible,
 
       // 各層金額
-      raw_subtotal,                  // 商品原價合計
-      groups,                        // { carryback: {raw, after_tier, bulk_discount, after_bulk, ...}, shipping: {...} }
+      raw_subtotal,                  // 整車原價合計 (regular + promo)
+      regular_subtotal,              // 正常品原價合計 (參與折扣的部分)
+      promo_subtotal,                // 特價品原價合計 (不參與任何折扣)
+      groups,                        // { carryback: {raw, after_tier, bulk_discount, after_bulk, ...}, shipping: {...} } — 僅 regular
+      promo_groups,                  // { carryback: {raw, items_count}, shipping: {raw, items_count} } — 特價品分組
 
       // 折扣明細
       tier_discount,                 // 等級折扣金額
@@ -290,7 +313,8 @@
       subtotal_after_birthday,
       subtotal_after_bulk,
       subtotal_after_credit,
-      final_subtotal,                // 商品部分最終應付 (不含運費)
+      regular_final,                 // regular 部分最終 (含樓地板 clamp 後)
+      final_subtotal,                // 商品部分最終應付 (= regular_final + promo_subtotal,不含運費)
 
       total_savings,                 // 總共省了多少 (= raw_subtotal - final_subtotal)
     };

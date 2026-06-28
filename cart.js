@@ -101,6 +101,9 @@
         shipping_method: shippingMethod,
         note: '',
         image_url: product.images?.cover || product.cover_image || '',
+        // 品牌方特價旗標 (migration 014) — 不參與站內折扣
+        is_promo: !!product.is_promo,
+        promo_note: product.promo_note || '',
       };
 
       items.push(item);
@@ -242,32 +245,43 @@
 
     // ── 舊 API 兼容 (footer / order-insert 內仍用這些名字) ──
     // Returns per-shipping-group breakdown 用於 UI 顯示分軌小計。
+    // 特價品 (is_promo=true) 不參與折扣,在 groups 內單獨列為 promo_items + promo_subtotal。
     getDiscountBreakdown() {
       const result = this.getDiscountResult();
       const groups = this.groupByShipping();
       return Object.keys(groups).map((sm) => {
-        const items = groups[sm];
-        const subtotal = items.reduce(
+        const allItems = groups[sm];
+        // 分流 — regular 走折扣 pipeline,promo 走原價
+        const regularItems = allItems.filter(it => !it.is_promo);
+        const promoItems   = allItems.filter(it => !!it.is_promo);
+        const regularSubtotal = regularItems.reduce(
+          (s, it) => s + ((it.unit_price || 0) * (it.quantity || 1)),
+          0
+        );
+        const promoSubtotal = promoItems.reduce(
           (s, it) => s + ((it.unit_price || 0) * (it.quantity || 1)),
           0
         );
         const gKey = (sm === 'carryback') ? 'carryback' : 'shipping';
-        const g = result.groups[gKey] || { after_tier: subtotal, after_birthday: subtotal, bulk_discount: 0, after_bulk: subtotal };
-        // 升下一階提示 (用 DiscountEngine.nextBulkRung)
+        const g = result.groups[gKey] || { after_tier: regularSubtotal, after_birthday: regularSubtotal, bulk_discount: 0, after_bulk: regularSubtotal };
+        // 升下一階提示 — 用 regular 部分 (after_birthday) 判定,promo 不計入門檻
         let nextRung = null;
         if (window.DiscountEngine && typeof window.DiscountEngine.nextBulkRung === 'function' && result.bulk_eligible) {
           nextRung = window.DiscountEngine.nextBulkRung(gKey, g.after_birthday);
         }
         return {
           shipping_method: sm,
-          items,
-          subtotal,                       // 此組原價小計
+          items: allItems,                    // 全部 line items (UI 列出用)
+          regular_items: regularItems,        // 折扣計算用
+          promo_items:   promoItems,          // 特價品 (UI 加標籤用)
+          subtotal:        regularSubtotal,   // 此組正常品小計 (折扣分母)
+          promo_subtotal:  promoSubtotal,     // 此組特價品原價合計
           after_tier:      g.after_tier,
           after_birthday:  g.after_birthday,
           bulk_discount:   g.bulk_discount,
-          total:           g.after_bulk,  // 此組折後 (未扣折抵金 / 未過樓地板)
-          discount:        subtotal - g.after_bulk,
-          nextRung,                       // {threshold, discount, gap} or null
+          total:           g.after_bulk + promoSubtotal,  // 此組折後總額 (regular 折完 + promo 原價)
+          discount:        regularSubtotal - g.after_bulk,
+          nextRung,                           // {threshold, discount, gap} or null
         };
       });
     },
@@ -1952,6 +1966,7 @@
           quantity: item.quantity,
           unit_price: item.unit_price,
           image_url: item.image_url,
+          is_promo: !!item.is_promo, // Phase 2.2 migration 014 — 歷史紀錄,newebpay-notify 會用 products.is_promo 覆寫為權威值
         }));
 
         const { error: itemsError } = await supabase
@@ -1981,7 +1996,9 @@
 
         // ── 導向藍新金流 (NewebPay) — 親自帶回也走線上付款 ──
         // shipping_method 必須一起送至 API,讓 server 端可重新驗證滿額折扣
+        // product_id 必送 → server 用此撈 is_promo (Phase 2.2 migration 014 anti-tamper)
         const npItems = items.map(item => ({
+          product_id: item.product_id,
           name: item.product_name,
           quantity: item.quantity,
           price: item.unit_price,
@@ -2452,6 +2469,7 @@
           quantity: item.quantity,
           unit_price: item.unit_price,
           image_url: item.image_url,
+          is_promo: !!item.is_promo, // Phase 2.2 migration 014 — 歷史紀錄,newebpay-notify 會用 products.is_promo 覆寫為權威值
         }));
 
         const { error: itemsError } = await supabase
@@ -2485,7 +2503,9 @@
 
         // ── 導向藍新金流 (NewebPay) ──
         // shipping_method 必須一起送至 API,讓 server 端可重新驗證滿額折扣
+        // product_id 必送 → server 用此撈 is_promo (Phase 2.2 migration 014 anti-tamper)
         const npItems = items.map(item => ({
+          product_id: item.product_id,
           name: item.product_name,
           quantity: item.quantity,
           price: item.unit_price,
