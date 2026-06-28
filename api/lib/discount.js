@@ -221,32 +221,36 @@ function computeCart(args) {
   const floorRate = (_config.tier_floor_rates[tierKey] != null)
     ? _config.tier_floor_rates[tierKey]
     : 0.75;
-  // 樓地板基準 = 正常品原價 × floor_rate (不含 promo,因為 promo 不參與折扣)
+  // 樓地板基準 = 正常品原價 × floor_rate (promo 不適用)
   const floor_amount = Math.round(regular_subtotal * floorRate);
 
-  /* E. 折抵金 (B1 自動扣,但不超過地板能吸收的量) */
+  /* E. 折抵金 (B1 自動扣,但不超過地板能吸收的量)
+   *   政策更新 (2026-06):折抵金 (founding_credit_balance) 可以扣 promo,
+   *   tier/生日/滿額仍不適用。credit eligibility base = combined。
+   *   cap = combined - floor_amount (regular 那段只能降到 floor,promo 可全扣)。
+   */
+  const combined_after_bulk = subtotal_after_bulk + promo_subtotal;
   let credit_used = 0;
   const credit_balance = member ? Math.max(0, Number(member.founding_credit_balance) || 0) : 0;
-  if (useCredit && credit_balance > 0 && subtotal_after_bulk > 0) {
-    const intended_credit   = Math.min(credit_balance, subtotal_after_bulk);
-    const useful_credit_cap = Math.max(0, subtotal_after_bulk - floor_amount);
+  if (useCredit && credit_balance > 0 && combined_after_bulk > 0) {
+    const intended_credit   = Math.min(credit_balance, combined_after_bulk);
+    const useful_credit_cap = Math.max(0, combined_after_bulk - floor_amount);
     credit_used = Math.min(intended_credit, useful_credit_cap);
   }
-  const subtotal_after_credit = Math.max(0, subtotal_after_bulk - credit_used);
+  const subtotal_after_credit = Math.max(0, combined_after_bulk - credit_used);
 
-  /* F. 樓地板實際 clamp — 只對 regular_items 部分 clamp
-   *   regular_final 是 regular 部分跑完所有 pipeline 的金額,
-   *   final_subtotal = regular_final + promo_subtotal (promo 永遠按原價)。
+  /* F. 樓地板實際 clamp — 對整車結果 clamp 到 regular 地板 (E 的 cap 已避免穿底,此為安全網)。
+   *   regular_final 為向後相容,定為 final - promo_subtotal (僅供顯示)。
    */
-  let regular_final = subtotal_after_credit;
+  let final_subtotal = subtotal_after_credit;
   let floor_clamped = false;
   let floor_refund = 0;
-  if (regular_final < floor_amount) {
-    floor_refund = floor_amount - regular_final;
-    regular_final = floor_amount;
+  if (final_subtotal < floor_amount) {
+    floor_refund = floor_amount - final_subtotal;
+    final_subtotal = floor_amount;
     floor_clamped = true;
   }
-  const final_subtotal = regular_final + promo_subtotal;
+  const regular_final = Math.max(0, final_subtotal - promo_subtotal);
 
   const total_savings = raw_subtotal - final_subtotal;
 

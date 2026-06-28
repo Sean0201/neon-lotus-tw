@@ -1391,7 +1391,7 @@
 
     /* ── PROMO (BRAND SALE) BADGE (Phase 2.2 — migration 014) ─────
        品牌方特價商品專用。粉紅色徽章貼在圖片左上角,
-       提示客人此商品不參與站內折扣 (tier/birthday/bulk/credit)。
+       提示客人此商品不享會員折扣 (tier/birthday/bulk) — 但入會折抵金仍可使用。
        樣式跟 sold-out 區隔:粉紅 vs 紅。 */
     .promo-badge {
       position:absolute; top:12px; left:12px; z-index:4;
@@ -1412,7 +1412,7 @@
        sold-out 時把 promo 淡掉避免視覺打架 */
     .product-card.is-sold-out .promo-badge { opacity:0.4; }
 
-    /* 商品名稱底下的「不參與站內折扣」說明列 */
+    /* 商品名稱底下的「不享會員折扣」說明列 */
     .product-promo-note {
       font-size:0.7rem; letter-spacing:0.04em;
       color:#fbcfe8; opacity:0.85;

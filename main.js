@@ -988,7 +988,7 @@ function _buildProductCard(p) {
          </div>
        </div>` : '';
 
-  // 品牌方特價徽章 (migration 014) — 左上角粉紅標籤,告知此商品不參與站內折扣
+  // 品牌方特價徽章 (migration 014) — 左上角粉紅標籤,告知此商品不享會員折扣 (入會折抵金仍可使用)
   const isPromo = !!p.is_promo;
   const promoNoteText = (p.promo_note || '').toString().trim();
   const promoBadge = isPromo
@@ -998,8 +998,8 @@ function _buildProductCard(p) {
        </div>` : '';
   const promoNote = isPromo
     ? `<div class="product-promo-note">${currentLang === 'tw'
-        ? `\u26a1 \u54c1\u724c\u65b9\u7279\u50f9${promoNoteText ? '\uff0c' + promoNoteText.replace(/</g,'&lt;') : ''}\uff0c\u4e0d\u53c3\u8207\u7ad9\u5167\u6298\u6263`
-        : `\u26a1 Brand sale${promoNoteText ? ' \u00b7 ' + promoNoteText.replace(/</g,'&lt;') : ''} \u00b7 not eligible for site discounts`}</div>`
+        ? `\u26a1 \u54c1\u724c\u65b9\u7279\u50f9${promoNoteText ? '\uff0c' + promoNoteText.replace(/</g,'&lt;') : ''}\uff0c\u4e0d\u4eab\u6703\u54e1\u6298\u6263`
+        : `\u26a1 Brand sale${promoNoteText ? ' \u00b7 ' + promoNoteText.replace(/</g,'&lt;') : ''} \u00b7 not eligible for member discounts`}</div>`
     : '';
 
   const countBadge = imgUrls.length > 1

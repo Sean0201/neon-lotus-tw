@@ -101,7 +101,7 @@
         shipping_method: shippingMethod,
         note: '',
         image_url: product.images?.cover || product.cover_image || '',
-        // 品牌方特價旗標 (migration 014) — 不參與站內折扣
+        // 品牌方特價旗標 (migration 014) — 不享會員折扣 (tier/birthday/bulk),但入會折抵金可用
         is_promo: !!product.is_promo,
         promo_note: product.promo_note || '',
       };
