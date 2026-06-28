@@ -1226,6 +1226,7 @@
                                         <option value="cancelled">Cancelled</option>
                                     </select>
                                     <button class="btn-secondary" onclick="loadOrders()">Refresh</button>
+                                    <button class="btn-secondary" onclick="exportProfitWorkbookXLSX()" title="一鍵匯出完整 成本利潤表 xlsx (訂單記錄 + 訂單金流,含公式與凍結欄列)。打開即用,不需要貼上。">📥 完整 XLSX</button>
                                     <button class="btn-secondary" onclick="exportOrdersCSV()" title="匯出當月訂單品項為 CSV,可直接貼到成本利潤表 訂單記錄 A5">📥 訂單記錄 CSV</button>
                                     <button class="btn-secondary" onclick="exportOrderCashflowCSV()" title="匯出當月訂單金流為 CSV (含折扣/付款方式),貼到成本利潤表 訂單金流 A5">📥 訂單金流 CSV</button>
                                 </div>
@@ -5311,6 +5312,198 @@
                 XLSX.writeFile(wb, 'products_inventory_' + stamp + '.xlsx');
             } catch (err) {
                 console.error('export products XLSX failed', err);
+                alert('匯出失敗: ' + (err.message || err));
+            }
+        }
+
+        // ─── 一鍵匯出 成本利潤表 XLSX (Phase 2.2 — admin 直接匯出可開即用) ──
+        // 把 訂單記錄 (品項層) + 訂單金流 (訂單層) 包成單一 xlsx,
+        // 含公式 + 凍結欄列 + 匯率 named range,下載後 Excel 打開即用,
+        // 不需要 paste、不需要先打開 成本利潤表.xlsx。
+        async function exportProfitWorkbookXLSX() {
+            try {
+                if (typeof XLSX === 'undefined') {
+                    throw new Error('SheetJS 未載入,請重新整理頁面');
+                }
+
+                const now = new Date();
+                const tpeNow = new Date(now.getTime() + 8 * 3600 * 1000);
+                const defaultMonth = tpeNow.toISOString().slice(0, 7);
+
+                const monthInput = prompt(
+                    '匯出哪個月的成本利潤表?\n格式: yyyy-mm (例: 2026-05)\n\n' +
+                    '產出檔含【訂單記錄】+【訂單金流】兩分頁,\n' +
+                    '會排除 cancelled / rejected 訂單。',
+                    defaultMonth
+                );
+                if (!monthInput) return;
+
+                const m = monthInput.match(/^(\d{4})-(\d{1,2})$/);
+                if (!m) { showToast('格式錯誤,請用 yyyy-mm', 'error'); return; }
+                const year = parseInt(m[1], 10);
+                const month = parseInt(m[2], 10);
+                if (month < 1 || month > 12) { showToast('月份必須是 1-12', 'error'); return; }
+
+                const startISO = new Date(Date.UTC(year, month - 1, 1, -8, 0, 0)).toISOString();
+                const endISO   = new Date(Date.UTC(year, month, 1, -8, 0, 0)).toISOString();
+
+                showToast('匯出中...');
+
+                // 同時撈 orders (給金流) + order_items (給品項)
+                const [ordersResp, itemsResp] = await Promise.all([
+                    sb.from('orders')
+                      .select('id, order_number, customer_name, customer_email, created_at, ' +
+                              'subtotal, tier_discount, birthday_discount, signup_credit_used, ' +
+                              'shipping_fee, total, payment_method, status, note, refund_amount')
+                      .gte('created_at', startISO).lt('created_at', endISO)
+                      .not('status', 'in', '(cancelled,rejected)')
+                      .order('created_at', { ascending: true })
+                      .limit(10000),
+                    null,  // 訂單 IDs 拿到才能查 items,放第二輪
+                ]);
+                if (ordersResp.error) throw ordersResp.error;
+                const orders = ordersResp.data || [];
+                if (orders.length === 0) { showToast(monthInput + ' 沒有訂單', 'error'); return; }
+
+                const orderIds = orders.map(o => o.id);
+                const { data: items, error: itemsErr } = await sb
+                    .from('order_items')
+                    .select('order_id, product_id, quantity, unit_price')
+                    .in('order_id', orderIds)
+                    .limit(50000);
+                if (itemsErr) throw itemsErr;
+
+                const ordersById = Object.fromEntries(orders.map(o => [o.id, o]));
+
+                // ─── A) 組「訂單記錄」分頁 (品項層) ───────────────────
+                const dateStr = (utcIso) => {
+                    const t = new Date(utcIso).getTime() + 8 * 3600 * 1000;
+                    return new Date(t).toISOString().slice(0, 10);
+                };
+                const dateTimeStr = (utcIso) => {
+                    const t = new Date(utcIso).getTime() + 8 * 3600 * 1000;
+                    return new Date(t).toISOString().slice(0, 16).replace('T', ' ');
+                };
+
+                const itemRows = (items || []).map(it => {
+                    const o = ordersById[it.order_id];
+                    if (!o) return null;
+                    return [
+                        dateStr(o.created_at),
+                        o.order_number || '',
+                        o.customer_name || '',
+                        it.product_id || '',
+                        it.quantity || 0,
+                        it.unit_price || 0,
+                        o.note || '',
+                        '',   // H: VND 進貨價 — 手填
+                        null, // I: 公式佔位
+                        null, // J: 公式佔位
+                    ];
+                }).filter(Boolean);
+
+                itemRows.sort((a, b) => {
+                    if (a[0] !== b[0]) return String(a[0]).localeCompare(String(b[0]));
+                    if (a[1] !== b[1]) return String(a[1]).localeCompare(String(b[1]));
+                    return String(a[3]).localeCompare(String(b[3]));
+                });
+
+                const ITEM_HEADERS = [
+                    '訂單日期', '訂單編號', '客戶', 'SKU', '數量',
+                    '售價 NT$/件', '備註', 'VND 進貨價', '進貨成本 NT$/件', '商品毛利 NT$',
+                ];
+                const itemAoa = [
+                    ['訂單記錄 — 一個品項一列 (' + monthInput + ')'],
+                    ['🟡 A-G: admin 自動帶  🔵 H: VND 進貨價手填 (想追蹤成本的訂單才填)  ⚪ I-J: 自動算'],
+                    ['匯率 1 NT$ =', 790, 'VND ← 修改 B3 會自動更新所有 I/J 欄'],
+                    ITEM_HEADERS,
+                    ...itemRows,
+                ];
+                const wsItems = XLSX.utils.aoa_to_sheet(itemAoa);
+
+                // 補上 I/J 欄公式 (RATE_VND_PER_NTD 是 workbook-level named range)
+                for (let i = 0; i < itemRows.length; i++) {
+                    const r = 5 + i;  // Excel 1-indexed row
+                    wsItems[`I${r}`] = { t: 'n', f: `IF(H${r}="",0,H${r}/RATE_VND_PER_NTD)` };
+                    wsItems[`J${r}`] = { t: 'n', f: `IF(OR(F${r}="",E${r}=""),0,(F${r}-I${r})*E${r})` };
+                }
+                wsItems['!cols'] = [
+                    { wch: 12 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 6 },
+                    { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 16 }, { wch: 14 },
+                ];
+                wsItems['!freeze'] = { xSplit: 0, ySplit: 4 };
+                wsItems['!views']  = [{ state: 'frozen', ySplit: 4 }];
+
+                // ─── B) 組「訂單金流」分頁 (訂單層) ───────────────────
+                const cashRows = orders.map(o => [
+                    dateTimeStr(o.created_at),
+                    o.order_number || '',
+                    o.customer_name || '',
+                    o.customer_email || '',
+                    Number(o.subtotal) || 0,
+                    Number(o.tier_discount) || 0,
+                    Number(o.birthday_discount) || 0,
+                    Number(o.signup_credit_used) || 0,
+                    null,                                  // I: 公式 (折扣後小計)
+                    Number(o.shipping_fee) || 0,
+                    o.total ?? '',
+                    o.payment_method || '',
+                    '',                                    // M: 金流手續費 手填
+                    null,                                  // N: 公式 (實際入帳)
+                    o.status || '',
+                    o.note || '',
+                    Number(o.refund_amount) || 0,
+                ]);
+
+                const CASH_HEADERS = [
+                    '訂單日期', '訂單編號', '客戶名', '客戶 Email',
+                    '折扣前小計 NT$', '等級折扣 NT$', '生日折扣 NT$', '註冊金抵用 NT$',
+                    '折扣後小計 NT$', '運費 NT$', '訂單總額 NT$',
+                    '付款方式', '金流手續費 NT$', '實際入帳 NT$',
+                    '狀態', '備註', '退款金額 NT$',
+                ];
+                const cashAoa = [
+                    ['訂單金流 — 一筆訂單一列 (' + monthInput + ')'],
+                    ['🟡 A-L,O,P,Q: admin 自動帶  🔵 M: 金流手續費手填  ⚪ I,N: 自動算  🟠 Q: 退款金額'],
+                    ['🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL',
+                     '⚪ 公式', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🔵 手填', '⚪ 公式', '🟡 SQL', '🟡 SQL', '🟠 退款'],
+                    CASH_HEADERS,
+                    ...cashRows,
+                ];
+                const wsCash = XLSX.utils.aoa_to_sheet(cashAoa);
+
+                // 補上 I/N 公式
+                for (let i = 0; i < cashRows.length; i++) {
+                    const r = 5 + i;
+                    wsCash[`I${r}`] = { t: 'n', f: `IF(E${r}="",0,E${r}-IF(F${r}="",0,F${r})-IF(G${r}="",0,G${r})-IF(H${r}="",0,H${r}))` };
+                    wsCash[`N${r}`] = { t: 'n', f: `IF(K${r}="",0,K${r}-IF(M${r}="",0,M${r})-IF(Q${r}="",0,Q${r}))` };
+                }
+                wsCash['!cols'] = [
+                    { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 24 },
+                    { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 },
+                    { wch: 14 }, { wch: 10 }, { wch: 12 },
+                    { wch: 12 }, { wch: 14 }, { wch: 14 },
+                    { wch: 10 }, { wch: 20 }, { wch: 14 },
+                ];
+                wsCash['!freeze'] = { xSplit: 0, ySplit: 4 };
+                wsCash['!views']  = [{ state: 'frozen', ySplit: 4 }];
+
+                // ─── C) 組 workbook + 定義 RATE_VND_PER_NTD named range ──
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, wsItems, '訂單記錄');
+                XLSX.utils.book_append_sheet(wb, wsCash,  '訂單金流');
+
+                wb.Workbook = wb.Workbook || {};
+                wb.Workbook.Names = wb.Workbook.Names || [];
+                wb.Workbook.Names.push({
+                    Name: 'RATE_VND_PER_NTD',
+                    Ref:  "'訂單記錄'!$B$3",
+                });
+
+                XLSX.writeFile(wb, '成本利潤表_' + monthInput + '.xlsx');
+                showToast('已匯出 ' + itemRows.length + ' 列品項 + ' + cashRows.length + ' 筆訂單');
+            } catch (err) {
+                console.error('export profit workbook XLSX failed', err);
                 alert('匯出失敗: ' + (err.message || err));
             }
         }
