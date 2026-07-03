@@ -21,7 +21,7 @@
 
 > 💡 **NEWEBPAY_PAYMENT_METHODS** 是逗號分隔,程式會把每個方式傳給藍新對應的 `=1` 旗標。**只列出商店後台已實際 active 的服務**,送了沒開通的會卡在「服務未啟用」直接失敗。
 >
-> 支援的旗標: `CREDIT`, `APPLEPAY`, `GOOGLEPAY`, `SAMSUNGPAY`, `UNIONPAY`, `VACC`, `WEBATM`, `CVS`, `BARCODE`, `LINEPAY`。
+> 支援的旗標: `CREDIT`, `APPLEPAY`, `GOOGLEPAY`, `SAMSUNGPAY`, `UNIONPAY`, `VACC`, `WEBATM`, `CVS`, `BARCODE`, `LINEPAY`, `ESUNWALLET` (玉山 Wallet), `TAIWANPAY` (台灣 Pay)。
 
 設定完後,**Redeploy** 一次,環境變數才會被新 deploy 讀到。
 
