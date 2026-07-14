@@ -798,7 +798,7 @@ function renderBrandsGrid() {
 
     // Logo: show <img> if URL exists, otherwise text fallback
     const logoHtml = logoSrc
-      ? `<img class="brand-card-logo" src="${logoSrc}" alt="${displayName}"
+      ? `<img class="brand-card-logo" src="${logoSrc}" alt="${displayName}" loading="lazy" decoding="async"
              onerror="this.style.display='none';
                       if(!this.parentNode.querySelector('.brand-card-logo-text')){
                         var t=document.createElement('div');

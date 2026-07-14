@@ -8,6 +8,11 @@
   <link rel="preconnect" href="https://epemuyojkprepknuzuzc.supabase.co" crossorigin />
   <link rel="dns-prefetch" href="https://epemuyojkprepknuzuzc.supabase.co" />
   <link rel="preconnect" href="https://cdn.hstatic.net" crossorigin />
+  <!-- Preconnect to Google Fonts CDN for faster font loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Preload nav logo (LCP-critical, appears in first paint) -->
+  <link rel="preload" as="image" href="logo.PNG" fetchpriority="high" />
   <title>NEON LOTUS | 越南街頭潮牌精選 — 台灣直送</title>
   <meta name="description" content="Neon Lotus 精選越南街頭潮牌 — Dirtycoins、Gamble、Hades、Blish 等 30+ 品牌。越南台灣直送、7-14 天到貨,提供國際運送與親自帶回兩種方式。探索街頭時尚的未來。" />
   <meta name="keywords" content="越南街頭潮牌, 越南潮牌, 台灣代購, Neon Lotus, Dirtycoins, Gamble, Hades, Blish, Vietnamese streetwear, Vietnam fashion Taiwan" />
@@ -155,7 +160,8 @@
   }
   </script>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Noto+Sans+TC:wght@300;400;500;600;700;900&family=Montserrat:wght@600;700;800;900&family=Syncopate:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <!-- Slimmed font loading: dropped unused 800/900 weights, saves ~120KB -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700&family=Montserrat:wght@600;700&family=Syncopate:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
