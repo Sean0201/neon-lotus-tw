@@ -1,9 +1,463 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://www.neonlotus-tw.com/</loc>
-    <lastmod>2026-04-04</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-07-14</lastmod>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/policy/purchase</loc>
+    <lastmod>2026-07-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/policy/purchase" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/policy/purchase?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/policy/purchase" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/policy/shipping</loc>
+    <lastmod>2026-07-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/policy/shipping" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/policy/shipping?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/policy/shipping" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/policy/returns</loc>
+    <lastmod>2026-07-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/policy/returns" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/policy/returns?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/policy/returns" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/policy/privacy</loc>
+    <lastmod>2026-07-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/policy/privacy" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/policy/privacy?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/policy/privacy" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/tuyen</loc>
+    <lastmod>2026-04-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/tuyen" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/tuyen?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/tuyen" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/blish</loc>
+    <lastmod>2026-04-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/blish" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/blish?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/blish" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/phonchay</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/phonchay" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/phonchay?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/phonchay" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/else</loc>
+    <lastmod>2026-07-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/else" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/else?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/else" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/nowsaigon</loc>
+    <lastmod>2026-04-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/nowsaigon" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/nowsaigon?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/nowsaigon" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/hades</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/hades" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/hades?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/hades" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/stressmama</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/stressmama" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/stressmama?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/stressmama" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/swe</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/swe" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/swe?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/swe" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/sly</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/sly" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/sly?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/sly" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/tredx</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/tredx" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/tredx?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/tredx" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/dirtycoins</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/dirtycoins" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/dirtycoins?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/dirtycoins" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/gamble</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/gamble" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/gamble?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/gamble" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/cozy-worldwise</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/cozy-worldwise" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/cozy-worldwise?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/cozy-worldwise" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/dirmior</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/dirmior" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/dirmior?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/dirmior" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/badrabbit</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/badrabbit" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/badrabbit?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/badrabbit" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/badhabits</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/badhabits" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/badhabits?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/badhabits" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/mbi</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/mbi" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/mbi?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/mbi" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/uniz-world</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/uniz-world" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/uniz-world?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/uniz-world" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/rich</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/rich" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/rich?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/rich" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/devotus</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/devotus" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/devotus?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/devotus" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/spoiled</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/spoiled" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/spoiled?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/spoiled" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/fragile</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/fragile" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/fragile?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/fragile" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/levents</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/levents" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/levents?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/levents" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/goldie</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/goldie" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/goldie?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/goldie" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/offonoff-club</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/offonoff-club" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/offonoff-club?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/offonoff-club" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/aastu</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/aastu" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/aastu?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/aastu" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/23september</loc>
+    <lastmod>2026-05-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/23september" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/23september?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/23september" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/whenever-atelier</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/whenever-atelier" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/whenever-atelier?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/whenever-atelier" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/bunnyhillconcept</loc>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/bunnyhillconcept" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/bunnyhillconcept?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/bunnyhillconcept" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/poison-fang</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/poison-fang" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/poison-fang?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/poison-fang" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/aesirstudio</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/aesirstudio" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/aesirstudio?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/aesirstudio" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/helios</loc>
+    <lastmod>2026-04-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/helios" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/helios?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/helios" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/badchoice</loc>
+    <lastmod>2026-04-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/badchoice" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/badchoice?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/badchoice" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/2idiots-label</loc>
+    <lastmod>2026-04-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/2idiots-label" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/2idiots-label?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/2idiots-label" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/bwstu</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/bwstu" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/bwstu?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/bwstu" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/lizardman</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/lizardman" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/lizardman?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/lizardman" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/latui-atelier</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/latui-atelier" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/latui-atelier?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/latui-atelier" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/niyu</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/niyu" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/niyu?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/niyu" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/fnos</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/fnos" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/fnos?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/fnos" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/tryst</loc>
+    <lastmod>2026-04-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/tryst" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/tryst?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/tryst" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/ceci</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/ceci" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/ceci?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/ceci" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/firefly</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/firefly" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/firefly?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/firefly" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/laneci</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/laneci" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/laneci?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/laneci" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/lsoul</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/lsoul" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/lsoul?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/lsoul" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/intoeight</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/intoeight" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/intoeight?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/intoeight" />
+  </url>
+  <url>
+    <loc>https://www.neonlotus-tw.com/#brand/pushpush</loc>
+    <lastmod>2026-04-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/#brand/pushpush" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/#brand/pushpush?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/#brand/pushpush" />
   </url>
 </urlset>
