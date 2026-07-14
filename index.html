@@ -1,61 +1,157 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="referrer" content="no-referrer" />
   <!-- Preconnect to speed up Supabase data loading -->
   <link rel="preconnect" href="https://epemuyojkprepknuzuzc.supabase.co" crossorigin />
-  <link rel="dns-prefetch" href="ttps://epemuyojkprepknuzuzc.supabase.co" />
+  <link rel="dns-prefetch" href="https://epemuyojkprepknuzuzc.supabase.co" />
   <link rel="preconnect" href="https://cdn.hstatic.net" crossorigin />
   <title>NEON LOTUS | 越南街頭潮牌精選 — 台灣直送</title>
-  <meta name="description" content="Neon Lotus 精選越南街頭潮牌 — Dirtycoins、Gamble、Hades 等。越南台灣直送，探索街頭時尚的未來。" />
-  <meta name="keywords" content="越南街頭潮牌, 台灣潮流, Neon Lotus, Dirtycoins, Gamble, Hades, Vietnamese streetwear, street fashion Taiwan" />
-  <meta name="robots" content="index, follow" />
+  <meta name="description" content="Neon Lotus 精選越南街頭潮牌 — Dirtycoins、Gamble、Hades、Blish 等 30+ 品牌。越南台灣直送、7-14 天到貨,提供國際運送與親自帶回兩種方式。探索街頭時尚的未來。" />
+  <meta name="keywords" content="越南街頭潮牌, 越南潮牌, 台灣代購, Neon Lotus, Dirtycoins, Gamble, Hades, Blish, Vietnamese streetwear, Vietnam fashion Taiwan" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta name="author" content="Neon Lotus" />
-  <link rel="canonical" href="https://www.neonlotus-th.com/" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <link rel="canonical" href="https://www.neonlotus-tw.com/" />
+  <!-- Hreflang for bilingual site (default TW, alternate EN) -->
+  <link rel="alternate" hreflang="zh-TW" href="https://www.neonlotus-tw.com/" />
+  <link rel="alternate" hreflang="en" href="https://www.neonlotus-tw.com/?lang=en" />
+  <link rel="alternate" hreflang="x-default" href="https://www.neonlotus-tw.com/" />
 
   <!-- Open Graph (Facebook / LINE / Discord) -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content="NEON LOTUS | 越南街頭潮牌精選 — 台灣直送" />
-  <meta property="og:description" content="精選越南街頭潮牌，越南街頭時尚的脈動，越南台灣直送。" />
-  <meta property="og:url" content="https://www.neonlotus-th.com/" />
+  <meta property="og:description" content="精選越南街頭潮牌 30+ 品牌，越南街頭時尚的脈動，7-14 天台灣直送。" />
+  <meta property="og:url" content="https://www.neonlotus-tw.com/" />
   <meta property="og:site_name" content="Neon Lotus" />
-  <meta property="og:image" content="https://www.neonlotus-th.com/logo.PNG" />
+  <meta property="og:image" content="https://www.neonlotus-tw.com/logo.PNG" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Neon Lotus 越南街頭潮牌精選" />
   <meta property="og:locale" content="zh_TW" />
   <meta property="og:locale:alternate" content="en_US" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="NEON LOTUS | 越南街頭潮牌精選 — 台灣直送" />
-  <meta name="twitter:description" content="精選越南街頭潮牌，越南台灣直送。" />
-  <meta name="twitter:image" content="https://www.neonlotus-th.com/logo.PNG" />
+  <meta name="twitter:description" content="精選越南街頭潮牌 30+ 品牌，7-14 天越南台灣直送。" />
+  <meta name="twitter:image" content="https://www.neonlotus-tw.com/logo.PNG" />
 
-  <!-- Structured Data (JSON-LD) -->
+  <!-- Structured Data — Store / Organization -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "Store",
+    "@type": "OnlineStore",
+    "@id": "https://www.neonlotus-tw.com/#store",
     "name": "Neon Lotus",
-    "description": "Curated Vietnamese streetwear brands with Taiwan direct shipping",
-    "url": "https://www.neonlotus-th.com",
-    "logo": "https://www.neonlotus-th.com/logo.PNG",
-    "image": "https://www.neonlotus-th.com/logo.PNG",
+    "alternateName": ["NEON LOTUS", "霓虹蓮花", "Neon Lotus 越南潮牌"],
+    "description": "Curated Vietnamese streetwear brands with Taiwan direct shipping. 精選越南街頭潮牌 Dirtycoins、Gamble、Hades、Blish 等 30+ 品牌,越南台灣直送。",
+    "url": "https://www.neonlotus-tw.com",
+    "logo": "https://www.neonlotus-tw.com/logo.PNG",
+    "image": "https://www.neonlotus-tw.com/logo.PNG",
+    "priceRange": "NT$250 - NT$8000",
+    "currenciesAccepted": "TWD",
+    "paymentAccepted": "Credit Card, Apple Pay, Google Pay, LINE Pay, 玉山 Wallet, 台灣 Pay, ATM, 超商代碼",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Taipei",
       "addressCountry": "TW"
     },
+    "areaServed": {
+      "@type": "Country",
+      "name": "Taiwan"
+    },
     "sameAs": [
-      "https://www.instagram.com/neon_lotus_select?igsh=MTk5OGphNDRqdmF5YQ%3D%3D&utm_source=qr"
+      "https://www.instagram.com/neon_lotus_select"
     ],
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer service",
-      "url": "https://lin.ee/vfA2XU6"
+      "url": "https://lin.ee/vfA2XU6",
+      "availableLanguage": ["zh-TW", "en"]
     }
+  }
+  </script>
+
+  <!-- Structured Data — WebSite with SearchAction -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://www.neonlotus-tw.com/#website",
+    "url": "https://www.neonlotus-tw.com/",
+    "name": "Neon Lotus",
+    "description": "越南街頭潮牌精選 — 台灣直送",
+    "inLanguage": ["zh-TW", "en"],
+    "publisher": { "@id": "https://www.neonlotus-tw.com/#store" },
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://www.neonlotus-tw.com/?search={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+  <!-- Structured Data — FAQPage (GEO / AI answer engines) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Neon Lotus 是什麼?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Neon Lotus 是台灣專營越南街頭潮牌的選品店,代理 Dirtycoins、Gamble、Hades、Blish、SWE、SLY 等 30+ 越南設計師品牌,提供越南直送台灣服務,讓台灣消費者能取得市面難以買到的越南街頭時尚。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "有哪些付款方式?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "支援信用卡一次付清、Apple Pay、Google Pay、LINE Pay、玉山 Wallet、台灣 Pay、WebATM、ATM 轉帳、超商代碼、超商條碼等多元付款,由藍新金流 (NewebPay) 提供服務,安全可靠。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "運送時間多久?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "國際運送從越南出貨後約 7-14 個工作天到達台灣,另有「親自帶回」選項適合小量商品,運費較低。實際時效視當週航班與清關狀況而定。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "會員等級與折扣制度如何運作?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Neon Lotus 提供 5 個會員等級 (Bronze/Silver/Gold/Diamond/Black),依累積消費升等,對應 100%/95%/92%/88%/85% 的折扣。註冊即享 NT$100 折抵金,生日當月再享 9 折,滿額享運費/親帶折扣。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "商品尺寸怎麼看?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "每件商品都有原廠尺寸表 (以越南 M/L/XL 或亞洲通用尺碼標示),點入商品頁可以看到平量身寬、身長、袖長等細節。越南尺碼普遍比日韓略偏小,建議參考詳細身寬數據挑選。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "可以退換貨嗎?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "商品到貨後 7 天內若非人為損壞、標籤完整、未經穿著洗滌可以申請退換貨。請透過 LINE OA 聯繫客服。特價 (promo) 商品原則上不接受退換,詳細規範以站內公告為準。"
+        }
+      }
+    ]
   }
   </script>
 

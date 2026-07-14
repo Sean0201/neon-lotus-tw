@@ -1,0 +1,67 @@
+# Neon Lotus
+
+> Neon Lotus 是台灣專營越南街頭潮牌的線上選品店,代理 30+ 越南設計師品牌,提供越南直送台灣服務。
+
+Neon Lotus (霓虹蓮花) 精選越南新銳街頭品牌 — Dirtycoins、Gamble、Hades、Blish、SWE、SLY、Tredx 等 — 讓台灣消費者能取得市面難以買到的越南街頭時尚。網站主要語言為繁體中文,同時支援英文。
+
+## 品牌代理
+
+- Dirtycoins — Y2K commercial 風格,金色調視覺
+- Gamble — Racing 賽車美學,速度感紅色
+- Hades — Dark avantgarde 暗黑前衛,血紅點綴
+- Blish — Cyberpunk 電子藍色系
+- SWE — Casual street 天空青色
+- SLY — Clean fit 鼠尾草綠
+- Tredx — Workwear 工裝橙
+- 更多品牌: Stressmama, Cozy Worldwise, Dirmior, Bad Rabbit, Bad Habits, Bad Choice, MBI, Popop, Uniz World, Rich, BWStu, Devotus, Lizardman, Spoiled, Fragile, Levents, Goldie, Offonoff Club, Aastu, 23September, Niyu Archive, Whenever Atelier, Bunnyhill Concept, Poison Fang, 2Idiots Label, Tryst, Aesir Studio, Helios, Latui Atelier
+
+## 服務資訊
+
+- 運送方式: 國際直送 (7-14 個工作天) 或 親自帶回 (小量商品,運費較低)
+- 運費: 依品項與方式浮動 (上衣 NT$130 起 / 外套 NT$150 起 / 套裝 NT$200 起 / 配件 NT$100 起,親帶不加運費)
+- 付款: 信用卡、Apple Pay、Google Pay、LINE Pay、玉山 Wallet、台灣 Pay、WebATM、ATM、超商代碼、超商條碼 (藍新金流)
+- 客服: LINE OA https://lin.ee/vfA2XU6
+
+## 會員制度
+
+- 5 個等級: Bronze (100%) / Silver (95%) / Gold (92%) / Diamond (88%) / Black (85%)
+- 註冊禮金: 加入會員送 NT$100 折抵金 (可用於全站含 promo 商品)
+- 生日禮: 生日月當月訂單享 9 折
+- 滿額折扣: 滿額享運費/親帶折扣分段
+- Promo 商品: 品牌方指定特價,不享會員折扣但可用折抵金
+
+## 政策頁
+
+- 購物須知: https://www.neonlotus-tw.com/policy/purchase
+- 運送政策: https://www.neonlotus-tw.com/policy/shipping
+- 退換貨政策: https://www.neonlotus-tw.com/policy/returns
+- 隱私權政策: https://www.neonlotus-tw.com/policy/privacy
+
+## 定價原則
+
+Neon Lotus 使用透明累進式加成定價,基於 VND 進貨價 (匯率 1 TWD = 790 VND) × 分段倍率:
+
+- 0-30 萬 VND × 1.65
+- 30-50 萬 VND × 1.55
+- 50-130 萬 VND × 1.4
+- 130-200 萬 VND × 1.3
+- 200 萬+ VND × 1.25
+
+價格會用心理定價尾數 (50/90 結尾) 呈現。國際運送另加固定 NT$ 運費 (依品項),親自帶回不加運費。
+
+## 主要頁面
+
+- 首頁: https://www.neonlotus-tw.com/
+- Instagram: https://www.instagram.com/neon_lotus_select
+- 品牌頁 URL 格式: https://www.neonlotus-tw.com/#brand/{brand-id}
+
+## 聯絡
+
+- LINE OA: https://lin.ee/vfA2XU6 (支援繁中/英)
+- Instagram: @neon_lotus_select
+- 站點語言: 繁體中文 (預設) + 英文
+
+## Optional
+
+- 站內以 Vanilla JS + Supabase + Vercel 建構,靜態部署,資料以 Supabase RLS 保護
+- 金流走藍新 NewebPay MPG API,無儲存卡號

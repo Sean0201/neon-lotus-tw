@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/generate-data.js",
-    "translate-sizes": "node scripts/translate-vn-sizes.js"
+    "translate-sizes": "node scripts/translate-vn-sizes.js",
+    "sitemap": "node scripts/generate-sitemap.js",
+    "reprice": "node scripts/reprice-all-products.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4"

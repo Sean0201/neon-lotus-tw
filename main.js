@@ -399,7 +399,7 @@ function showPage(page, brandId, skipPush, restoreScrollY) {
   }
 
   if (page === 'brand' && brandId) renderBrandPage(brandId);
-  if (page === 'home') setTimeout(observeFadeIns, 80);
+  if (page === 'home') { setTimeout(observeFadeIns, 80); updateSeoForHome(); }
   updateTexts();
 
   // ── Browser history support (back/forward buttons) ──────────
@@ -519,6 +519,9 @@ async function renderBrandPage(brandId) {
 
   renderFilters();
   renderProducts('ALL');
+
+  // ── SEO: update meta + inject brand/products JSON-LD for this brand page ──
+  updateSeoForBrand(brand);
 
   // ── 第二階段: 背景 fetch gallery + sizes,完成後 re-render ──
   if (typeof window.loadBrandDetail === 'function') {
@@ -1424,9 +1427,15 @@ function renderBanners() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   § 15b.  DYNAMIC SEO META (from CMS site_settings)
+   § 15b.  DYNAMIC SEO META (SPA-aware — updates per route)
    ═══════════════════════════════════════════════════════════════ */
 
+const SITE_BASE_URL = 'https://www.neonlotus-tw.com';
+const DEFAULT_OG_IMAGE = `${SITE_BASE_URL}/logo.PNG`;
+
+/**
+ * Home page meta (from CMS site_settings if provided, else index.html defaults).
+ */
 function applySeoMeta() {
   const settings = window.SITE_SETTINGS || {};
   const seo = settings.seo_homepage;
@@ -1436,16 +1445,159 @@ function applySeoMeta() {
   const title = lang === 'tw' ? (seo.title_zh || seo.title_en) : (seo.title_en || seo.title_zh);
   const desc  = lang === 'tw' ? (seo.description_zh || seo.description_en) : (seo.description_en || seo.description_zh);
 
+  _setMetaBundle({ title, description: desc, url: SITE_BASE_URL + '/' });
+}
+
+/**
+ * Central meta updater — one entry point for all SPA route changes.
+ * Updates title, meta[name=description], canonical, OG, Twitter cards.
+ */
+function _setMetaBundle({ title, description, url, image, imageAlt }) {
   if (title) document.title = title;
 
-  const metaDesc = document.querySelector('meta[name="description"]');
-  if (metaDesc && desc) metaDesc.setAttribute('content', desc);
+  const set = (selector, attr, value) => {
+    if (!value) return;
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute(attr, value);
+  };
 
-  // Update Open Graph tags
-  const ogTitle = document.querySelector('meta[property="og:title"]');
-  const ogDesc  = document.querySelector('meta[property="og:description"]');
-  if (ogTitle && title) ogTitle.setAttribute('content', title);
-  if (ogDesc && desc)   ogDesc.setAttribute('content', desc);
+  set('meta[name="description"]', 'content', description);
+  set('link[rel="canonical"]', 'href', url);
+  set('meta[property="og:title"]', 'content', title);
+  set('meta[property="og:description"]', 'content', description);
+  set('meta[property="og:url"]', 'content', url);
+  set('meta[property="og:image"]', 'content', image || DEFAULT_OG_IMAGE);
+  set('meta[property="og:image:alt"]', 'content', imageAlt || title);
+  set('meta[name="twitter:title"]', 'content', title);
+  set('meta[name="twitter:description"]', 'content', description);
+  set('meta[name="twitter:image"]', 'content', image || DEFAULT_OG_IMAGE);
+}
+
+/**
+ * Brand page — SEO meta from brand data. Called from renderBrandPage().
+ */
+function updateSeoForBrand(brand) {
+  if (!brand) return;
+  const lang = currentLang || 'tw';
+  const descRaw = lang === 'tw' ? (brand.desc_tw || '') : (brand.desc_en || '');
+  const desc = _seoTruncate(
+    `${brand.name} — 越南街頭潮牌 | Neon Lotus 台灣直送。${descRaw}`.replace(/\s+/g, ' ').trim(),
+    155
+  );
+  const title = lang === 'tw'
+    ? `${brand.name} | 越南潮牌 | Neon Lotus 台灣直送`
+    : `${brand.name} | Vietnamese Streetwear | Neon Lotus Taiwan`;
+
+  // Pick a hero image for OG
+  const firstProd = (brand.products || [])[0];
+  const srcImg = firstProd?.images?.gallery?.find(g => g.type === 'source');
+  const heroImg = srcImg?.original_url
+    || srcImg?.url
+    || _getProductImageSrc?.(firstProd)
+    || firstProd?.original_cover_url
+    || DEFAULT_OG_IMAGE;
+
+  const url = `${SITE_BASE_URL}/#brand/${brand.id}`;
+
+  _setMetaBundle({ title, description: desc, url, image: heroImg, imageAlt: brand.name });
+  injectBrandJsonLd(brand);
+  injectItemListJsonLd(brand);
+}
+
+/**
+ * Home meta reset — restores index.html defaults when returning from a brand page.
+ */
+function updateSeoForHome() {
+  _setMetaBundle({
+    title: 'NEON LOTUS | 越南街頭潮牌精選 — 台灣直送',
+    description: 'Neon Lotus 精選越南街頭潮牌 — Dirtycoins、Gamble、Hades、Blish 等 30+ 品牌。越南台灣直送、7-14 天到貨,提供國際運送與親自帶回兩種方式。',
+    url: SITE_BASE_URL + '/',
+    image: DEFAULT_OG_IMAGE,
+    imageAlt: 'Neon Lotus 越南街頭潮牌精選',
+  });
+  _removeDynamicJsonLd();
+}
+
+function _seoTruncate(str, max) {
+  if (!str) return '';
+  return str.length <= max ? str : str.slice(0, max - 1).trimEnd() + '…';
+}
+
+/**
+ * Product schema — Brand + ItemList of all products on brand page.
+ * These get replaced (not appended) each brand change to avoid pollution.
+ */
+function injectBrandJsonLd(brand) {
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Brand',
+    '@id': `${SITE_BASE_URL}/#brand-${brand.id}`,
+    'name': brand.name,
+    'url': `${SITE_BASE_URL}/#brand/${brand.id}`,
+    'description': brand.desc_tw || brand.desc_en || '',
+  };
+  _upsertJsonLd('nl-dyn-brand', schema);
+}
+
+function injectItemListJsonLd(brand) {
+  const products = (brand.products || []).slice(0, 30); // cap at 30 for schema size
+  if (!products.length) {
+    _removeJsonLd('nl-dyn-itemlist');
+    return;
+  }
+
+  const itemList = products.map((p, i) => {
+    const price = p.price?.thb_shipping || p.price?.thb_carryback || null;
+    const inStock = p.available !== false;
+    return {
+      '@type': 'ListItem',
+      'position': i + 1,
+      'item': {
+        '@type': 'Product',
+        'name': p.name || p.title || 'Product',
+        'brand': { '@type': 'Brand', 'name': brand.name },
+        'image': p.original_cover_url || _getProductImageSrc?.(p) || undefined,
+        'offers': price ? {
+          '@type': 'Offer',
+          'priceCurrency': 'TWD',
+          'price': price,
+          'availability': inStock
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+          'url': `${SITE_BASE_URL}/#brand/${brand.id}`,
+        } : undefined,
+      },
+    };
+  });
+
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    'itemListElement': itemList,
+    'numberOfItems': products.length,
+  };
+  _upsertJsonLd('nl-dyn-itemlist', schema);
+}
+
+function _upsertJsonLd(id, obj) {
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('script');
+    el.id = id;
+    el.type = 'application/ld+json';
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(obj);
+}
+
+function _removeJsonLd(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function _removeDynamicJsonLd() {
+  _removeJsonLd('nl-dyn-brand');
+  _removeJsonLd('nl-dyn-itemlist');
 }
 
 /* ═══════════════════════════════════════════════════════════════

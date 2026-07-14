@@ -1,3 +1,51 @@
+# Neon Lotus — robots.txt
+# 2026-07 更新: 加入 AI crawler 專屬規則 (GEO 相關)
+
+# ── 一般搜尋引擎 ─────────────────────────────
 User-agent: *
 Allow: /
-Sitemap: https://www.neonlotus-th.com/sitemap.xml
+
+# 屏蔽 admin / api 內部端點 (避免 index 到後台)
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /api/
+
+# ── AI 搜尋引擎 (歡迎索引,協助被 AI 回答引用) ─────
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+# ── Sitemap 與 LLM guide ──────────────────
+Sitemap: https://www.neonlotus-tw.com/sitemap.xml
