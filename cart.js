@@ -78,6 +78,19 @@
       }
     },
 
+    /* 解析商品圖片 — 只收 http 開頭的網址 (與 main.js 商品卡片一致)。
+       資料庫 cover_image 可能存本地相對路徑,部署後不存在會 404。 */
+    resolveImageUrl(product) {
+      const httpOnly = (u) => (typeof u === 'string' && u.startsWith('http')) ? u : '';
+      const gallery = Array.isArray(product.images?.gallery) ? product.images.gallery : [];
+      const fromGallery = gallery.map(g => httpOnly(g?.original_url || g?.url)).find(Boolean) || '';
+      return fromGallery
+        || httpOnly(product.original_cover_url)
+        || httpOnly(product.images?.cover)
+        || httpOnly(product.cover_image)
+        || '';
+    },
+
     add(product, size, shippingMethod) {
       const items = this.load();
       // Find unit_price from product.price (shipping_method dependent)
@@ -100,7 +113,7 @@
         unit_price,
         shipping_method: shippingMethod,
         note: '',
-        image_url: product.images?.cover || product.cover_image || '',
+        image_url: this.resolveImageUrl(product),
         // 品牌方特價旗標 (migration 014) — 不享會員折扣 (tier/birthday/bulk),但入會折抵金可用
         is_promo: !!product.is_promo,
         promo_note: product.promo_note || '',
@@ -1287,14 +1300,17 @@
         const noteVal = (item.note || '').replace(/"/g, '&quot;');
 
         // 補救舊 cart：凍結的 image_url 空的或失效時，用 live product 的圖補上
+        // 只收 http 開頭的網址 (與 main.js 商品卡片邏輯一致) —
+        // 資料庫可能存本地相對路徑 (images/products/...),部署後不存在會 404
+        const _httpOnly = (u) => (typeof u === 'string' && u.startsWith('http')) ? u : '';
         const liveImg = (prod && (
-  prod.images?.cover ||
-  prod.cover_image ||
-  prod.original_cover_url ||
-  (Array.isArray(prod.images?.gallery) && prod.images.gallery[0]?.url) ||
+  (Array.isArray(prod.images?.gallery) && _httpOnly(prod.images.gallery[0]?.original_url || prod.images.gallery[0]?.url)) ||
+  _httpOnly(prod.original_cover_url) ||
+  _httpOnly(prod.images?.cover) ||
+  _httpOnly(prod.cover_image) ||
   ''
 )) || '';
-        const displayImg = item.image_url || liveImg || '';
+        const displayImg = _httpOnly(item.image_url) || liveImg || '';
         const fallbackSvg = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23333%22 width=%2280%22 height=%2280%22/%3E%3C/svg%3E';
 
         const itemEl = document.createElement('div');
