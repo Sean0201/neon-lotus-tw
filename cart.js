@@ -1286,11 +1286,22 @@
 
         const noteVal = (item.note || '').replace(/"/g, '&quot;');
 
+        // 補救舊 cart：凍結的 image_url 空的或失效時，用 live product 的圖補上
+        const liveImg = (prod && (
+  prod.images?.cover ||
+  prod.cover_image ||
+  prod.original_cover_url ||
+  (Array.isArray(prod.images?.gallery) && prod.images.gallery[0]?.url) ||
+  ''
+)) || '';
+        const displayImg = item.image_url || liveImg || '';
+        const fallbackSvg = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23333%22 width=%2280%22 height=%2280%22/%3E%3C/svg%3E';
+
         const itemEl = document.createElement('div');
         itemEl.className = 'neon-cart-item';
         itemEl.innerHTML = `
           <div class="neon-cart-item-image">
-            <img src="${item.image_url || ''}" alt="${item.product_name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23333%22 width=%2280%22 height=%2280%22/%3E%3C/svg%3E'" />
+            <img src="${displayImg}" alt="${item.product_name}" data-live-img="${liveImg}" data-fallback="${fallbackSvg}" onerror="if(this.dataset.tried!=='1'&&this.dataset.liveImg){this.dataset.tried='1';this.src=this.dataset.liveImg;}else{this.src=this.dataset.fallback;}" />
           </div>
           <div class="neon-cart-item-details">
             <div>

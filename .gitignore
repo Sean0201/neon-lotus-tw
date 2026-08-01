@@ -40,3 +40,6 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# LINE 貼文素材 (由 prep-line-post.js 產生, 內含品牌方圖片, 不入版控)
+outputs/
