@@ -2123,13 +2123,25 @@
     const tierMetaSH = TIER_LBL_SH[discountResult.tier_key] || TIER_LBL_SH.bronze;
     const tierPctSH  = Math.round(discountResult.tier_rate * 100);
 
-    // ── 運費設定 ──
+    // ── 運費設定 (雙門檻,依「原始」商品小計判斷,折扣不影響免運資格) ──
     const SHIPPING_FEE_CVS  = 70;   // 超商取貨運費
     const SHIPPING_FEE_HOME = 120;  // 宅配到府運費
-    const FREE_SHIPPING_THRESHOLD = 3000; // 滿額免運門檻 (依「原始」商品小計判斷,折扣不影響免運資格)
+    const FREE_SHIP_THRESHOLD_CVS  = 3000; // 超商取貨滿額免運門檻
+    const FREE_SHIP_THRESHOLD_HOME = 5000; // 宅配到府滿額免運門檻
 
-    const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
-    let currentShippingFee = isFreeShipping ? 0 : SHIPPING_FEE_CVS; // 預設超商
+    const isFreeShippingCvs  = subtotal >= FREE_SHIP_THRESHOLD_CVS;
+    const isFreeShippingHome = subtotal >= FREE_SHIP_THRESHOLD_HOME;
+    let currentShippingFee = isFreeShippingCvs ? 0 : SHIPPING_FEE_CVS; // 預設超商
+
+    // 免運提示文案 (依目前選擇的配送方式)
+    function freeShipNoteHtml(method) {
+      const th    = method === 'home' ? FREE_SHIP_THRESHOLD_HOME : FREE_SHIP_THRESHOLD_CVS;
+      const label = method === 'home' ? '宅配' : '超商取貨';
+      if (subtotal >= th) {
+        return `<span style="color:#4ade80;">訂單滿 NT$ ${th.toLocaleString()} 享${label}免運優惠！</span>`;
+      }
+      return `再消費 NT$ ${(th - subtotal).toLocaleString()} 即享${label}免運`;
+    }
 
     let itemsSummary = '';
     items.forEach((item) => {
@@ -2200,9 +2212,7 @@
       ? `<div class="neon-checkout-summary-row" style="color:${colors.accent};font-size:12px"><span>您共省下:</span><span>NT$ ${totalDiscount.toLocaleString()}</span></div>`
       : '';
 
-    const freeShippingNote = isFreeShipping
-      ? '<div id="checkout-free-shipping-note" style="color:#4ade80;font-size:13px;margin-top:4px;">訂單滿 NT$ 3,000 享免運優惠！</div>'
-      : `<div id="checkout-free-shipping-note" style="color:${colors.muted};font-size:13px;margin-top:4px;">再消費 NT$ ${(FREE_SHIPPING_THRESHOLD - subtotal).toLocaleString()} 即享免運</div>`;
+    const freeShippingNote = `<div id="checkout-free-shipping-note" style="color:${colors.muted};font-size:13px;margin-top:4px;">${freeShipNoteHtml('cvs')}</div>`;
 
     const html = `
       <div class="neon-checkout-header">
@@ -2232,8 +2242,8 @@
             <div class="neon-checkout-form-group">
               <label class="neon-checkout-form-label">配送方式 *</label>
               <div class="neon-shipping-toggle">
-                <button type="button" class="neon-shipping-option active" data-shipping="cvs">超商取貨 ${isFreeShipping ? '(免運)' : '(NT$ 70)'}</button>
-                <button type="button" class="neon-shipping-option" data-shipping="home">宅配到府 ${isFreeShipping ? '(免運)' : '(NT$ 120)'}</button>
+                <button type="button" class="neon-shipping-option active" data-shipping="cvs">超商取貨 ${isFreeShippingCvs ? '(免運)' : '(NT$ 70)'}</button>
+                <button type="button" class="neon-shipping-option" data-shipping="home">宅配到府 ${isFreeShippingHome ? '(免運)' : '(NT$ 120)'}</button>
               </div>
             </div>
 
@@ -2289,7 +2299,7 @@
               ${discountRow}
               <div class="neon-checkout-summary-row" id="checkout-shipping-row">
                 <span class="neon-checkout-summary-label">運費 (超商取貨):</span>
-                <span class="neon-checkout-summary-value" id="checkout-shipping-value">${isFreeShipping ? '<span style="text-decoration:line-through;color:' + colors.muted + '">NT$ 70</span> <span style="color:#4ade80">免運</span>' : 'NT$ ' + currentShippingFee.toLocaleString()}</span>
+                <span class="neon-checkout-summary-value" id="checkout-shipping-value">${isFreeShippingCvs ? '<span style="text-decoration:line-through;color:' + colors.muted + '">NT$ 70</span> <span style="color:#4ade80">免運</span>' : 'NT$ ' + currentShippingFee.toLocaleString()}</span>
               </div>
               ${freeShippingNote}
               <div class="neon-checkout-summary-total">
@@ -2326,7 +2336,8 @@
     // ── 更新運費 UI 的 helper ──
     function updateShippingUI() {
       const fee = selectedShipping === 'cvs' ? SHIPPING_FEE_CVS : SHIPPING_FEE_HOME;
-      currentShippingFee = isFreeShipping ? 0 : fee;
+      const isFree = selectedShipping === 'cvs' ? isFreeShippingCvs : isFreeShippingHome;
+      currentShippingFee = isFree ? 0 : fee;
       const shippingLabel = selectedShipping === 'cvs' ? '超商取貨' : '宅配到府';
 
       // 運費行
@@ -2334,12 +2345,16 @@
       if (shippingRow) {
         shippingRow.querySelector('.neon-checkout-summary-label').textContent = `運費 (${shippingLabel}):`;
         const valEl = shippingRow.querySelector('#checkout-shipping-value');
-        if (isFreeShipping) {
+        if (isFree) {
           valEl.innerHTML = `<span style="text-decoration:line-through;color:${colors.muted}">NT$ ${fee.toLocaleString()}</span> <span style="color:#4ade80">免運</span>`;
         } else {
           valEl.textContent = `NT$ ${currentShippingFee.toLocaleString()}`;
         }
       }
+
+      // 免運提示 (依配送方式切換文案)
+      const noteEl = pageDiv.querySelector('#checkout-free-shipping-note');
+      if (noteEl) noteEl.innerHTML = freeShipNoteHtml(selectedShipping);
 
       // 合計 (使用折扣後小計)
       const grandTotalEl = pageDiv.querySelector('#checkout-grand-total');
