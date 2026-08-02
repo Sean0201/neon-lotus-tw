@@ -1428,13 +1428,9 @@
             🛍 再買 NT$ ${g.nextRung.gap.toLocaleString()} 即可享滿額現折 -NT$ ${g.nextRung.discount.toLocaleString()}
           </div>`;
         }
-        // 已套用提示
+        // 已套用的滿額現折金額統一顯示在下方「滿額現折」行,
+        // 這裡不重複列出,避免客人誤以為折了兩次
         let appliedLine = '';
-        if (g.bulk_discount > 0) {
-          appliedLine = `<div style="font-size:12px;color:#4ade80;margin-top:2px">
-            ✨ 已套用滿額現折 -NT$ ${g.bulk_discount.toLocaleString()}
-          </div>`;
-        }
         if (!appliedLine && !nextLine) return ''; // 沒可顯示就跳過
         return `
           <div style="padding:8px 0;border-top:1px dashed ${colors.glassBorder}">
@@ -1760,13 +1756,14 @@
       `;
     });
 
-    // 每組滿額現折提示行 (差多少 / 已套用) — 僅會員
+    // 每組滿額現折「差多少」誘因提示行 — 僅會員
+    // (已套用的金額統一顯示在下方「滿額現折」行,不在此重複,避免看似折兩次)
     let groupLines = '';
     if (member) {
       breakdown.forEach((g) => {
         const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
         if (g.bulk_discount > 0) {
-          groupLines += `<div class="neon-checkout-summary-row" style="color:#4ade80;font-size:12px"><span>${label} 已套用滿額現折</span><span>-NT$ ${g.bulk_discount.toLocaleString()}</span></div>`;
+          // 已套用 → 不重複顯示
         } else if (g.nextRung) {
           groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${g.nextRung.gap.toLocaleString()}</span><span>即享 -NT$ ${g.nextRung.discount.toLocaleString()}</span></div>`;
         }
@@ -1790,7 +1787,7 @@
     // 滿額現折行 (總計)
     const bulkRowCB = discountResult.bulk_discount_total > 0 ? `
       <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
-        <span>🛍 滿額現折合計:</span>
+        <span>🛍 滿額現折:</span>
         <span>-NT$ ${discountResult.bulk_discount_total.toLocaleString()}</span>
       </div>` : '';
 
@@ -2154,13 +2151,14 @@
       `;
     });
 
-    // 每組滿額現折提示行 (差多少 / 已套用) — 僅會員
+    // 每組滿額現折「差多少」誘因提示行 — 僅會員
+    // (已套用的金額統一顯示在下方「滿額現折」行,不在此重複,避免看似折兩次)
     let groupLines = '';
     if (member) {
       breakdown.forEach((g) => {
         const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
         if (g.bulk_discount > 0) {
-          groupLines += `<div class="neon-checkout-summary-row" style="color:#4ade80;font-size:12px"><span>${label} 已套用滿額現折</span><span>-NT$ ${g.bulk_discount.toLocaleString()}</span></div>`;
+          // 已套用 → 不重複顯示
         } else if (g.nextRung) {
           groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${g.nextRung.gap.toLocaleString()}</span><span>即享 -NT$ ${g.nextRung.discount.toLocaleString()}</span></div>`;
         }
@@ -2184,7 +2182,7 @@
     // 滿額現折合計行
     const bulkRowSH = discountResult.bulk_discount_total > 0 ? `
       <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
-        <span>🛍 滿額現折合計:</span>
+        <span>🛍 滿額現折:</span>
         <span>-NT$ ${discountResult.bulk_discount_total.toLocaleString()}</span>
       </div>` : '';
 
