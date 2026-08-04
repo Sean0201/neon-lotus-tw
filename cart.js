@@ -1432,12 +1432,20 @@
         // 這裡不重複列出,避免客人誤以為折了兩次
         let appliedLine = '';
         if (!appliedLine && !nextLine) return ''; // 沒可顯示就跳過
+        // 會員價後小計 — 讓「再買 X」的計算基準清楚
+        const memberLine = (g.after_birthday !== undefined && g.after_birthday < g.subtotal) ? `
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:${colors.lightgrey};margin-top:2px">
+            <span>└ 會員價後</span>
+            <span>NT$ ${g.after_birthday.toLocaleString()}</span>
+          </div>
+        ` : '';
         return `
           <div style="padding:8px 0;border-top:1px dashed ${colors.glassBorder}">
             <div style="display:flex;justify-content:space-between;font-size:13px;color:${colors.white}">
               <span>${label} 小計</span>
               <span>NT$ ${g.subtotal.toLocaleString()}</span>
             </div>
+            ${memberLine}
             ${appliedLine}
             ${nextLine}
           </div>
@@ -1765,8 +1773,9 @@
         if (g.bulk_discount > 0) {
           // 已套用 → 不重複顯示
         } else if (g.nextRung) {
-          groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${g.nextRung.gap.toLocaleString()}</span><span>即享 -NT$ ${g.nextRung.discount.toLocaleString()}</span></div>`;
-        }
+          if (g.after_birthday !== undefined && g.after_birthday < g.subtotal) {
+            groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:11px;opacity:0.85"><span>└ 會員價後小計</span><span>NT$ ${g.after_birthday.toLocaleString()}</span></div>`;
+          }
       });
     }
 
@@ -2160,8 +2169,10 @@
         if (g.bulk_discount > 0) {
           // 已套用 → 不重複顯示
         } else if (g.nextRung) {
-          groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:12px"><span>${label} 再買 NT$ ${g.nextRung.gap.toLocaleString()}</span><span>即享 -NT$ ${g.nextRung.discount.toLocaleString()}</span></div>`;
-        }
+          
+        }if (g.after_birthday !== undefined && g.after_birthday < g.subtotal) {
+            groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:11px;opacity:0.85"><span>└ 會員價後小計</span><span>NT$ ${g.after_birthday.toLocaleString()}</span></div>`;
+          }
       });
     }
 
