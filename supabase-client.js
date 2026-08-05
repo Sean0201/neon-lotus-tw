@@ -31,8 +31,8 @@ const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 //     V6 cache 推上去後讓這些舊值第一次以 override 身份生效,造成全站價格跑掉)。
 //     已透過 SQL 把全部 override 設回 NULL,推 V7 讓所有用戶立即拿到正確 fresh data。
 // V6: tag/category 已標準化為 5 個值 (Top/Outerwear/Bottom/Set/Accessories)。
-const CACHE_KEY     = 'NEON_LOTUS_TW_V9';
-const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V9_TS';
+const CACHE_KEY     = 'NEON_LOTUS_TW_V10';
+const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V10_TS';
 const CACHE_TTL     = 60 * 60 * 1000;  // 60 minutes — 減少 egress,同訪客 1 小時內不重抓
 const PAGE_SIZE     = 1000;             // Supabase max rows per request
 
@@ -41,6 +41,12 @@ const _brandDetailCache = {};           // { brandId: true } — already fetched
 
 /**
  * Paginated fetch — retrieves ALL rows from a table, 1000 at a time.
+ *
+ * ⚠️ 分頁穩定性:
+ * 只用 ORDER BY sort_order 之類「大量 ties」的欄位分頁時,Postgres 的 tie-break
+ * 不保證 request 之間穩定 → 頁與頁之間會有 row 重複/漏抓。所以除了 caller 指定
+ * 的 order,一律再串一個 `id` 當 secondary sort(id 是 UUID / 唯一主鍵),
+ * 保證分頁完全 deterministic。
  */
 async function fetchAll(table, opts = {}) {
   const allRows = [];
@@ -49,6 +55,8 @@ async function fetchAll(table, opts = {}) {
     let query = _supabase.from(table).select(opts.select || '*');
     if (opts.filter) query = opts.filter(query);
     if (opts.order)  query = query.order(opts.order);
+    // Stable tie-breaker — 修 sort_order 多 ties 導致分頁抽獎的 bug
+    query = query.order('id');
     query = query.range(from, from + PAGE_SIZE - 1);
     const { data, error } = await query;
     if (error) throw new Error(table + ': ' + error.message);
