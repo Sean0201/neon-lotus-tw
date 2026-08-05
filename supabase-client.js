@@ -31,9 +31,9 @@ const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 //     V6 cache 推上去後讓這些舊值第一次以 override 身份生效,造成全站價格跑掉)。
 //     已透過 SQL 把全部 override 設回 NULL,推 V7 讓所有用戶立即拿到正確 fresh data。
 // V6: tag/category 已標準化為 5 個值 (Top/Outerwear/Bottom/Set/Accessories)。
-const CACHE_KEY     = 'NEON_LOTUS_TW_V8';
-const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V8_TS';
-const CACHE_TTL     = 5 * 60 * 1000;   // 5 minutes
+const CACHE_KEY     = 'NEON_LOTUS_TW_V9';
+const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V9_TS';
+const CACHE_TTL     = 60 * 60 * 1000;  // 60 minutes — 減少 egress,同訪客 1 小時內不重抓
 const PAGE_SIZE     = 1000;             // Supabase max rows per request
 
 // ── In-memory cache for per-brand gallery + sizes ─────────────
