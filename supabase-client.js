@@ -31,8 +31,8 @@ const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 //     V6 cache 推上去後讓這些舊值第一次以 override 身份生效,造成全站價格跑掉)。
 //     已透過 SQL 把全部 override 設回 NULL,推 V7 讓所有用戶立即拿到正確 fresh data。
 // V6: tag/category 已標準化為 5 個值 (Top/Outerwear/Bottom/Set/Accessories)。
-const CACHE_KEY     = 'NEON_LOTUS_TW_V10';
-const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V10_TS';
+const CACHE_KEY     = 'NEON_LOTUS_TW_V11';
+const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V11_TS';
 const CACHE_TTL     = 60 * 60 * 1000;  // 60 minutes — 減少 egress,同訪客 1 小時內不重抓
 const PAGE_SIZE     = 1000;             // Supabase max rows per request
 
@@ -44,19 +44,18 @@ const _brandDetailCache = {};           // { brandId: true } — already fetched
  *
  * ⚠️ 分頁穩定性:
  * 只用 ORDER BY sort_order 之類「大量 ties」的欄位分頁時,Postgres 的 tie-break
- * 不保證 request 之間穩定 → 頁與頁之間會有 row 重複/漏抓。所以除了 caller 指定
- * 的 order,一律再串一個 `id` 當 secondary sort(id 是 UUID / 唯一主鍵),
- * 保證分頁完全 deterministic。
+ * 不保證 request 之間穩定 → 頁與頁之間會有 row 重複/漏抓。caller 若需要 stable
+ * pagination,請透過 opts.tieBreak 傳入唯一 column (通常 'id')。
+ * 不預設加 'id' 是因為某些表 (e.g. site_settings) 沒有 id column。
  */
 async function fetchAll(table, opts = {}) {
   const allRows = [];
   let from = 0;
   while (true) {
     let query = _supabase.from(table).select(opts.select || '*');
-    if (opts.filter) query = opts.filter(query);
-    if (opts.order)  query = query.order(opts.order);
-    // Stable tie-breaker — 修 sort_order 多 ties 導致分頁抽獎的 bug
-    query = query.order('id');
+    if (opts.filter)   query = opts.filter(query);
+    if (opts.order)    query = query.order(opts.order);
+    if (opts.tieBreak) query = query.order(opts.tieBreak);  // stable pagination
     query = query.range(from, from + PAGE_SIZE - 1);
     const { data, error } = await query;
     if (error) throw new Error(table + ': ' + error.message);
@@ -103,7 +102,7 @@ async function loadSupabaseData() {
   console.log('[supabase-client] Fetching core data from Supabase…');
 
   const [brands, products, banners, featured, settingsRows] = await Promise.all([
-    fetchAll('brands'),
+    fetchAll('brands', { tieBreak: 'id' }),
     fetchAll('products', {
       // 明確列出前台用得到的欄位 — 跳過 description_zh / description_en 因為前台從沒讀過
       // (商品描述只有 admin 編輯頁用,不需要載到瀏覽器)。少抓兩個大欄位 = 大幅減少 egress。
@@ -113,21 +112,24 @@ async function loadSupabaseData() {
               'is_promo, promo_note',
       filter: q => q.eq('is_active', true),
       order: 'sort_order',
+      tieBreak: 'id',   // sort_order 大量 ties → 一定要 stable tie-breaker
     }),
     fetchAll('banners', {
       filter: q => q.eq('is_active', true),
       order: 'sort_order',
+      tieBreak: 'id',
     }),
     // featured_products may not exist yet on first deploy — swallow errors
     fetchAll('featured_products', {
       select: 'id, product_id, brand_id, is_active, sort_order',
       filter: q => q.eq('is_active', true),
       order: 'sort_order',
+      tieBreak: 'id',
     }).catch(err => {
       console.warn('[supabase-client] featured_products not available:', err?.message || err);
       return [];
     }),
-    fetchAll('site_settings'),
+    fetchAll('site_settings'),   // 純 KV 表,無 id column,不用 tie-breaker
   ]);
 
   // ── Parse settings ──────────────────────────────────────────
@@ -298,10 +300,12 @@ async function loadBrandDetail(brandId) {
       fetchAll('product_gallery', {
         filter: q => q.in('product_id', chunk),
         order: 'sort_order',
+        tieBreak: 'id',
       }),
       fetchAll('product_sizes', {
         filter: q => q.in('product_id', chunk),
         order: 'sort_order',
+        tieBreak: 'id',
       }),
     );
   }
@@ -363,6 +367,7 @@ async function _refreshFeaturedFromServer() {
       select: 'id, product_id, brand_id, is_active, sort_order',
       filter: q => q.eq('is_active', true),
       order: 'sort_order',
+      tieBreak: 'id',
     });
     const next = (rows || []).map(f => ({
       id:         f.id,
