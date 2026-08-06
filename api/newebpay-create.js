@@ -91,35 +91,86 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
   /* 3. Phase 2.2 migration 014 — 後端用 product_id 重撈 is_promo
      - 客戶端送來的 is_promo 不可信 (可能被竄改成 false 來吃折扣)
      - server 從 DB 撈 products.is_promo 為唯一信任來源
-     - 若 product_id 缺失/查無,fallback is_promo = false (寬鬆,但會記 log) */
+     - 若 product_id 缺失/查無,fallback is_promo = false (寬鬆,但會記 log)
+
+     Migration 015 — 新增 brand_id 一併撈,配合下面 brand_promos 判斷,
+     讓「品牌週」商品能被 server 認可為 is_promo=true (skip tier/bulk/等) */
   const productIds = items.map(it => it.product_id).filter(Boolean);
-  const promoMap = new Map(); // product_id (string) -> is_promo (boolean)
+  const promoMap = new Map();  // product_id (string) -> is_promo (boolean, product-level)
+  const brandMap = new Map();  // product_id (string) -> brand_id (string|null)
   if (productIds.length && supabase) {
     try {
       const { data: prodRows, error: prodErr } = await supabase
         .from('products')
-        .select('id, is_promo')
+        .select('id, is_promo, brand_id')
         .in('id', productIds);
       if (!prodErr && Array.isArray(prodRows)) {
-        prodRows.forEach(row => promoMap.set(String(row.id), !!row.is_promo));
+        prodRows.forEach(row => {
+          promoMap.set(String(row.id), !!row.is_promo);
+          brandMap.set(String(row.id), row.brand_id || null);
+        });
       } else if (prodErr) {
-        console.warn('[newebpay-create] products is_promo lookup failed:', prodErr.message);
+        console.warn('[newebpay-create] products lookup failed:', prodErr.message);
       }
     } catch (err) {
-      console.warn('[newebpay-create] products is_promo lookup threw:', err && err.message ? err.message : err);
+      console.warn('[newebpay-create] products lookup threw:', err && err.message ? err.message : err);
+    }
+  }
+
+  /* 3b. Migration 015 — 撈目前正在跑的品牌週活動
+     - 只信 server 判斷:brand_promos.is_active = true
+     - 這些品牌旗下的商品,client 送 is_promo=true 就會被接受 (skip tier/bulk/etc,
+       跟前端 BrandPromoEngine 的 skip 語意一致 → server 算出來的 final_subtotal
+       就會跟 client 的 discountResult.final_subtotal 一致)
+     - 不在活動內的品牌 / 沒設定的品牌 → 一律以 products.is_promo 為準 (舊行為)
+     - client 的 unit_price 已是折後價 (BrandPromoEngine 已改寫),server 沿用;
+       整車 ±NT$5 tolerance 仍在,保護價格竄改 */
+  const activeBrandIds = new Set();
+  if (supabase) {
+    try {
+      const nowIso = new Date().toISOString();
+      const { data: bpRows, error: bpErr } = await supabase
+        .from('brand_promos')
+        .select('brand_id, starts_at, ends_at, is_active')
+        .eq('is_active', true);
+      if (!bpErr && Array.isArray(bpRows)) {
+        bpRows.forEach(bp => {
+          const started = !bp.starts_at || bp.starts_at <= nowIso;
+          const notEnded = !bp.ends_at   || bp.ends_at   >  nowIso;
+          if (started && notEnded && bp.brand_id) {
+            activeBrandIds.add(String(bp.brand_id));
+          }
+        });
+      } else if (bpErr) {
+        console.warn('[newebpay-create] brand_promos lookup failed:', bpErr.message);
+      }
+    } catch (err) {
+      console.warn('[newebpay-create] brand_promos lookup threw:', err && err.message ? err.message : err);
     }
   }
 
   // 4. 折扣計算 — 把 server 撈到的 is_promo 注入到 engine items
   const engineItems = items.map((it) => {
     const pid = it.product_id != null ? String(it.product_id) : null;
-    const serverIsPromo = pid && promoMap.has(pid) ? promoMap.get(pid) : false;
+    const productPromo = pid && promoMap.has(pid) ? promoMap.get(pid) : false;
+    const brandId      = pid && brandMap.has(pid) ? brandMap.get(pid) : null;
+    const brandPromoActive = !!(brandId && activeBrandIds.has(String(brandId)));
+
+    // serverIsPromo = product 本身是特價 || (該品牌正在跑週活動 && client 聲明是 is_promo)
+    // 品牌週的路徑仍要求 client 主動聲明 is_promo=true (由 BrandPromoEngine 標記),
+    // 這樣同一品牌內若有非活動商品也不會被誤傷。
+    let serverIsPromo = productPromo;
+    if (!serverIsPromo && brandPromoActive && it.is_promo === true) {
+      serverIsPromo = true;
+    }
+
     if (pid && !promoMap.has(pid)) {
       console.warn('[newebpay-create] product_id not found in DB, treating as non-promo:', pid);
     }
     if (it.is_promo != null && !!it.is_promo !== serverIsPromo) {
       console.warn('[newebpay-create] is_promo client/server mismatch', {
-        product_id: pid, client: !!it.is_promo, server: serverIsPromo,
+        product_id: pid, brand_id: brandId, brand_promo_active: brandPromoActive,
+        client: !!it.is_promo, server: serverIsPromo,
       });
     }
     return {
