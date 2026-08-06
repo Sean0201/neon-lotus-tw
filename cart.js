@@ -1524,6 +1524,24 @@
       </div>
     ` : '';
 
+    // 品牌活動促銷行 (migration 015) — 每個受影響品牌一行,明確告訴客人「為什麼折了」
+    const brandPromoRow = (discountResult.brand_promo && discountResult.brand_promo.brand_summary)
+      ? Object.entries(discountResult.brand_promo.brand_summary).map(([bid, s]) => {
+          const pct       = 100 - (Number(s.discount_percent) || 0);
+          const pctText   = s.discount_percent > 0 ? `${pct} 折` : '促銷價';
+          const shipText  = s.free_shipping ? ' + 免運' : '';
+          const savingTxt = s.savings > 0
+            ? `- NT$ ${s.savings.toLocaleString()}`
+            : (s.free_shipping ? '免運' : '');
+          return `
+            <div class="neon-cart-subtotal" style="margin-top:6px;color:#fb7185">
+              <span class="neon-cart-subtotal-label">🔥 ${s.label} (${s.qty} 件,${pctText}${shipText}):</span>
+              <span class="neon-cart-subtotal-value">${savingTxt}</span>
+            </div>
+          `;
+        }).join('')
+      : '';
+
     // 總共省下行
     const savingsRow = totalDiscount > 0 ? `
       <div class="neon-cart-subtotal" style="margin-top:4px;color:${colors.accent};font-size:12px">
@@ -1539,6 +1557,7 @@
         <span class="neon-cart-subtotal-label">商品小計:</span>
         <span class="neon-cart-subtotal-value">NT$ ${rawSubtotal.toLocaleString()}</span>
       </div>
+      ${brandPromoRow}
       ${tierRow}
       ${birthdayRow}
       ${bulkRow}
@@ -1840,6 +1859,23 @@
         <span>折扣已封頂</span>
       </div>` : '';
 
+    // 品牌活動促銷行 (migration 015)
+    const brandPromoRowCB = (discountResult.brand_promo && discountResult.brand_promo.brand_summary)
+      ? Object.entries(discountResult.brand_promo.brand_summary).map(([bid, s]) => {
+          const pct       = 100 - (Number(s.discount_percent) || 0);
+          const pctText   = s.discount_percent > 0 ? `${pct} 折` : '促銷價';
+          const shipText  = s.free_shipping ? ' + 免運' : '';
+          const savingTxt = s.savings > 0
+            ? `-NT$ ${s.savings.toLocaleString()}`
+            : (s.free_shipping ? '免運' : '');
+          return `
+            <div class="neon-checkout-summary-row" style="color:#fb7185;font-size:13px">
+              <span>🔥 ${s.label} (${s.qty} 件,${pctText}${shipText}):</span>
+              <span>${savingTxt}</span>
+            </div>`;
+        }).join('')
+      : '';
+
     // 訪客誘因 banner
     const guestBannerCB = (!member) ? `
       <div class="neon-checkout-summary-row" style="background:rgba(192,132,252,0.08);border:1px solid ${colors.border};border-radius:8px;padding:8px 10px;font-size:12px;color:${colors.accent};line-height:1.5;display:block">
@@ -1888,6 +1924,7 @@
               </div>
               ${guestBannerCB}
               ${groupLines}
+              ${brandPromoRowCB}
               ${tierRowCB}
               ${birthdayRowCB}
               ${bulkRowCB}
@@ -2142,12 +2179,23 @@
     const FREE_SHIP_THRESHOLD_CVS  = 3000; // 超商取貨滿額免運門檻
     const FREE_SHIP_THRESHOLD_HOME = 5000; // 宅配到府滿額免運門檻
 
-    const isFreeShippingCvs  = subtotal >= FREE_SHIP_THRESHOLD_CVS;
-    const isFreeShippingHome = subtotal >= FREE_SHIP_THRESHOLD_HOME;
+    // 品牌活動免運 (migration 015) — 只要 cart 有觸發任一品牌週的免運,直接免運,不看滿額門檻
+    const brandPromoFreeShip = !!(discountResult.brand_promo && discountResult.brand_promo.any_free_shipping);
+    const brandPromoLabels   = (discountResult.brand_promo && discountResult.brand_promo.brand_summary)
+      ? Object.values(discountResult.brand_promo.brand_summary).filter(s => s.free_shipping).map(s => s.label)
+      : [];
+
+    const isFreeShippingCvs  = brandPromoFreeShip || subtotal >= FREE_SHIP_THRESHOLD_CVS;
+    const isFreeShippingHome = brandPromoFreeShip || subtotal >= FREE_SHIP_THRESHOLD_HOME;
     let currentShippingFee = isFreeShippingCvs ? 0 : SHIPPING_FEE_CVS; // 預設超商
 
     // 免運提示文案 (依目前選擇的配送方式)
     function freeShipNoteHtml(method) {
+      // 品牌活動免運優先 — 已觸發就直接顯示,不用再看滿額門檻
+      if (brandPromoFreeShip) {
+        const brandsTxt = brandPromoLabels.length > 0 ? brandPromoLabels.join('、') : '品牌活動';
+        return `<span style="color:#4ade80;">🔥 ${brandsTxt} 免運已啟用！</span>`;
+      }
       const th    = method === 'home' ? FREE_SHIP_THRESHOLD_HOME : FREE_SHIP_THRESHOLD_CVS;
       const label = method === 'home' ? '宅配' : '超商取貨';
       if (subtotal >= th) {
@@ -2218,6 +2266,23 @@
         <span>⛔ 等級樓地板 (${Math.round(discountResult.floor_rate * 100)}%):</span>
         <span>折扣已封頂</span>
       </div>` : '';
+
+    // 品牌活動促銷行 (migration 015) — 每個受影響品牌一行
+    const brandPromoRowSH = (discountResult.brand_promo && discountResult.brand_promo.brand_summary)
+      ? Object.entries(discountResult.brand_promo.brand_summary).map(([bid, s]) => {
+          const pct       = 100 - (Number(s.discount_percent) || 0);
+          const pctText   = s.discount_percent > 0 ? `${pct} 折` : '促銷價';
+          const shipText  = s.free_shipping ? ' + 免運' : '';
+          const savingTxt = s.savings > 0
+            ? `-NT$ ${s.savings.toLocaleString()}`
+            : (s.free_shipping ? '免運' : '');
+          return `
+            <div class="neon-checkout-summary-row" style="color:#fb7185;font-size:13px">
+              <span>🔥 ${s.label} (${s.qty} 件,${pctText}${shipText}):</span>
+              <span>${savingTxt}</span>
+            </div>`;
+        }).join('')
+      : '';
 
     // 訪客誘因 banner
     const guestBannerSH = (!member) ? `
@@ -2308,6 +2373,7 @@
               </div>
               ${guestBannerSH}
               ${groupLines}
+              ${brandPromoRowSH}
               ${tierRowSH}
               ${birthdayRowSH}
               ${bulkRowSH}
