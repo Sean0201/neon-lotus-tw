@@ -518,6 +518,9 @@ async function renderBrandPage(brandId) {
     `;
   }
 
+  // Migration 015 — 品牌週橫幅(依 window.BRAND_PROMOS 動態顯示)
+  renderBrandPromoBanner(brandId);
+
   renderFilters();
   renderProducts('ALL');
 
@@ -539,6 +542,89 @@ async function renderBrandPage(brandId) {
       console.error('[renderBrandPage] loadBrandDetail failed:', err);
     });
   }
+}
+
+/**
+ * Migration 015 — 品牌週橫幅
+ *   顯示活動 label + 階梯 (min_qty / discount_percent / free_shipping) upsell。
+ *   資料來源:window.BRAND_PROMOS (supabase-client.js 拉的)。
+ *   活動未開 / 該品牌無活動 → 隱藏 banner。
+ */
+function renderBrandPromoBanner(brandId) {
+  const el = document.getElementById('brand-promo-banner');
+  if (!el) return;
+
+  const promos = Array.isArray(window.BRAND_PROMOS) ? window.BRAND_PROMOS : [];
+  const now = new Date();
+  const promo = promos.find(p => {
+    if (!p || String(p.brand_id) !== String(brandId)) return false;
+    if (!p.is_active) return false;
+    if (p.starts_at && new Date(p.starts_at) > now) return false;
+    if (p.ends_at   && new Date(p.ends_at)   <= now) return false;
+    return Array.isArray(p.tier_rules) && p.tier_rules.length > 0;
+  });
+
+  if (!promo) {
+    el.hidden = true;
+    el.innerHTML = '';
+    return;
+  }
+
+  // 依 min_qty 升冪排序階梯
+  const tiers = promo.tier_rules.slice()
+    .filter(t => t && Number.isFinite(Number(t.min_qty)))
+    .sort((a, b) => (Number(a.min_qty) || 0) - (Number(b.min_qty) || 0));
+
+  // 用購物車目前該品牌的件數判斷 active 階梯
+  const cartQty = _brandQtyInCart(brandId);
+  let activeIdx = -1;
+  for (let i = 0; i < tiers.length; i++) {
+    if (cartQty >= (Number(tiers[i].min_qty) || 0)) activeIdx = i;
+  }
+
+  const tierHtml = tiers.map((t, i) => {
+    const qty  = Number(t.min_qty) || 0;
+    const pct  = Number(t.discount_percent) || 0;
+    const free = !!t.free_shipping;
+    const benefit = (pct > 0 ? `${100 - pct} 折` : '原價') + (free ? ' + 免運' : '');
+    const activeCls = (i === activeIdx) ? ' active' : '';
+    return `
+      <div class="brand-promo-tier${activeCls}">
+        <div class="brand-promo-tier-qty">${qty} 件</div>
+        <div class="brand-promo-tier-benefit">${benefit}</div>
+      </div>`;
+  }).join('');
+
+  el.hidden = false;
+  el.innerHTML = `
+    <div class="brand-promo-banner-title">
+      <span class="flame">🔥</span>
+      <span>${escapeHtml(promo.label || '品牌週')}${activeIdx >= 0 ? ` — 您已達第 ${activeIdx + 1} 階,加購可升級` : ' 進行中'}</span>
+    </div>
+    <div class="brand-promo-tiers">${tierHtml}</div>
+  `;
+}
+
+/** 讀 localStorage cart,回傳該 brand 目前總件數。無 cart / 出錯 → 0。 */
+function _brandQtyInCart(brandId) {
+  try {
+    const raw = localStorage.getItem('neonlotus_cart') || localStorage.getItem('cart');
+    if (!raw) return 0;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return 0;
+    return arr.reduce((s, it) => (
+      (it && String(it.brand_id) === String(brandId))
+        ? s + (Number(it.quantity) || 0)
+        : s
+    ), 0);
+  } catch { return 0; }
+}
+
+/** 小工具 — escape HTML (label 可能含使用者輸入) */
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /**

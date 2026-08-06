@@ -989,6 +989,10 @@
                         <span class="nav-icon">★</span>
                         <span>本週精選</span>
                     </div>
+                    <div class="nav-item" data-page="brand-promos">
+                        <span class="nav-icon">🔥</span>
+                        <span>品牌週活動</span>
+                    </div>
                     <div class="nav-item" data-page="orders">
                         <span class="nav-icon">🛒</span>
                         <span>訂單管理</span>
@@ -1208,6 +1212,36 @@
                                 <tbody id="featuredTableBody" draggable="true">
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Brand Promos Page (Migration 015 — 品牌週活動管理) -->
+                    <div id="brand-promos" class="page">
+                        <div class="table-container">
+                            <div class="table-header">
+                                <h2>品牌週活動</h2>
+                                <div class="table-controls">
+                                    <button id="addBrandPromoBtn" class="btn-primary">+ 新增品牌活動</button>
+                                    <button class="btn-secondary" onclick="loadBrandPromos()">Refresh</button>
+                                </div>
+                            </div>
+                            <table id="brandPromosTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 12%;">Brand</th>
+                                        <th style="width: 20%;">Label</th>
+                                        <th>階梯規則 (tier_rules)</th>
+                                        <th style="width: 10%;">Active</th>
+                                        <th style="width: 15%;">期間</th>
+                                        <th style="width: 130px; white-space: nowrap;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="brandPromosTableBody"></tbody>
+                            </table>
+                            <p style="color:#888;font-size:12px;padding:12px;">
+                                提示:同時只跑一檔品牌週最單純。變更後前端最多 60 分鐘 cache TTL 內反映;
+                                想立刻生效可請 dev 把 <code>supabase-client.js</code> 的 <code>CACHE_KEY</code> 版號 +1 重新發佈。
+                            </p>
                         </div>
                     </div>
 
@@ -2163,6 +2197,7 @@
             else if (page === 'products') loadProducts();
             else if (page === 'banners') loadBanners();
             else if (page === 'featured') loadFeatured();
+            else if (page === 'brand-promos') loadBrandPromos();
             else if (page === 'orders') loadOrders();
             else if (page === 'members') initMembersPage();
             else if (page === 'member-backfill') initMemberBackfill();
@@ -2177,6 +2212,7 @@
                 'products': '商品管理',
                 'banners': 'Banner 管理',
                 'featured': '本週精選',
+                'brand-promos': '品牌週活動',
                 'orders': '訂單管理',
                 'members': '會員管理',
                 'member-backfill': '會員補登',
@@ -3571,6 +3607,162 @@
             } catch (error) {
                 showToast(error.message, 'error');
             }
+        }
+
+        // ============================================================================
+        // BRAND PROMOS (Migration 015 — 品牌週活動管理)
+        // ============================================================================
+        // 讓 Sean 不用進 Supabase Studio 跑 SQL,直接在 admin 開/關/編輯品牌週活動。
+        // 資料表 brand_promos:brand_id (PK), label, tier_rules (JSONB), is_active,
+        // starts_at, ends_at, excludes_other_promos, counts_toward_member。
+        async function loadBrandPromos() {
+            const tbody = document.getElementById('brandPromosTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;">Loading…</td></tr>';
+            try {
+                const [{ data: promos, error: pErr }, { data: brands, error: bErr }] = await Promise.all([
+                    sb.from('brand_promos').select('*').order('is_active', { ascending: false }).order('brand_id'),
+                    sb.from('brands').select('id, name').order('name'),
+                ]);
+                if (pErr) throw pErr;
+                if (bErr) throw bErr;
+                window._brandsForPromo = brands || [];
+
+                if (!promos || promos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#888;">尚無任何品牌活動,點右上「+ 新增品牌活動」開始</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = promos.map(p => {
+                    const brand = (brands || []).find(b => b.id === p.brand_id);
+                    const brandName = brand ? brand.name : p.brand_id;
+                    const tiers = Array.isArray(p.tier_rules) ? p.tier_rules : [];
+                    const tiersTxt = tiers
+                        .slice().sort((a, b) => (a.min_qty || 0) - (b.min_qty || 0))
+                        .map(t => `${t.min_qty}件→${t.discount_percent > 0 ? (100 - t.discount_percent) + '折' : '原價'}${t.free_shipping ? '+免運' : ''}`)
+                        .join(' / ') || '(無)';
+                    const period = (p.starts_at || p.ends_at)
+                        ? `${p.starts_at ? p.starts_at.slice(0,10) : '—'} ~ ${p.ends_at ? p.ends_at.slice(0,10) : '—'}`
+                        : '手動';
+                    const toggleColor = p.is_active ? '#4ade80' : '#666';
+                    const toggleTxt   = p.is_active ? '✔ 啟用中' : '✗ 停用';
+                    return `
+                        <tr>
+                            <td><strong>${escapeHtmlA(brandName)}</strong><br><span style="color:#666;font-size:11px;">${escapeHtmlA(p.brand_id)}</span></td>
+                            <td>${escapeHtmlA(p.label || '')}</td>
+                            <td style="font-size:12px;color:#aaa;">${tiersTxt}</td>
+                            <td>
+                                <button class="btn-link" style="color:${toggleColor};font-weight:600;"
+                                        onclick="toggleBrandPromo('${p.brand_id}', ${!p.is_active})">
+                                    ${toggleTxt}
+                                </button>
+                            </td>
+                            <td style="font-size:12px;">${period}</td>
+                            <td>
+                                <div class="table-actions-vertical">
+                                    <button class="btn-link edit" onclick="editBrandPromo('${p.brand_id}')">Edit</button>
+                                    <button class="btn-link del"  onclick="deleteBrandPromo('${p.brand_id}')">Delete</button>
+                                </div>
+                            </td>
+                        </tr>`;
+                }).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" style="color:#f87171;padding:20px;">Error: ${escapeHtmlA(err.message || err)}</td></tr>`;
+            }
+        }
+
+        async function toggleBrandPromo(brandId, activate) {
+            const patch = { is_active: activate };
+            if (activate) { patch.starts_at = new Date().toISOString(); patch.ends_at = null; }
+            else          { patch.ends_at   = new Date().toISOString(); }
+            const { error } = await sb.from('brand_promos').update(patch).eq('brand_id', brandId);
+            if (error) { showToast(error.message, 'error'); return; }
+            showToast(activate ? '已啟用' : '已停用', 'success');
+            loadBrandPromos();
+        }
+
+        async function deleteBrandPromo(brandId) {
+            if (!confirm(`確定刪除 ${brandId} 的品牌活動?(歷史訂單的 brand_promo_* 欄位不受影響)`)) return;
+            const { error } = await sb.from('brand_promos').delete().eq('brand_id', brandId);
+            if (error) { showToast(error.message, 'error'); return; }
+            showToast('已刪除', 'success');
+            loadBrandPromos();
+        }
+
+        function editBrandPromo(brandId) { openBrandPromoModal(brandId); }
+        document.getElementById('addBrandPromoBtn')?.addEventListener('click', () => openBrandPromoModal(null));
+
+        async function openBrandPromoModal(existingBrandId) {
+            let existing = null;
+            if (existingBrandId) {
+                const { data, error } = await sb.from('brand_promos').select('*').eq('brand_id', existingBrandId).maybeSingle();
+                if (error) { showToast(error.message, 'error'); return; }
+                existing = data;
+            }
+            const brands = window._brandsForPromo || [];
+            const defaultTiers = existing?.tier_rules || [
+                { min_qty: 1, free_shipping: true, discount_percent: 0 },
+                { min_qty: 2, free_shipping: true, discount_percent: 5 },
+                { min_qty: 3, free_shipping: true, discount_percent: 10 },
+                { min_qty: 5, free_shipping: true, discount_percent: 15 },
+            ];
+            const brandSelectHtml = existing
+                ? `<input type="text" value="${escapeHtmlA(existing.brand_id)}" disabled style="width:100%;padding:8px;background:#222;color:#888;border:1px solid #444;">`
+                : `<select id="bpBrand" style="width:100%;padding:8px;background:#222;color:#fff;border:1px solid #444;">${
+                    brands.map(b => `<option value="${escapeHtmlA(b.id)}">${escapeHtmlA(b.name)} (${b.id})</option>`).join('')
+                  }</select>`;
+
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            modal.innerHTML = `
+                <div style="background:#1a1a1a;padding:24px;border-radius:8px;width:min(600px,90vw);max-height:90vh;overflow:auto;color:#fff;">
+                    <h3 style="margin-top:0;">${existing ? '編輯' : '新增'} 品牌活動</h3>
+                    <label style="display:block;margin:12px 0 4px;">品牌</label>
+                    ${brandSelectHtml}
+                    <label style="display:block;margin:12px 0 4px;">Label(顯示在購物車/前端)</label>
+                    <input type="text" id="bpLabel" value="${escapeHtmlA(existing?.label || '')}" placeholder="例:HADES 品牌週" style="width:100%;padding:8px;background:#222;color:#fff;border:1px solid #444;">
+                    <label style="display:block;margin:12px 0 4px;">階梯規則 (JSON)</label>
+                    <textarea id="bpTiers" rows="8" style="width:100%;padding:8px;background:#222;color:#fff;border:1px solid #444;font-family:monospace;font-size:12px;">${JSON.stringify(defaultTiers, null, 2)}</textarea>
+                    <p style="font-size:11px;color:#888;">每階 {"min_qty": 件數, "discount_percent": 折扣%數(15=85折), "free_shipping": true/false}</p>
+                    <label style="display:block;margin:12px 0 4px;">
+                        <input type="checkbox" id="bpActive" ${existing?.is_active ? 'checked' : ''}> 啟用
+                    </label>
+                    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+                        <button class="btn-secondary" onclick="this.closest('.bpModal').remove()">取消</button>
+                        <button class="btn-primary" id="bpSaveBtn">儲存</button>
+                    </div>
+                </div>`;
+            modal.classList.add('bpModal');
+            document.body.appendChild(modal);
+
+            document.getElementById('bpSaveBtn').onclick = async () => {
+                const brandId = existing ? existing.brand_id : document.getElementById('bpBrand').value;
+                const label   = document.getElementById('bpLabel').value.trim();
+                const active  = document.getElementById('bpActive').checked;
+                let tiers;
+                try { tiers = JSON.parse(document.getElementById('bpTiers').value); }
+                catch { showToast('階梯規則 JSON 格式錯誤', 'error'); return; }
+                if (!brandId || !label || !Array.isArray(tiers) || tiers.length === 0) {
+                    showToast('品牌 / label / 階梯不可空', 'error'); return;
+                }
+                const payload = {
+                    brand_id: brandId, label, tier_rules: tiers, is_active: active,
+                    starts_at: active ? new Date().toISOString() : null,
+                    ends_at:   null,
+                };
+                const { error } = existing
+                    ? await sb.from('brand_promos').update(payload).eq('brand_id', brandId)
+                    : await sb.from('brand_promos').insert(payload);
+                if (error) { showToast(error.message, 'error'); return; }
+                showToast('已儲存', 'success');
+                modal.remove();
+                loadBrandPromos();
+            };
+        }
+
+        function escapeHtmlA(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         }
 
         // ============================================================================

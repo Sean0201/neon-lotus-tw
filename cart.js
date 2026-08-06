@@ -2034,17 +2034,29 @@
 
         const orderId = orderData[0].id;
 
-        const orderItems = items.map((item) => ({
-          order_id: orderId,
-          product_id: item.product_id,
-          product_name: item.product_name,
-          brand_id: item.brand_id,
-          size: item.size,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          image_url: item.image_url,
-          is_promo: !!item.is_promo, // Phase 2.2 migration 014 — 歷史紀錄,newebpay-notify 會用 products.is_promo 覆寫為權威值
-        }));
+        // Migration 015 — brand_promo 歷史欄位:從 discountResult.brand_promo.items 抓
+        //   下單當下該 line 觸發的品牌活動 (label / 折扣 % / 是否免運)。unit_price 仍存原價
+        //   以維持既有帳務語意 (report / backfill 假設 unit_price=原價),brand_promo_*
+        //   欄位提供 audit 與後續 GMV 分解用。
+        const brandItemsRecCB = (discountResult.brand_promo && Array.isArray(discountResult.brand_promo.items))
+          ? discountResult.brand_promo.items : null;
+        const orderItems = items.map((item, idx) => {
+          const bp = brandItemsRecCB && brandItemsRecCB[idx] && brandItemsRecCB[idx]._brand_promo;
+          return {
+            order_id: orderId,
+            product_id: item.product_id,
+            product_name: item.product_name,
+            brand_id: item.brand_id,
+            size: item.size,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            image_url: item.image_url,
+            is_promo: !!item.is_promo, // Phase 2.2 migration 014 — 歷史紀錄,newebpay-notify 會用 products.is_promo 覆寫為權威值
+            brand_promo_label:            bp ? (bp.label || null)                      : null,
+            brand_promo_discount_percent: bp ? (Number(bp.discount_percent) || 0)      : null,
+            brand_promo_free_shipping:    bp ? !!bp.free_shipping                      : null,
+          };
+        });
 
         const { error: itemsError } = await supabase
           .from('order_items')
@@ -2598,17 +2610,26 @@
         const orderId = orderData[0].id;
 
         // Insert order items
-        const orderItems = items.map((item) => ({
-          order_id: orderId,
-          product_id: item.product_id,
-          product_name: item.product_name,
-          brand_id: item.brand_id,
-          size: item.size,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          image_url: item.image_url,
-          is_promo: !!item.is_promo, // Phase 2.2 migration 014 — 歷史紀錄,newebpay-notify 會用 products.is_promo 覆寫為權威值
-        }));
+        // Migration 015 — brand_promo 歷史欄位(見 carryback 分支註解)
+        const brandItemsRecSH = (discountResult.brand_promo && Array.isArray(discountResult.brand_promo.items))
+          ? discountResult.brand_promo.items : null;
+        const orderItems = items.map((item, idx) => {
+          const bp = brandItemsRecSH && brandItemsRecSH[idx] && brandItemsRecSH[idx]._brand_promo;
+          return {
+            order_id: orderId,
+            product_id: item.product_id,
+            product_name: item.product_name,
+            brand_id: item.brand_id,
+            size: item.size,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            image_url: item.image_url,
+            is_promo: !!item.is_promo, // Phase 2.2 migration 014 — 歷史紀錄,newebpay-notify 會用 products.is_promo 覆寫為權威值
+            brand_promo_label:            bp ? (bp.label || null)                      : null,
+            brand_promo_discount_percent: bp ? (Number(bp.discount_percent) || 0)      : null,
+            brand_promo_free_shipping:    bp ? !!bp.free_shipping                      : null,
+          };
+        });
 
         const { error: itemsError } = await supabase
           .from('order_items')
