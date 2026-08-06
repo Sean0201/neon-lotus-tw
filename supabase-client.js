@@ -31,8 +31,10 @@ const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 //     V6 cache 推上去後讓這些舊值第一次以 override 身份生效,造成全站價格跑掉)。
 //     已透過 SQL 把全部 override 設回 NULL,推 V7 讓所有用戶立即拿到正確 fresh data。
 // V6: tag/category 已標準化為 5 個值 (Top/Outerwear/Bottom/Set/Accessories)。
-const CACHE_KEY     = 'NEON_LOTUS_TW_V13';
-const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V13_TS';
+// V14: 新增 brand_promos 表 (migration 015 — 品牌活動促銷 / 階梯折)。
+//      V13 cache 沒有 brand_promos 欄位,推 V14 讓所有訪客一次抓到新資料。
+const CACHE_KEY     = 'NEON_LOTUS_TW_V14';
+const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V14_TS';
 const CACHE_TTL     = 60 * 60 * 1000;  // 60 minutes — 減少 egress,同訪客 1 小時內不重抓
 const PAGE_SIZE     = 1000;             // Supabase max rows per request
 
@@ -87,9 +89,12 @@ async function loadSupabaseData() {
         window.BANNERS_DATA  = data.banners  || [];
         window.FEATURED_DATA = data.featured || [];
         window.SITE_SETTINGS = data.settings || {};
+        window.BRAND_PROMOS  = data.brand_promos || [];
         // featured_products 是小表 (通常 <20 筆) 而且 admin 改完要立刻反映,
         // 所以即使 brands/products 走 5 分鐘快取,featured 還是每次拉新版。
         _refreshFeaturedFromServer();
+        // brand_promos 也是小表 + 需要立刻反映 activate/deactivate,同樣每次拉新版
+        _refreshBrandPromosFromServer();
         return;
       }
     }
@@ -101,7 +106,7 @@ async function loadSupabaseData() {
   const t0 = performance.now();
   console.log('[supabase-client] Fetching core data from Supabase…');
 
-  const [brands, products, banners, featured, settingsRows] = await Promise.all([
+  const [brands, products, banners, featured, settingsRows, brandPromos] = await Promise.all([
     fetchAll('brands', { tieBreak: 'id' }),
     fetchAll('products', {
       // 明確列出前台用得到的欄位 — 跳過 description_zh / description_en 因為前台從沒讀過
@@ -130,6 +135,15 @@ async function loadSupabaseData() {
       return [];
     }),
     fetchAll('site_settings'),   // 純 KV 表,無 id column,不用 tie-breaker
+    // brand_promos 可能還沒 migration → swallow errors 讓舊環境不炸
+    fetchAll('brand_promos', {
+      select: 'brand_id, label, tier_rules, excludes_other_promos, counts_toward_member, starts_at, ends_at, is_active',
+      filter: q => q.eq('is_active', true),
+      tieBreak: 'brand_id',
+    }).catch(err => {
+      console.warn('[supabase-client] brand_promos not available:', err?.message || err);
+      return [];
+    }),
   ]);
 
   // ── Parse settings ──────────────────────────────────────────
@@ -207,11 +221,12 @@ async function loadSupabaseData() {
   }));
 
   const data = {
-    brands:   brandsData,
-    products: productsData,
-    banners:  bannersData,
-    featured: featuredData,
-    settings: settings,
+    brands:       brandsData,
+    products:     productsData,
+    banners:      bannersData,
+    featured:     featuredData,
+    settings:     settings,
+    brand_promos: brandPromos || [],
   };
 
   // ── Cache (tiered fallback — 6000+ 商品時會超過 localStorage 5MB) ──
@@ -256,6 +271,25 @@ async function loadSupabaseData() {
   window.BANNERS_DATA  = bannersData;
   window.FEATURED_DATA = featuredData;
   window.SITE_SETTINGS = settings;
+  window.BRAND_PROMOS  = brandPromos || [];
+}
+
+/**
+ * 每次載入都跑一次 (跟 _refreshFeaturedFromServer 一樣的目的):
+ * brand_promos 是小表,activate/deactivate 要立刻反映到訪客。
+ * 走 cache 路徑會漏 flip switch,所以背景重抓一次覆寫 window.BRAND_PROMOS。
+ */
+async function _refreshBrandPromosFromServer() {
+  try {
+    const rows = await fetchAll('brand_promos', {
+      select: 'brand_id, label, tier_rules, excludes_other_promos, counts_toward_member, starts_at, ends_at, is_active',
+      filter: q => q.eq('is_active', true),
+      tieBreak: 'brand_id',
+    });
+    window.BRAND_PROMOS = rows || [];
+  } catch (err) {
+    console.warn('[supabase-client] refresh brand_promos failed:', err?.message || err);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════

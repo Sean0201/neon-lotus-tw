@@ -235,6 +235,11 @@
           items,
           member: this._getMember(),
           useCredit: this.getUseCredit(),
+          // migration 015 — 品牌活動促銷。engine 內部會 pre-process items
+          // 標記+改單價,is_active=false 的 row 已被 supabase-client 過濾掉。
+          brandPromos: (typeof window !== 'undefined' && Array.isArray(window.BRAND_PROMOS))
+            ? window.BRAND_PROMOS
+            : [],
         });
       }
       // Fallback — 引擎沒載入,純加總

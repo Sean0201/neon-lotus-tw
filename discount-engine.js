@@ -154,22 +154,40 @@
    * 計算購物車折扣明細。
    *
    * @param {Object}  args
-   * @param {Array}   args.items          購物車 line items,每筆 { unit_price, quantity, shipping_method }
+   * @param {Array}   args.items          購物車 line items,每筆 { unit_price, quantity, shipping_method, brand_id, is_promo }
    *                                       shipping_method ∈ {'carryback','shipping'} (預設 'shipping')
    * @param {Object?} args.member         會員物件 (null = 訪客)
    *                                       member 要的欄位: tier, accumulated_spend, founding_credit_balance,
    *                                                       birthday, birthday_used_year
    * @param {Date?}   args.today          今天日期 (預設 new Date())
    * @param {Boolean?} args.useCredit     是否使用折抵金 (預設 true — B1 自動扣)
+   * @param {Array?}  args.brandPromos    來自 brand_promos 表 (migration 015)。
+   *                                       若傳入,會先跑 BrandPromoEngine.applyBrandPromos 把該品牌商品
+   *                                       單價替換為折後價 + 標記 is_promo=true(壓過現有折扣路徑)。
    *
    * @returns {Object}  明細結果 (見下方 README 結構)
    */
   function computeCart(args) {
     args = args || {};
-    const items   = Array.isArray(args.items) ? args.items : [];
-    const member  = args.member || null;
-    const today   = args.today || new Date();
+    let   items  = Array.isArray(args.items) ? args.items : [];
+    const member = args.member || null;
+    const today  = args.today || new Date();
     const useCredit = args.useCredit !== false; // 預設 true
+    const brandPromos = Array.isArray(args.brandPromos) ? args.brandPromos : null;
+
+    /* ── 0. 品牌活動 pre-pass ──
+     * 若傳入 brandPromos 且 BrandPromoEngine 可用,先把該品牌商品標記+改單價。
+     * 之後跑下方 pipeline 時,那些 items 是 is_promo=true,自動走 promo 路徑,
+     * 天然跳過所有 tier/birthday/bulk/credit,達成「品牌折壓過其他優惠」的政策。
+     */
+    let brand_promo_result = null;
+    if (brandPromos && brandPromos.length > 0 &&
+        typeof window !== 'undefined' &&
+        window.BrandPromoEngine &&
+        typeof window.BrandPromoEngine.applyBrandPromos === 'function') {
+      brand_promo_result = window.BrandPromoEngine.applyBrandPromos(items, brandPromos, today);
+      items = brand_promo_result.items; // 替換成標記+改價後的 items
+    }
 
     /* ── A. 原價 + 按 shipping_method 分組 + 拆 regular vs promo
      *   政策 (migration 014):it.is_promo === true 的商品為「品牌方特價」,
@@ -323,6 +341,9 @@
       final_subtotal,                // 商品部分最終應付 (= regular_final + promo_subtotal,不含運費)
 
       total_savings,                 // 總共省了多少 (= raw_subtotal - final_subtotal)
+
+      // 品牌活動明細(brand_promos 有傳入且有 item 被套用才會有值)
+      brand_promo: brand_promo_result, // null 或 { applied, brand_summary, any_free_shipping, free_shipping_brands, raw_discount_total }
     };
   }
 
