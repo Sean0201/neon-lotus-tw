@@ -2074,13 +2074,26 @@
         // ── 導向藍新金流 (NewebPay) — 親自帶回也走線上付款 ──
         // shipping_method 必須一起送至 API,讓 server 端可重新驗證滿額折扣
         // product_id 必送 → server 用此撈 is_promo (Phase 2.2 migration 014 anti-tamper)
-        const npItems = items.map(item => ({
-          product_id: item.product_id,
-          name: item.product_name,
-          quantity: item.quantity,
-          price: item.unit_price,
-          shipping_method: item.shipping_method || 'carryback',
-        }));
+        //
+        // Migration 015 — 品牌週折扣:BrandPromoEngine 產生 discountResult.brand_promo.items
+        //   跟 CartState items 同 index、同順序,但 is_promo=true 的條目已把 unit_price
+        //   改成折後價。我們送折後價 + is_promo=true 給 server,server 用 brand_promos
+        //   驗證品牌週有效後就會信任 (skip tier/bulk/生日),final_subtotal 才會吻合。
+        const brandItemsCB = (discountResult.brand_promo && Array.isArray(discountResult.brand_promo.items))
+          ? discountResult.brand_promo.items : null;
+        const npItems = items.map((item, idx) => {
+          const bi = brandItemsCB ? brandItemsCB[idx] : null;
+          const effectivePrice = (bi && bi.is_promo) ? bi.unit_price : item.unit_price;
+          const effectivePromo = !!(bi && bi.is_promo);
+          return {
+            product_id: item.product_id,
+            name: item.product_name,
+            quantity: item.quantity,
+            price: effectivePrice,
+            is_promo: effectivePromo,
+            shipping_method: item.shipping_method || 'carryback',
+          };
+        });
 
         submitBtn.textContent = '導向付款頁面...';
 
@@ -2629,13 +2642,22 @@
         // ── 導向藍新金流 (NewebPay) ──
         // shipping_method 必須一起送至 API,讓 server 端可重新驗證滿額折扣
         // product_id 必送 → server 用此撈 is_promo (Phase 2.2 migration 014 anti-tamper)
-        const npItems = items.map(item => ({
-          product_id: item.product_id,
-          name: item.product_name,
-          quantity: item.quantity,
-          price: item.unit_price,
-          shipping_method: item.shipping_method || 'default',
-        }));
+        // Migration 015 — 品牌週折扣同 carryback 路徑:送折後價 + is_promo=true
+        const brandItemsSH = (discountResult.brand_promo && Array.isArray(discountResult.brand_promo.items))
+          ? discountResult.brand_promo.items : null;
+        const npItems = items.map((item, idx) => {
+          const bi = brandItemsSH ? brandItemsSH[idx] : null;
+          const effectivePrice = (bi && bi.is_promo) ? bi.unit_price : item.unit_price;
+          const effectivePromo = !!(bi && bi.is_promo);
+          return {
+            product_id: item.product_id,
+            name: item.product_name,
+            quantity: item.quantity,
+            price: effectivePrice,
+            is_promo: effectivePromo,
+            shipping_method: item.shipping_method || 'default',
+          };
+        });
 
         submitBtn.textContent = '導向付款頁面...';
 
