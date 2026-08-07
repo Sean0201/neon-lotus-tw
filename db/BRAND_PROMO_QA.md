@@ -1,6 +1,24 @@
 # 品牌週活動 QA & 監控手冊
 
 > Migration 015 — 品牌週 (`brand_promos`) 上線後的檢查、監控、疑難排解指南。
+> Migration 016 — 品牌週會員加碼 (per-tier discount %),見「零、政策 (2026-08 更新)」。
+
+## 零、政策 (2026-08-07 更新 — 方案 B 3 級合併加碼)
+
+品牌週對其他優惠仍完全互斥(is_promo=true 商品自動跳過 tier/生日/滿額,只保留折抵金可扣)。但**同一階梯內,不同會員等級享不同 discount_percent**,讓白金/鑽石客有專屬感,防止「品牌週吃掉會員尊榮感」問題。
+
+實作方式:`brand_promos.tier_rules` 從 flat 升級成 per-tier nested 格式(見 `db/migrations/016_brand_promo_member_tier.sql`),`brand-promo-engine.js` 新增 `pickTierBenefit(rule, memberTier)` 挑選對應等級的折扣。**未登入 / bronze / 未 match tier → 用 `rule.default` fallback**。舊格式(flat rule)完全向後相容。
+
+HADES 加碼結構速查:
+
+| 件數 | 一般 / bronze | silver / gold | diamond / black |
+|---|---|---|---|
+| 1 | 免運 | 免運 | 95 折 + 免運 |
+| 2 | 95 折 + 免運 | 9 折 + 免運 | 88 折 + 免運 |
+| 3 | 92 折 + 免運 | 87 折 + 免運 | 85 折 + 免運 |
+| 5 | 88 折 + 免運 | 82 折 + 免運 | **80 折 + 免運 + HADES x NL 限定貼紙** |
+
+**Server 端 audit**:`newebpay-create.js` 每筆訂單會用 `member.tier + tier_rules` 重算期望價格,`|client_price - expected_price| > 2` 就寫 Vercel `console.warn` (不擋單,±NT$5 總額 tolerance 是最終防線)。搜尋 log `[audit] brand_promo price mismatch` 可稽核異常訂單。
 
 ## 一、上線 / 換品牌前的 checklist
 
@@ -8,6 +26,8 @@
 - [ ] 目標品牌旗下有 `is_active = true` 的商品(`SELECT COUNT(*) FROM products WHERE brand_id = 'xxx' AND is_active = true AND sold_out = false;`)
 - [ ] `brand_promos` 已建 row(admin → 品牌週活動 → +新增)
 - [ ] tier_rules JSON 正確,件數升冪(1→2→3→5),`discount_percent` 是「折扣掉幾%」不是「打幾折」(15 = 打 85 折)
+- [ ] **(016)** 若採加碼格式,每個 min_qty 至少要有 `default`;silver/gold/diamond/black 缺 key 會 fallback 到 default(不會噴錯,但銀/金客會拿到 bronze 折扣)
+- [ ] **(016)** 用 bronze / silver / gold / diamond / black 四種帳號各測一次(至少 bronze + diamond),確認 banner 顯示對的折扣、cart 折後價對得上
 - [ ] 前端 hard refresh 後,購物車拉到該品牌商品看到「🔥 XXX 品牌週 (N 件, X 折…): -NT$…」row
 - [ ] 該品牌頁頂端看到 upsell 橫幅(階梯樓層)
 - [ ] 前往結帳頁面,運費顯示「🔥 XXX 品牌週 免運已啟用!」(若 tier 有 `free_shipping:true`)
@@ -97,6 +117,27 @@ WHERE oi.brand_id = 'hades'
   AND o.status IN ('paid','confirmed','shipped','delivered')
 GROUP BY DATE(o.created_at)
 ORDER BY day;
+```
+
+### 3.35 (016) 依會員等級拆解 GMV — 看加碼有沒有拉動高階客
+
+```sql
+-- 用下單當下的 tier_at_purchase 分組 (orders 表已有,見 002_members.sql)
+SELECT
+  COALESCE(o.tier_at_purchase, 'guest')                  AS tier,
+  COUNT(DISTINCT o.id)                                    AS orders,
+  SUM(oi.quantity)                                        AS units,
+  SUM(oi.unit_price * oi.quantity)                        AS net_gmv,
+  ROUND(AVG(oi.brand_promo_discount_percent)::numeric, 1) AS avg_discount_pct
+FROM order_items oi
+JOIN orders o ON o.id = oi.order_id
+WHERE oi.brand_id = 'hades'
+  AND oi.brand_promo_label IS NOT NULL
+  AND o.status IN ('paid','confirmed','shipped','delivered')
+GROUP BY COALESCE(o.tier_at_purchase, 'guest')
+ORDER BY net_gmv DESC;
+-- 期望結果:diamond/black 的 avg_discount_pct 應該高於 bronze/silver
+-- (代表加碼真的被套用)
 ```
 
 ### 3.4 每個階梯被觸發的次數

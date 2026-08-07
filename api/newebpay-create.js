@@ -98,16 +98,18 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
   const productIds = items.map(it => it.product_id).filter(Boolean);
   const promoMap = new Map();  // product_id (string) -> is_promo (boolean, product-level)
   const brandMap = new Map();  // product_id (string) -> brand_id (string|null)
+  const priceMap = new Map();  // Migration 016 audit — product_id (string) -> base list price
   if (productIds.length && supabase) {
     try {
       const { data: prodRows, error: prodErr } = await supabase
         .from('products')
-        .select('id, is_promo, brand_id')
+        .select('id, is_promo, brand_id, price')
         .in('id', productIds);
       if (!prodErr && Array.isArray(prodRows)) {
         prodRows.forEach(row => {
           promoMap.set(String(row.id), !!row.is_promo);
           brandMap.set(String(row.id), row.brand_id || null);
+          priceMap.set(String(row.id), Number(row.price) || 0);
         });
       } else if (prodErr) {
         console.warn('[newebpay-create] products lookup failed:', prodErr.message);
@@ -126,12 +128,13 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
      - client 的 unit_price 已是折後價 (BrandPromoEngine 已改寫),server 沿用;
        整車 ±NT$5 tolerance 仍在,保護價格竄改 */
   const activeBrandIds = new Set();
+  const brandPromoRules = new Map();  // Migration 016 audit — brand_id -> { label, tier_rules }
   if (supabase) {
     try {
       const nowIso = new Date().toISOString();
       const { data: bpRows, error: bpErr } = await supabase
         .from('brand_promos')
-        .select('brand_id, starts_at, ends_at, is_active')
+        .select('brand_id, label, tier_rules, starts_at, ends_at, is_active')
         .eq('is_active', true);
       if (!bpErr && Array.isArray(bpRows)) {
         bpRows.forEach(bp => {
@@ -139,6 +142,10 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
           const notEnded = !bp.ends_at   || bp.ends_at   >  nowIso;
           if (started && notEnded && bp.brand_id) {
             activeBrandIds.add(String(bp.brand_id));
+            brandPromoRules.set(String(bp.brand_id), {
+              label: bp.label || null,
+              tier_rules: Array.isArray(bp.tier_rules) ? bp.tier_rules : [],
+            });
           }
         });
       } else if (bpErr) {
@@ -181,6 +188,78 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
       is_promo:        serverIsPromo,
     };
   });
+
+  /* Migration 016 — 品牌週會員加碼 audit (best-effort, non-blocking)
+   *   client 送的 it.price 已是「該會員 tier 對應的折後價」(前端 BrandPromoEngine 算好)。
+   *   server 用 tier_rules + member.tier 重算一次期望價格,超過 ±2 元差距就 console.warn
+   *   (不擋單,±NT$5 總額 tolerance 仍是最終防線)。
+   *   目的:事後可從 Vercel log 撈出「有沒有惡意用戶偽造 tier 折扣 %」。
+   */
+  try {
+    if (brandPromoRules.size > 0) {
+      const memberTierForAudit = (member && member.tier) ? String(member.tier) : 'bronze';
+      // 依 brand 分組算 qty (只算活動內品牌)
+      const brandQtyForAudit = {};
+      items.forEach((it) => {
+        const pid = it.product_id != null ? String(it.product_id) : null;
+        const brandId = pid ? brandMap.get(pid) : null;
+        if (brandId && brandPromoRules.has(brandId)) {
+          brandQtyForAudit[brandId] = (brandQtyForAudit[brandId] || 0)
+            + (Number(it.quantity) || 0);
+        }
+      });
+      // 為每個活動內品牌算期望 discount_percent
+      const brandExpectedPct = {};
+      for (const bid of Object.keys(brandQtyForAudit)) {
+        const rules = brandPromoRules.get(bid).tier_rules;
+        const qty = brandQtyForAudit[bid];
+        let matched = null;
+        for (const r of rules) {
+          const min = Number(r.min_qty) || 0;
+          if (qty >= min && (matched == null || min > (Number(matched.min_qty) || 0))) matched = r;
+        }
+        if (!matched) continue;
+        let benefit;
+        if (matched.default && typeof matched.default === 'object') {
+          const specific = matched[memberTierForAudit] && typeof matched[memberTierForAudit] === 'object'
+            ? matched[memberTierForAudit] : null;
+          benefit = specific || matched.default;
+        } else {
+          benefit = matched;
+        }
+        brandExpectedPct[bid] = Number(benefit.discount_percent) || 0;
+      }
+      // 逐 item 對照 client 送的價 vs 期望價
+      items.forEach((it) => {
+        const pid = it.product_id != null ? String(it.product_id) : null;
+        const brandId = pid ? brandMap.get(pid) : null;
+        if (!brandId || !(brandId in brandExpectedPct)) return;
+        if (it.is_promo !== true) return; // client 沒聲明 is_promo,不套加碼
+        const basePrice = priceMap.get(pid) || 0;
+        if (basePrice <= 0) return;
+        const expectedPct = brandExpectedPct[brandId];
+        const expectedPrice = Math.round(basePrice * (1 - expectedPct / 100));
+        const clientPrice = Number(it.price) || 0;
+        if (Math.abs(clientPrice - expectedPrice) > 2) {
+          console.warn('[newebpay-create][audit] brand_promo price mismatch', {
+            product_id: pid,
+            brand_id: brandId,
+            member_tier: memberTierForAudit,
+            expected_discount_percent: expectedPct,
+            base_price: basePrice,
+            expected_effective_price: expectedPrice,
+            client_price: clientPrice,
+            delta: clientPrice - expectedPrice,
+          });
+        }
+      });
+    }
+  } catch (auditErr) {
+    // audit 失敗絕對不影響結帳流程
+    console.warn('[newebpay-create][audit] brand_promo audit threw:',
+      auditErr && auditErr.message ? auditErr.message : auditErr);
+  }
+
   const result = D.computeCart({
     items: engineItems,
     member,

@@ -582,11 +582,55 @@ function renderBrandPromoBanner(brandId) {
     if (cartQty >= (Number(tiers[i].min_qty) || 0)) activeIdx = i;
   }
 
+  // Migration 016 — 讀當前登入會員 tier,銀 / 金 / 鑽石 / 黑 顯示個人化加碼版
+  // 資料來源與 cart.js._getMember() 一致 → window.AuthSystem.getMember()
+  let currentMember = null;
+  try {
+    if (typeof window !== 'undefined' && window.AuthSystem
+        && typeof window.AuthSystem.getMember === 'function') {
+      currentMember = window.AuthSystem.getMember() || null;
+    }
+  } catch { currentMember = null; }
+  const memberTier = currentMember && currentMember.tier ? String(currentMember.tier) : 'bronze';
+  const memberTierLabels = {
+    bronze:  '',
+    silver:  '銀卡',
+    gold:    '金卡',
+    diamond: '鑽石卡',
+    black:   '黑卡',
+  };
+  const memberTierLabel = memberTierLabels[memberTier] || '';
+
+  // 用 pickTierBenefit(若已載入 BrandPromoEngine)挑會員 tier 加碼版本
+  function pickBenefitLocal(rule) {
+    if (typeof window !== 'undefined' && window.BrandPromoEngine
+        && typeof window.BrandPromoEngine.pickTierBenefit === 'function') {
+      return window.BrandPromoEngine.pickTierBenefit(rule, memberTier);
+    }
+    // Fallback:新格式 → 讀 default;舊格式 → 讀 flat
+    if (rule && rule.default) {
+      const specific = rule[memberTier] || rule.default;
+      return {
+        discount_percent: Number(specific.discount_percent) || 0,
+        free_shipping:    !!specific.free_shipping,
+        label:            specific.label || null,
+        bonus_note:       specific.bonus_note || null,
+      };
+    }
+    return {
+      discount_percent: Number(rule.discount_percent) || 0,
+      free_shipping:    !!rule.free_shipping,
+      label:            rule.label || null,
+      bonus_note:       null,
+    };
+  }
+
   const tierHtml = tiers.map((t, i) => {
-    const qty  = Number(t.min_qty) || 0;
-    const pct  = Number(t.discount_percent) || 0;
-    const free = !!t.free_shipping;
-    const benefit = (pct > 0 ? `${100 - pct} 折` : '原價') + (free ? ' + 免運' : '');
+    const qty = Number(t.min_qty) || 0;
+    const b   = pickBenefitLocal(t);
+    const benefit = (b.discount_percent > 0 ? `${(100 - b.discount_percent).toString().padStart(2, '0')} 折` : '原價')
+                  + (b.free_shipping ? ' + 免運' : '')
+                  + (b.bonus_note    ? ' + 贈品' : '');
     const activeCls = (i === activeIdx) ? ' active' : '';
     return `
       <div class="brand-promo-tier${activeCls}">
@@ -595,11 +639,17 @@ function renderBrandPromoBanner(brandId) {
       </div>`;
   }).join('');
 
+  // 標題:登入會員顯示「品牌週 × 您的鑽石卡專屬」;未登入 / bronze 只顯示品牌週名稱
+  const titleSuffix = memberTierLabel ? ` <span class="brand-promo-tier-badge">× 您的${memberTierLabel}專屬加碼</span>` : '';
+  const stageText = (activeIdx >= 0)
+    ? ` — 您已達第 ${activeIdx + 1} 階,加購可升級`
+    : (memberTierLabel ? '' : ' — 登入會員可享加碼折扣');
+
   el.hidden = false;
   el.innerHTML = `
     <div class="brand-promo-banner-title">
       <span class="flame">🔥</span>
-      <span>${escapeHtml(promo.label || '品牌週')}${activeIdx >= 0 ? ` — 您已達第 ${activeIdx + 1} 階,加購可升級` : ' 進行中'}</span>
+      <span>${escapeHtml(promo.label || '品牌週')}${titleSuffix}${stageText}</span>
     </div>
     <div class="brand-promo-tiers">${tierHtml}</div>
   `;

@@ -185,7 +185,10 @@
         typeof window !== 'undefined' &&
         window.BrandPromoEngine &&
         typeof window.BrandPromoEngine.applyBrandPromos === 'function') {
-      brand_promo_result = window.BrandPromoEngine.applyBrandPromos(items, brandPromos, today);
+      // Migration 016 — 傳入會員等級,讓 BrandPromoEngine 挑對應 tier 的加碼折扣。
+      // 未登入 / 無 member.tier → 傳 'bronze',BrandPromoEngine 內部會 fallback 到 rule.default。
+      const memberTierForBrandPromo = (member && member.tier) ? String(member.tier) : 'bronze';
+      brand_promo_result = window.BrandPromoEngine.applyBrandPromos(items, brandPromos, today, memberTierForBrandPromo);
       items = brand_promo_result.items; // 替換成標記+改價後的 items
     }
 

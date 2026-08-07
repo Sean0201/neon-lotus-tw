@@ -51,6 +51,46 @@
   }
 
   /**
+   * Migration 016 — 從匹配到的階梯規則中,挑出對應會員等級的折扣。
+   *
+   * 新格式 (016):
+   *   { min_qty, default: {...}, silver: {...}, gold: {...}, diamond: {...}, black: {...} }
+   *   → 依 memberTier 挑 rule[memberTier],沒有則 fallback 到 rule.default
+   *
+   * 舊格式 (015):
+   *   { min_qty, discount_percent, free_shipping }
+   *   → 所有 tier 共用同一組(等同 015 行為)
+   *
+   * @param {Object} tierRule    matchTier 挑出的階梯 rule
+   * @param {string} memberTier  'bronze' | 'silver' | 'gold' | 'diamond' | 'black' | undefined
+   * @returns {{discount_percent:number, free_shipping:boolean, label?:string, bonus_note?:string}}
+   */
+  function pickTierBenefit(tierRule, memberTier) {
+    if (!tierRule || typeof tierRule !== 'object') {
+      return { discount_percent: 0, free_shipping: false };
+    }
+    // 新格式:tierRule.default 存在 → 走 per-tier 挑選
+    if (tierRule.default && typeof tierRule.default === 'object') {
+      const key = memberTier && typeof memberTier === 'string' ? memberTier : null;
+      const specific = key && tierRule[key] && typeof tierRule[key] === 'object' ? tierRule[key] : null;
+      const chosen = specific || tierRule.default;
+      return {
+        discount_percent: Number(chosen.discount_percent) || 0,
+        free_shipping:    !!chosen.free_shipping,
+        label:            chosen.label || null,
+        bonus_note:       chosen.bonus_note || null,
+      };
+    }
+    // 舊格式(015):flat rule
+    return {
+      discount_percent: Number(tierRule.discount_percent) || 0,
+      free_shipping:    !!tierRule.free_shipping,
+      label:            tierRule.label || null,
+      bonus_note:       null,
+    };
+  }
+
+  /**
    * Build 一個 quick lookup:brand_id → active promo
    * (方便 O(1) 查詢,避免 items × promos 雙重迴圈)
    */
@@ -79,19 +119,23 @@
    * @param {Array}  items         cart items,每筆需有 brand_id, unit_price, quantity
    * @param {Array}  brandPromos   從 supabase 撈的 brand_promos rows
    * @param {Date?}  now           當下時間(預設 new Date())
+   * @param {string?} memberTier   Migration 016 — 會員等級 ('bronze'|'silver'|'gold'|'diamond'|'black'),
+   *                                未登入 / 未傳 → 走 rule.default
    *
    * @returns {Object} {
    *   items,              // 新的 items 陣列(部分被標記+改單價)
    *   applied,            // 有實際套用的 brand_id 陣列(給 UI 顯示 banner 用)
-   *   brand_summary,      // { brandId: { label, qty, tier, discount_percent, free_shipping, savings } }
+   *   brand_summary,      // { brandId: { label, qty, tier, discount_percent, free_shipping, savings, member_tier, tier_label, bonus_note } }
    *   any_free_shipping,  // 有沒有任何品牌觸發免運(cart.js 決定運費用)
    *   free_shipping_brands, // Set of brand_id 免運名單(未來若要「該品牌 items 從運費計算排除」用)
    *   raw_discount_total, // 品牌促銷省下的總金額(所有品牌加總)
+   *   member_tier,        // 生效的 tier key(audit / debug 用)
    * }
    */
-  function applyBrandPromos(items, brandPromos, now) {
+  function applyBrandPromos(items, brandPromos, now, memberTier) {
     const safeItems = Array.isArray(items) ? items : [];
     const active = buildActivePromoMap(brandPromos, now);
+    const tierKey = (memberTier && typeof memberTier === 'string') ? memberTier : 'bronze';
 
     // ── 先 group by brand_id 算件數(只算 active promo 的品牌) ──
     const brandQty = {};
@@ -102,7 +146,7 @@
       }
     }
 
-    // ── 對每個受影響品牌 → 挑 tier ──
+    // ── 對每個受影響品牌 → 挑 tier + 挑會員加碼 ──
     const brand_summary = {};
     const applied = [];
     const free_shipping_brands = new Set();
@@ -111,8 +155,9 @@
       const qty = brandQty[bid];
       const tier = matchTier(promo.tier_rules, qty);
       if (!tier) continue;
-      const pct  = Number(tier.discount_percent) || 0;
-      const free = !!tier.free_shipping;
+      const benefit = pickTierBenefit(tier, tierKey);
+      const pct  = benefit.discount_percent;
+      const free = benefit.free_shipping;
       brand_summary[bid] = {
         label: promo.label || bid,
         qty,
@@ -120,6 +165,9 @@
         discount_percent: pct,
         free_shipping: free,
         savings: 0, // 之後累加
+        member_tier: tierKey,           // 016 — 生效的會員等級
+        tier_label: benefit.label,      // 016 — 該階×該會員的專屬文案
+        bonus_note: benefit.bonus_note, // 016 — 額外贈品/福利說明
       };
       applied.push(bid);
       if (free) free_shipping_brands.add(bid);
@@ -150,6 +198,9 @@
           discount_percent: pct,
           free_shipping: sum.free_shipping,
           min_qty: sum.min_qty,
+          member_tier: sum.member_tier,   // 016 — 讓 order_items 落地時可 audit
+          tier_label: sum.tier_label,     // 016 — 該階×該會員的專屬文案
+          bonus_note: sum.bonus_note,     // 016 — 附加福利
         },
       };
     });
@@ -164,6 +215,7 @@
       any_free_shipping: free_shipping_brands.size > 0,
       free_shipping_brands: Array.from(free_shipping_brands),
       raw_discount_total,
+      member_tier: tierKey,   // 016 — 生效的會員等級,便於 debug / audit
     };
   }
 
@@ -196,6 +248,7 @@
   const api = {
     applyBrandPromos,
     matchTier,
+    pickTierBenefit,       // 016 — 讓 UI (banner) 也能查「某階×某等級」的折扣
     isPromoActive,
     buildActivePromoMap,
     nextTierGap,
