@@ -103,13 +103,13 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
     try {
       const { data: prodRows, error: prodErr } = await supabase
         .from('products')
-        .select('id, is_promo, brand_id, price')
+        .select('id, is_promo, brand_id, price_twd')
         .in('id', productIds);
       if (!prodErr && Array.isArray(prodRows)) {
         prodRows.forEach(row => {
           promoMap.set(String(row.id), !!row.is_promo);
           brandMap.set(String(row.id), row.brand_id || null);
-          priceMap.set(String(row.id), Number(row.price) || 0);
+          priceMap.set(String(row.id), Number(row.price_twd) || 0);
         });
       } else if (prodErr) {
         console.warn('[newebpay-create] products lookup failed:', prodErr.message);
