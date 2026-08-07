@@ -103,13 +103,16 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
     try {
       const { data: prodRows, error: prodErr } = await supabase
         .from('products')
-        .select('id, is_promo, brand_id, price_twd')
+        .select('id, is_promo, brand_id, price_thb_shipping, price_thb_carryback')
         .in('id', productIds);
       if (!prodErr && Array.isArray(prodRows)) {
         prodRows.forEach(row => {
           promoMap.set(String(row.id), !!row.is_promo);
           brandMap.set(String(row.id), row.brand_id || null);
-          priceMap.set(String(row.id), Number(row.price_twd) || 0);
+          priceMap.set(String(row.id), {
+            shipping:  Number(row.price_thb_shipping)  || 0,
+            carryback: Number(row.price_thb_carryback) || 0,
+          });
         });
       } else if (prodErr) {
         console.warn('[newebpay-create] products lookup failed:', prodErr.message);
@@ -232,10 +235,12 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
       // 逐 item 對照 client 送的價 vs 期望價
       items.forEach((it) => {
         const pid = it.product_id != null ? String(it.product_id) : null;
-        const brandId = pid ? brandMap.get(pid) : null;
-        if (!brandId || !(brandId in brandExpectedPct)) return;
-        if (it.is_promo !== true) return; // client 沒聲明 is_promo,不套加碼
-        const basePrice = priceMap.get(pid) || 0;
+        const priceRow = priceMap.get(pid);
+        const basePrice = priceRow
+          ? (it.shipping_method === 'carryback'
+              ? priceRow.carryback
+              : priceRow.shipping)
+          : 0;
         if (basePrice <= 0) return;
         const expectedPct = brandExpectedPct[brandId];
         const expectedPrice = Math.round(basePrice * (1 - expectedPct / 100));
