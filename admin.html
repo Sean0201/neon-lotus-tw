@@ -4315,7 +4315,10 @@
                             ${items.map(item => `
                                 <tr>
                                     <td>${item.image_url ? `<img src="${item.image_url}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">` : '—'}</td>
-                                    <td>${item.product_name || '—'}</td>
+                                    <td>
+                    ${item.product_name || '—'}
+                    ${item.is_promo ? `<span style="display:inline-block;margin-left:6px;padding:2px 8px;font-size:10px;font-weight:700;background:#ff6b3522;color:#ff6b35;border:1px solid #ff6b3544;border-radius:10px;vertical-align:middle;">🏷️ ${item.brand_promo_label || '品牌週'}${item.brand_promo_discount_percent ? ' -' + item.brand_promo_discount_percent + '%' : ''}</span>` : ''}
+                                </td>
                                     <td>${item.size || '—'}</td>
                                     <td>${item.quantity}</td>
                                     <td>NT$ ${((item.unit_price || 0) * item.quantity).toLocaleString()}</td>
@@ -4334,8 +4337,16 @@
                         const creditUsed   = Math.max(0, Number(o.signup_credit_used) || 0);
                         const shippingFee  = Math.max(0, Number(o.shipping_fee) || 0);
                         const orderTotal   = Number(o.total) || 0;
+                        // 品牌週折扣:從 order_items 逐 line 反算 (unit_price × qty × pct%)
+                        const brandWeekDiscount = items.reduce((s, it) => {
+                            if (!it.is_promo) return s;
+                            const pct = Number(it.brand_promo_discount_percent) || 0;
+                            if (pct <= 0) return s;
+                            return s + Math.round((it.unit_price || 0) * (it.quantity || 0) * (pct / 100));
+                        }, 0);
                         const rows = [];
                         rows.push(['商品原價總和', '+ NT$ ' + itemsRaw.toLocaleString(), null]);
+                        if (brandWeekDiscount > 0) rows.push(['🏷️ 品牌週折扣', '- NT$ ' + brandWeekDiscount.toLocaleString(), '#ff6b35']);
                         if (tierDisc > 0)     rows.push(['等級／滿額折扣', '- NT$ ' + tierDisc.toLocaleString(), '#4ade80']);
                         if (birthdayDisc > 0) rows.push(['🎂 生日優惠',     '- NT$ ' + birthdayDisc.toLocaleString(), '#4ade80']);
                         if (creditUsed > 0)   rows.push(['💴 折抵金',       '- NT$ ' + creditUsed.toLocaleString(), '#4ade80']);
