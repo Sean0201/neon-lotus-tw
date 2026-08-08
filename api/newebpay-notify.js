@@ -428,7 +428,7 @@ export default async function handler(req, res) {
       /* ── 最後一步:標記 order 為 paid (idempotency 信號) ── */
       const { error: paidErr } = await supabase
         .from('orders')
-        .update({ status: 'paid' })
+        .update({ status: 'paid', paid_at: new Date().toISOString() })
         .eq('id', order.id)
         .eq('status', 'pending'); // 只在仍 pending 時更新,避免 race
       if (paidErr) {
