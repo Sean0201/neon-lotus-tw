@@ -3847,6 +3847,14 @@
             );
             if (!monthInput) return;
 
+            const basisInput = prompt(
+                '依哪個時間篩選?\n1 = 下單時間 (created_at)\n2 = 付款時間 (paid_at,只含已付款訂單)\n\n預設: 1',
+                '1'
+            );
+            if (basisInput === null) return;
+            const useCreatedAt = (basisInput || '').trim() !== '2';
+            const timeCol = useCreatedAt ? 'created_at' : 'paid_at';
+
             const m = monthInput.match(/^(\d{4})-(\d{1,2})$/);
             if (!m) {
                 showToast('格式錯誤,請用 yyyy-mm', 'error');
@@ -3868,11 +3876,11 @@
             try {
                 const { data: orders, error: ordersErr } = await sb
                     .from('orders')
-                    .select('id, order_number, customer_name, created_at, note, status')
-                    .gte('created_at', startISO)
-                    .lt('created_at', endISO)
+                    .select('id, order_number, customer_name, created_at, paid_at, note, status')
+                    .gte(timeCol, startISO)
+                    .lt(timeCol, endISO)
                     .not('status', 'in', '(cancelled,rejected)')
-                    .order('created_at', { ascending: true })
+                    .order(timeCol, { ascending: true })
                     .limit(10000);
                 if (ordersErr) throw ordersErr;
 
@@ -3901,7 +3909,7 @@
                     const o = ordersById[it.order_id];
                     if (!o) return null;
                     return [
-                        dateStr(o.created_at),
+                        dateStr(useCreatedAt ? o.created_at : (o.paid_at || o.created_at)),
                         o.order_number || '',
                         o.customer_name || '',
                         it.product_id || '',
@@ -3938,13 +3946,13 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'orders_' + monthInput + '.csv';
+                a.download = 'orders_' + monthInput + '_' + (useCreatedAt ? 'created' : 'paid') + '.csv';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                showToast('已匯出 ' + rows.length + ' 列 (共 ' + orders.length + ' 筆訂單)');
+                showToast('已匯出 ' + rows.length + ' 列 (共 ' + orders.length + ' 筆訂單,依' + (useCreatedAt ? '下單' : '付款') + '時間)');
             } catch (err) {
                 console.error('Failed to export orders:', err);
                 showToast('匯出失敗: ' + err.message, 'error');
@@ -3970,7 +3978,13 @@
                 defaultMonth
             );
             if (!monthInput) return;
-
+            const basisInput = prompt(
+                '依哪個時間篩選?\n1 = 下單時間 (created_at)\n2 = 付款時間 (paid_at,只含已付款訂單)\n\n預設: 1',
+                '1'
+            );
+            if (basisInput === null) return;
+            const useCreatedAt = (basisInput || '').trim() !== '2';
+            const timeCol = useCreatedAt ? 'created_at' : 'paid_at';
             const m = monthInput.match(/^(\d{4})-(\d{1,2})$/);
             if (!m) {
                 showToast('格式錯誤,請用 yyyy-mm', 'error');
@@ -3990,13 +4004,13 @@
             try {
                 const { data: orders, error: ordersErr } = await sb
                     .from('orders')
-                    .select('order_number, customer_name, customer_email, created_at, ' +
+                    .select('order_number, customer_name, customer_email, created_at, paid_at, ' +
                             'subtotal, tier_discount, birthday_discount, signup_credit_used, ' +
                             'shipping_fee, total, payment_method, status, note, refund_amount')
-                    .gte('created_at', startISO)
-                    .lt('created_at', endISO)
+                    .gte(timeCol, startISO)
+                    .lt(timeCol, endISO)
                     .not('status', 'in', '(cancelled,rejected)')
-                    .order('created_at', { ascending: true })
+                    .order(timeCol, { ascending: true })
                     .limit(10000);
                 if (ordersErr) throw ordersErr;
 
@@ -4019,7 +4033,7 @@
                     const scu = Number(o.signup_credit_used) || 0;
                     const afterDiscount = subtotal - td - bd - scu;
                     return [
-                        dateTimeStr(o.created_at),
+                        dateTimeStr(useCreatedAt ? o.created_at : (o.paid_at || o.created_at)),
                         o.order_number || '',
                         o.customer_name || '',
                         o.customer_email || '',
@@ -4058,13 +4072,13 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'order_cashflow_' + monthInput + '.csv';
+                a.download = 'order_cashflow_' + monthInput + '_' + (useCreatedAt ? 'created' : 'paid') + '.csv';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                showToast('已匯出 ' + rows.length + ' 筆訂單金流');
+                showToast('已匯出 ' + rows.length + ' 筆訂單金流 (依' + (useCreatedAt ? '下單' : '付款') + '時間)');
             } catch (err) {
                 console.error('Failed to export order cashflow:', err);
                 showToast('匯出失敗: ' + err.message, 'error');
