@@ -43,3 +43,8 @@ yarn-error.log*
 
 # LINE 貼文素材 (由 prep-line-post.js 產生, 內含品牌方圖片, 不入版控)
 outputs/
+
+# 靜態快照 (由 scripts/dump-snapshot.js 於每次 Vercel deploy 產生, 不入版控)
+/data/products.json
+/data/manifest.json
+/data/gallery/

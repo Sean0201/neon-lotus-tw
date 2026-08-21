@@ -1,17 +1,24 @@
 {
-    "buildCommand": "echo 'Static site — no build step needed'",
+    "buildCommand": "node scripts/dump-snapshot.js",
     "installCommand": "npm install",
     "outputDirectory": ".",
     "framework": null,
     "rewrites": [
           { "source": "/api/(.*)", "destination": "/api/$1" },
-          { "source": "/((?!api/).*)", "destination": "/index.html" }
+          { "source": "/((?!api/|data/).*)", "destination": "/index.html" }
     ],
     "headers": [
           {
                   "source": "/supabase-client.js",
                   "headers": [
                             { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+                  ]
+          },
+          {
+                  "source": "/data/(.*)",
+                  "headers": [
+                            { "key": "Cache-Control", "value": "public, max-age=60, s-maxage=300, stale-while-revalidate=86400" },
+                            { "key": "Content-Type", "value": "application/json; charset=utf-8" }
                   ]
           },
           {

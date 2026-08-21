@@ -4,12 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/generate-data.js",
+    "build": "node scripts/dump-snapshot.js",
+    "dump-snapshot": "node scripts/dump-snapshot.js",
+    "generate-data-legacy": "node scripts/generate-data.js",
     "translate-sizes": "node scripts/translate-vn-sizes.js",
     "sitemap": "node scripts/generate-sitemap.js",
-    "reprice": "node scripts/reprice-all-products.js"
+    "reprice": "node scripts/reprice-all-products.js",
+    "scrape-to-supabase": "node scripts/scrape-to-supabase.js",
+    "prep-line-post": "node scripts/prep-line-post.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.4"
+    "@supabase/supabase-js": "^2.49.4",
+    "sharp": "^0.35.3"
   }
 }
