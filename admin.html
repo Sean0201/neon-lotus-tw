@@ -1593,7 +1593,7 @@
 
                             <script>
                             (function () {
-                              const ADMIN_REBUILD_TOKEN = 'nlt_rebuild_x8k2m9p3q7w5z1n4';
+                              // 已改為驗證 Supabase JWT + admin 白名單,不再需要 shared secret token
                               const LAST_KEY = 'NLT_LAST_SNAPSHOT_REBUILD';
                               const btn = document.getElementById('btn-rebuild-snapshot');
                               const status = document.getElementById('snapshot-rebuild-status');
@@ -1614,9 +1614,19 @@
                                 status.style.color = 'var(--text-secondary)';
                                 status.textContent = '';
                                 try {
+                                  // 取得目前 Supabase session,用 access_token 當 Bearer
+                                  const { data: { session } } = await sb.auth.getSession();
+                                  if (!session) {
+                                    status.style.color = '#f87171';
+                                    status.textContent = '❌ 未登入或 session 已過期,請重新登入';
+                                    return;
+                                  }
                                   const r = await fetch('/api/rebuild-snapshot', {
                                     method: 'POST',
-                                    headers: { 'content-type': 'application/json', 'x-admin-token': ADMIN_REBUILD_TOKEN },
+                                    headers: {
+                                      'content-type': 'application/json',
+                                      'Authorization': `Bearer ${session.access_token}`,
+                                    },
                                   });
                                   const j = await r.json().catch(() => ({}));
                                   if (r.ok && j.ok) {
@@ -1624,6 +1634,9 @@
                                     status.style.color = '#4ade80';
                                     status.textContent = '✅ 已觸發!約 1-3 分鐘後生效。';
                                     setTimeout(updateLastLabel, 4000);
+                                  } else if (r.status === 429) {
+                                    status.style.color = '#fbbf24';
+                                    status.textContent = `⏳ 剛剛才觸發過,請 ${j.retry_after_seconds || 60} 秒後再試`;
                                   } else {
                                     status.style.color = '#f87171';
                                     status.textContent = `❌ 失敗:${j.error || r.status} ${j.detail || ''}`;
@@ -2118,6 +2131,16 @@
 
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // Admin email 白名單 — 必須與 Vercel env ADMIN_EMAILS 同步
+        // (前端只是 UX 防護,真正的資料授權由後端 API 驗證)
+        const ADMIN_EMAILS = new Set([
+            'nhkbee184@gmail.com',
+        ]);
+
+        function isAdminEmail(email) {
+            return ADMIN_EMAILS.has(String(email || '').toLowerCase());
+        }
+
         // ============================================================================
         // STATE
         // ============================================================================
@@ -2141,6 +2164,15 @@
             try {
                 const { data: { session } } = await sb.auth.getSession();
                 if (session) {
+                    // 已登入,但要驗證是不是 admin
+                    if (!isAdminEmail(session.user.email)) {
+                        console.warn('Non-admin session detected, signing out:', session.user.email);
+                        await sb.auth.signOut();
+                        showLoginPage();
+                        const err = document.getElementById('loginError');
+                        if (err) err.textContent = '此帳號無後台權限,請以 admin 帳號登入。';
+                        return;
+                    }
                     currentUser = session.user;
                     showAppPage();
                     loadDashboard();
@@ -2167,6 +2199,13 @@
                 });
 
                 if (error) throw error;
+
+                // 登入成功,但要驗證是不是 admin
+                if (!isAdminEmail(data.user.email)) {
+                    await sb.auth.signOut();
+                    errorDiv.textContent = '此帳號無後台權限,請以 admin 帳號登入。';
+                    return;
+                }
 
                 currentUser = data.user;
                 showAppPage();
