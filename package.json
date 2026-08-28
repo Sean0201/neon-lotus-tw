@@ -12,7 +12,8 @@
     "reprice": "node scripts/reprice-all-products.js",
     "scrape-to-supabase": "node scripts/scrape-to-supabase.js",
     "prep-line-post": "node scripts/prep-line-post.js",
-    "threads-draft": "node scripts/threads-generate-draft.js"
+    "threads-draft": "node scripts/threads-generate-draft.js",
+    "threads-sync-voice": "node scripts/seed-threads-brand-voice.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
