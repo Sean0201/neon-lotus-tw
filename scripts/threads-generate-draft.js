@@ -109,7 +109,8 @@ async function generateDraft({ topic, goal, facts }) {
 2. 避免「風格指南」與「內容庫」中標記為疲乏（fatigue risk 高）的句型與比喻，例如「NPC/路人/反骨」這套挑釁框架短期內不要用。
 3. 語氣依風格指南：口語直球、第二人稱「你/妳」、短句多行、無正式書面語。
 4. 不要下 hashtag。可以視內容自然使用 1–2 個表情符號畫龍點睛（例如 🌶️⚡️這類風格指南裡出現過的），不要堆疊超過 2 個。
-5. 只輸出貼文本文，不要加任何說明、標題或引號。
+5. 貼文本文只輸出內容，不要加任何說明、標題或引號。
+6. 最後另起一行，格式固定為 \`TOPIC_TAG: <詞>\`，給出這篇貼文最貼切的 Threads 主題標籤（單一詞或短詞組，中文或英文皆可，不含 # 字號，不要用「越南代購」這種帳號自我標籤，要用讀者會拿來搜尋/瀏覽的主題詞，例如：穿搭、選品、設計師品牌）。
 
 【風格指南】
 ${styleGuide}
@@ -121,7 +122,7 @@ ${conceptLib}`;
 目的：${goal || '（未指定，依風格指南判斷最適合的角度）'}
 已確認事實：${facts}
 
-請依此產出一則 Threads 貼文草稿。`;
+請依此產出一則 Threads 貼文草稿，並在最後一行附上 TOPIC_TAG。`;
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -145,12 +146,18 @@ ${conceptLib}`;
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim();
+  const raw = data.choices?.[0]?.message?.content?.trim() || '';
+
+  const match = raw.match(/\n?TOPIC_TAG:\s*(.+)\s*$/i);
+  const topicTag = match ? match[1].trim() : null;
+  const draft = match ? raw.slice(0, match.index).trim() : raw;
+
+  return { draft, topicTag };
 }
 
 // ─── 推送到 Telegram 供核准 ──────────────────────────────────────
-async function sendForApproval(postId, draftText, scheduledAt) {
-  const text = `📝 *新草稿待核准*\n\n${draftText}\n\n──────────\n預定發文：${scheduledAt || '（未排定，需核准後另外排時間）'}`;
+async function sendForApproval(postId, draftText, scheduledAt, topicTag) {
+  const text = `📝 *新草稿待核准*\n\n${draftText}\n\n──────────\n主題標籤：${topicTag || '（無）'}\n預定發文：${scheduledAt || '（未排定，需核准後另外排時間）'}`;
 
   const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
     method: 'POST',
@@ -176,8 +183,9 @@ async function sendForApproval(postId, draftText, scheduledAt) {
 // ─── 主流程 ──────────────────────────────────────────────────────
 async function main() {
   console.log('🖊️  產生草稿中...');
-  const draft = await generateDraft(argv);
-  console.log('\n────── 草稿內容 ──────\n' + draft + '\n──────────────────\n');
+  const { draft, topicTag } = await generateDraft(argv);
+  console.log('\n────── 草稿內容 ──────\n' + draft + '\n──────────────────');
+  console.log(`主題標籤: ${topicTag || '（無）'}\n`);
 
   const { data: row, error: insertErr } = await supabase
     .from('threads_posts')
@@ -186,6 +194,7 @@ async function main() {
       goal: argv.goal || null,
       facts: argv.facts,
       draft,
+      topic_tag: topicTag,
       status: 'pending_approval',
       scheduled_at: argv.scheduled || null,
     })
@@ -198,7 +207,7 @@ async function main() {
   }
   console.log(`✅ 已寫入 Supabase，id: ${row.id}`);
 
-  const tgMsgId = await sendForApproval(row.id, draft, argv.scheduled);
+  const tgMsgId = await sendForApproval(row.id, draft, argv.scheduled, topicTag);
   console.log(`✅ 已推送到 Telegram，message_id: ${tgMsgId}`);
 
   const { error: updateErr } = await supabase

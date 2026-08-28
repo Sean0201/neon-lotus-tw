@@ -8,7 +8,7 @@
           { "source": "/((?!api/|data/).*)", "destination": "/index.html" }
     ],
     "crons": [
-          { "path": "/api/threads-publish-due", "schedule": "0 1 * * *" }
+          { "path": "/api/threads-publish-due", "schedule": "0 4,12 * * *" }
     ],
     "headers": [
           {
