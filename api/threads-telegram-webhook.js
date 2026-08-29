@@ -7,6 +7,8 @@
  *   3. 解析 callback_data: "approve:<uuid>" | "reject:<uuid>"
  *   4. 更新 Supabase threads_posts.status
  *   5. 回覆 Telegram：關閉按鈕、顯示結果
+ *   6. 使用者也可以直接「回覆」某則待核准草稿訊息、貼上新文字，
+ *      會直接覆蓋該筆 draft（狀態仍是 pending_approval，仍需按核准）
  *
  * 環境變數:
  *   SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL
@@ -53,9 +55,21 @@ export default async function handler(req, res) {
 
   const update = req.body;
   const cq = update?.callback_query;
+  const msg = update?.message;
 
-  // 不是按鈕回呼（例如一般訊息），直接 200 回應，避免 Telegram 重送
-  if (!cq) return res.status(200).json({ ok: true });
+  // 一般文字訊息：若是「回覆」某則待核准草稿，視為手動修改文案
+  if (!cq) {
+    if (msg && msg.reply_to_message && typeof msg.text === 'string' && msg.text.trim()) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+        await handleEditReply({ supabase, TG_TOKEN, msg });
+      } catch (err) {
+        console.error('[threads-telegram-webhook] edit reply failed', err);
+      }
+    }
+    return res.status(200).json({ ok: true });
+  }
 
   try {
     const [action, postId] = String(cq.data || '').split(':');
@@ -136,6 +150,74 @@ export default async function handler(req, res) {
     console.error('[threads-telegram-webhook]', err);
     return res.status(200).json({ ok: true });
   }
+}
+
+// 使用者直接回覆待核准草稿訊息 → 用新文字覆蓋 draft，保留核准/拒絕按鈕
+async function handleEditReply({ supabase, TG_TOKEN, msg }) {
+  const repliedMessageId = msg.reply_to_message.message_id;
+  const chatId = msg.chat.id;
+  const newText = msg.text.trim();
+
+  const { data: row, error: fetchErr } = await supabase
+    .from('threads_posts')
+    .select('id, status, topic_tag, scheduled_at')
+    .eq('telegram_message_id', repliedMessageId)
+    .single();
+
+  if (fetchErr || !row) return; // 回覆的不是我們追蹤的草稿訊息，忽略
+
+  if (row.status !== 'pending_approval') {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        reply_to_message_id: msg.message_id,
+        text: `⚠️ 這則草稿目前狀態是「${row.status}」，已無法修改。`,
+      }),
+    });
+    return;
+  }
+
+  const { error: updateErr } = await supabase
+    .from('threads_posts')
+    .update({ draft: newText })
+    .eq('id', row.id);
+
+  if (updateErr) {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        reply_to_message_id: msg.message_id,
+        text: `⚠️ 更新失敗：${updateErr.message}`,
+      }),
+    });
+    return;
+  }
+
+  const displayText = `✏️ 草稿已手動修改\n\n${newText}\n\n──────────\n主題標籤：${row.topic_tag || '（無）'}\n預定發文：${row.scheduled_at || '（未排定）'}`;
+
+  await fetch(`https://api.telegram.org/bot${TG_TOKEN}/editMessageText`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: repliedMessageId,
+      text: displayText,
+    }),
+  });
+
+  await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      reply_to_message_id: msg.message_id,
+      text: '✅ 已更新草稿內容，還沒核准，記得去上面按核准或拒絕。',
+    }),
+  });
 }
 
 async function answerCallback(token, callbackQueryId, text) {
