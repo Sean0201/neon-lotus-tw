@@ -15,7 +15,7 @@
  *                 的請求才會執行（Vercel Cron 會自動帶這個 header）
  */
 
-export const config = { runtime: 'nodejs', maxDuration: 30 };
+export const config = { runtime: 'nodejs', maxDuration: 60 };
 
 function getSupabaseEnv() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -111,6 +111,9 @@ async function publishToThreads({ userId, token, text, topicTag }) {
   if (!createRes.ok || !createData.id) {
     throw new Error(`建立容器失敗: ${JSON.stringify(createData)}`);
   }
+
+  // Threads API 建立容器後需要幾秒處理時間，太快發布會 "Media Not Found"
+  await new Promise((resolve) => setTimeout(resolve, 30000));
 
   const publishParams = new URLSearchParams({
     creation_id: createData.id,
