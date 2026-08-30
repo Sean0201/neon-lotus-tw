@@ -7,8 +7,11 @@
  *   3. 解析 callback_data: "approve:<uuid>" | "reject:<uuid>"
  *   4. 更新 Supabase threads_posts.status
  *   5. 回覆 Telegram：關閉按鈕、顯示結果
- *   6. 使用者也可以直接「回覆」某則待核准草稿訊息、貼上新文字，
- *      會直接覆蓋該筆 draft（狀態仍是 pending_approval，仍需按核准）
+ *   6. 使用者也可以直接「回覆」某則草稿訊息、貼上新文字，覆蓋該筆 draft
+ *      （待核准或已核准都可以改；已核准的話會同步更新 approved_draft）
+ *   7. 已核准的貼文按「❌ 拒絕」＝取消核准（按鈕會保留，不會因為核准而消失），
+ *      會轉為 rejected 並自動重新產一則新草稿
+ *   8. 直接輸入「查詢」「排程」「status」會回覆目前所有貼文的排程總覽
  *
  * 環境變數:
  *   SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL
@@ -57,16 +60,23 @@ export default async function handler(req, res) {
   const cq = update?.callback_query;
   const msg = update?.message;
 
-  // 一般文字訊息：若是「回覆」某則待核准草稿，視為手動修改文案
   if (!cq) {
-    if (msg && msg.reply_to_message && typeof msg.text === 'string' && msg.text.trim()) {
-      try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+    if (!msg || typeof msg.text !== 'string' || !msg.text.trim()) {
+      return res.status(200).json({ ok: true });
+    }
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+
+    try {
+      const STATUS_TRIGGERS = ['查詢', '排程', 'status', 'list', '總覽'];
+      if (msg.reply_to_message) {
+        // 回覆某則草稿訊息 → 用新文字覆蓋 draft
         await handleEditReply({ supabase, TG_TOKEN, msg });
-      } catch (err) {
-        console.error('[threads-telegram-webhook] edit reply failed', err);
+      } else if (STATUS_TRIGGERS.includes(msg.text.trim().toLowerCase())) {
+        await sendStatusOverview({ supabase, TG_TOKEN, chatId: msg.chat.id });
       }
+    } catch (err) {
+      console.error('[threads-telegram-webhook] message handling failed', err);
     }
     return res.status(200).json({ ok: true });
   }
@@ -92,8 +102,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    if (row.status !== 'pending_approval') {
+    // 核准只能對「待核准」做；拒絕（＝取消）則待核准、已核准都可以做
+    const cancelable = ['pending_approval', 'approved'];
+    if (!cancelable.includes(row.status)) {
       await answerCallback(TG_TOKEN, cq.id, `已經處理過了（狀態：${row.status}）`);
+      return res.status(200).json({ ok: true });
+    }
+    if (action === 'approve' && row.status === 'approved') {
+      await answerCallback(TG_TOKEN, cq.id, '已經核准過了');
       return res.status(200).json({ ok: true });
     }
 
@@ -112,7 +128,12 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    const feedback = action === 'approve' ? '✅ 已核准，等待排程發文' : '❌ 已拒絕';
+    const feedback =
+      action === 'approve'
+        ? '✅ 已核准，等待排程發文'
+        : row.status === 'approved'
+          ? '❌ 已取消核准'
+          : '❌ 已拒絕';
     await answerCallback(TG_TOKEN, cq.id, feedback);
 
     // 更新原訊息：移除按鈕，附上結果
@@ -166,7 +187,8 @@ async function handleEditReply({ supabase, TG_TOKEN, msg }) {
 
   if (fetchErr || !row) return; // 回覆的不是我們追蹤的草稿訊息，忽略
 
-  if (row.status !== 'pending_approval') {
+  const editable = ['pending_approval', 'approved'];
+  if (!editable.includes(row.status)) {
     await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -179,9 +201,12 @@ async function handleEditReply({ supabase, TG_TOKEN, msg }) {
     return;
   }
 
+  const updatePayload = { draft: newText };
+  if (row.status === 'approved') updatePayload.approved_draft = newText;
+
   const { error: updateErr } = await supabase
     .from('threads_posts')
-    .update({ draft: newText })
+    .update(updatePayload)
     .eq('id', row.id);
 
   if (updateErr) {
@@ -209,14 +234,68 @@ async function handleEditReply({ supabase, TG_TOKEN, msg }) {
     }),
   });
 
+  const confirmText =
+    row.status === 'approved'
+      ? '✅ 已更新草稿內容，狀態仍是已核准，會照原排程時間發文。'
+      : '✅ 已更新草稿內容，還沒核准，記得去上面按核准或拒絕。';
+
   await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: chatId,
       reply_to_message_id: msg.message_id,
-      text: '✅ 已更新草稿內容，還沒核准，記得去上面按核准或拒絕。',
+      text: confirmText,
     }),
+  });
+}
+
+const STATUS_LABEL = {
+  published: '✅ 已發布',
+  approved: '🗓️ 已核准，等待發文',
+  pending_approval: '⏳ 待核准',
+  rejected: '❌ 已拒絕',
+  failed: '⚠️ 發文失敗',
+};
+
+function formatTaipeiTime(iso) {
+  if (!iso) return '（未排定）';
+  return new Date(iso).toLocaleString('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
+// 使用者輸入「查詢／排程／status」→ 回覆目前所有貼文的排程總覽
+async function sendStatusOverview({ supabase, TG_TOKEN, chatId }) {
+  const { data: rows, error } = await supabase
+    .from('threads_posts')
+    .select('topic, status, scheduled_at')
+    .neq('status', 'rejected')
+    .order('scheduled_at', { ascending: true });
+
+  if (error) {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: `⚠️ 查詢失敗：${error.message}` }),
+    });
+    return;
+  }
+
+  const lines = (rows || []).map(
+    (r) => `${STATUS_LABEL[r.status] || r.status} ${formatTaipeiTime(r.scheduled_at)} ${r.topic}`
+  );
+  const text = lines.length ? `📋 目前排程總覽\n\n${lines.join('\n\n')}` : '目前沒有排程中的貼文。';
+
+  await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text }),
   });
 }
 
