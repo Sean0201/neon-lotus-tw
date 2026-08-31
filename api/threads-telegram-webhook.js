@@ -12,6 +12,9 @@
  *   7. 已核准的貼文按「❌ 拒絕」＝取消核准（按鈕會保留，不會因為核准而消失），
  *      會轉為 rejected 並自動重新產一則新草稿
  *   8. 直接輸入「查詢」「排程」「status」會回覆目前所有貼文的排程總覽
+ *   9. 回覆草稿訊息並附上照片/影片 → 自動上傳到 Supabase Storage，發文時會帶圖/影片；
+ *      回覆一個 http(s) 網址 → 直接引用該網址（例如網站上的商品圖）；
+ *      回覆「移除圖片」→ 清除已附加的媒體
  *
  * 環境變數:
  *   SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL
@@ -61,19 +64,23 @@ export default async function handler(req, res) {
   const msg = update?.message;
 
   if (!cq) {
-    if (!msg || typeof msg.text !== 'string' || !msg.text.trim()) {
+    const hasMedia = (Array.isArray(msg?.photo) && msg.photo.length) || msg?.video;
+    const hasText = typeof msg?.text === 'string' && msg.text.trim();
+    if (!msg || (!hasMedia && !hasText)) {
       return res.status(200).json({ ok: true });
     }
     const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
     try {
-      const STATUS_TRIGGERS = ['查詢', '排程', 'status', 'list', '總覽'];
       if (msg.reply_to_message) {
-        // 回覆某則草稿訊息 → 用新文字覆蓋 draft
-        await handleEditReply({ supabase, TG_TOKEN, msg });
-      } else if (STATUS_TRIGGERS.includes(msg.text.trim().toLowerCase())) {
-        await sendStatusOverview({ supabase, TG_TOKEN, chatId: msg.chat.id });
+        // 回覆某則草稿訊息：文字改稿、圖片/影片附加媒體、網址引用外部圖、關鍵字移除媒體
+        await handleReplyToTracked({ supabase, TG_TOKEN, msg });
+      } else if (hasText) {
+        const STATUS_TRIGGERS = ['查詢', '排程', 'status', 'list', '總覽'];
+        if (STATUS_TRIGGERS.includes(msg.text.trim().toLowerCase())) {
+          await sendStatusOverview({ supabase, TG_TOKEN, chatId: msg.chat.id });
+        }
       }
     } catch (err) {
       console.error('[threads-telegram-webhook] message handling failed', err);
@@ -173,11 +180,12 @@ export default async function handler(req, res) {
   }
 }
 
-// 使用者直接回覆待核准草稿訊息 → 用新文字覆蓋 draft，保留核准/拒絕按鈕
-async function handleEditReply({ supabase, TG_TOKEN, msg }) {
+const REMOVE_MEDIA_KEYWORDS = ['移除圖片', '移除媒體', '刪除圖片', '移除素材', 'remove media', 'remove image'];
+
+// 使用者回覆某則草稿訊息 → 依內容類型分派：圖片/影片附加媒體、網址引用、關鍵字移除媒體、一般文字改稿
+async function handleReplyToTracked({ supabase, TG_TOKEN, msg }) {
   const repliedMessageId = msg.reply_to_message.message_id;
   const chatId = msg.chat.id;
-  const newText = msg.text.trim();
 
   const { data: row, error: fetchErr } = await supabase
     .from('threads_posts')
@@ -189,36 +197,50 @@ async function handleEditReply({ supabase, TG_TOKEN, msg }) {
 
   const editable = ['pending_approval', 'approved'];
   if (!editable.includes(row.status)) {
-    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        reply_to_message_id: msg.message_id,
-        text: `⚠️ 這則草稿目前狀態是「${row.status}」，已無法修改。`,
-      }),
-    });
+    await sendReply(TG_TOKEN, chatId, msg.message_id, `⚠️ 這則草稿目前狀態是「${row.status}」，已無法修改。`);
     return;
   }
 
+  if (Array.isArray(msg.photo) && msg.photo.length) {
+    const largest = msg.photo[msg.photo.length - 1];
+    const { buffer, filePath } = await downloadTelegramFile(TG_TOKEN, largest.file_id);
+    const publicUrl = await uploadToMediaBucket(supabase, buffer, filePath || 'photo.jpg');
+    await applyMediaUpdate({ supabase, TG_TOKEN, chatId, msg, row, mediaType: 'IMAGE', mediaUrl: publicUrl });
+    return;
+  }
+
+  if (msg.video) {
+    const { buffer, filePath } = await downloadTelegramFile(TG_TOKEN, msg.video.file_id);
+    const publicUrl = await uploadToMediaBucket(supabase, buffer, filePath || 'video.mp4');
+    await applyMediaUpdate({ supabase, TG_TOKEN, chatId, msg, row, mediaType: 'VIDEO', mediaUrl: publicUrl });
+    return;
+  }
+
+  const text = typeof msg.text === 'string' ? msg.text.trim() : '';
+  if (!text) return;
+
+  if (/^https?:\/\//i.test(text)) {
+    const isVideo = /\.(mp4|mov|webm)(\?|$)/i.test(text);
+    await applyMediaUpdate({ supabase, TG_TOKEN, chatId, msg, row, mediaType: isVideo ? 'VIDEO' : 'IMAGE', mediaUrl: text });
+    return;
+  }
+
+  if (REMOVE_MEDIA_KEYWORDS.includes(text.toLowerCase())) {
+    await supabase.from('threads_posts').update({ media_type: null, media_url: null }).eq('id', row.id);
+    await sendReply(TG_TOKEN, chatId, msg.message_id, '✅ 已移除附加的圖片/影片，這篇會發純文字。');
+    return;
+  }
+
+  await applyDraftTextUpdate({ supabase, TG_TOKEN, chatId, msg, row, newText: text });
+}
+
+async function applyDraftTextUpdate({ supabase, TG_TOKEN, chatId, msg, row, newText }) {
   const updatePayload = { draft: newText };
   if (row.status === 'approved') updatePayload.approved_draft = newText;
 
-  const { error: updateErr } = await supabase
-    .from('threads_posts')
-    .update(updatePayload)
-    .eq('id', row.id);
-
+  const { error: updateErr } = await supabase.from('threads_posts').update(updatePayload).eq('id', row.id);
   if (updateErr) {
-    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        reply_to_message_id: msg.message_id,
-        text: `⚠️ 更新失敗：${updateErr.message}`,
-      }),
-    });
+    await sendReply(TG_TOKEN, chatId, msg.message_id, `⚠️ 更新失敗：${updateErr.message}`);
     return;
   }
 
@@ -229,7 +251,7 @@ async function handleEditReply({ supabase, TG_TOKEN, msg }) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: chatId,
-      message_id: repliedMessageId,
+      message_id: msg.reply_to_message.message_id,
       text: displayText,
     }),
   });
@@ -239,15 +261,65 @@ async function handleEditReply({ supabase, TG_TOKEN, msg }) {
       ? '✅ 已更新草稿內容，狀態仍是已核准，會照原排程時間發文。'
       : '✅ 已更新草稿內容，還沒核准，記得去上面按核准或拒絕。';
 
-  await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+  await sendReply(TG_TOKEN, chatId, msg.message_id, confirmText);
+}
+
+async function applyMediaUpdate({ supabase, TG_TOKEN, chatId, msg, row, mediaType, mediaUrl }) {
+  const { error } = await supabase
+    .from('threads_posts')
+    .update({ media_type: mediaType, media_url: mediaUrl })
+    .eq('id', row.id);
+
+  if (error) {
+    await sendReply(TG_TOKEN, chatId, msg.message_id, `⚠️ 更新失敗：${error.message}`);
+    return;
+  }
+
+  const label = mediaType === 'VIDEO' ? '影片' : '圖片';
+  const note =
+    row.status === 'approved'
+      ? `✅ 已附加${label}，狀態仍是已核准，發文時會一起帶${label}。`
+      : `✅ 已附加${label}，發文時會一起帶${label}。`;
+  await sendReply(TG_TOKEN, chatId, msg.message_id, note);
+}
+
+async function sendReply(token, chatId, replyToMessageId, text) {
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      reply_to_message_id: msg.message_id,
-      text: confirmText,
-    }),
+    body: JSON.stringify({ chat_id: chatId, reply_to_message_id: replyToMessageId, text }),
   });
+}
+
+async function downloadTelegramFile(token, fileId) {
+  const infoRes = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
+  const info = await infoRes.json();
+  if (!info.ok) throw new Error(`取得檔案資訊失敗: ${JSON.stringify(info)}`);
+  const filePath = info.result.file_path;
+  const fileRes = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+  if (!fileRes.ok) throw new Error('下載檔案失敗（可能超過 Telegram Bot API 20MB 限制）');
+  const buffer = Buffer.from(await fileRes.arrayBuffer());
+  return { buffer, filePath };
+}
+
+function guessContentType(filePath) {
+  const ext = (filePath.split('.').pop() || '').toLowerCase();
+  const map = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+    mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm',
+  };
+  return map[ext] || 'application/octet-stream';
+}
+
+async function uploadToMediaBucket(supabase, buffer, filePath) {
+  const ext = (filePath.split('.').pop() || 'bin').toLowerCase();
+  const objectPath = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage
+    .from('threads-media')
+    .upload(objectPath, buffer, { contentType: guessContentType(filePath), upsert: false });
+  if (error) throw new Error(`上傳到 Storage 失敗: ${error.message}`);
+  const { data } = supabase.storage.from('threads-media').getPublicUrl(objectPath);
+  return data.publicUrl;
 }
 
 const STATUS_LABEL = {

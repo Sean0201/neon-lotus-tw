@@ -4,6 +4,7 @@
  * 由 Vercel Cron 定時呼叫。找出 threads_posts 裡
  * status = 'approved' 且 scheduled_at 已到的貼文，
  * 呼叫 Threads API 建立容器 → 發布，寫回結果，並用 Telegram 通知。
+ * 若該筆有 media_type/media_url（Telegram webhook 附加），會發 IMAGE/VIDEO 而非純文字。
  *
  * 環境變數:
  *   SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL
@@ -15,7 +16,7 @@
  *                 的請求才會執行（Vercel Cron 會自動帶這個 header）
  */
 
-export const config = { runtime: 'nodejs', maxDuration: 60 };
+export const config = { runtime: 'nodejs', maxDuration: 120 };
 
 function getSupabaseEnv() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
 
   const { data: due, error: fetchErr } = await supabase
     .from('threads_posts')
-    .select('id, approved_draft, topic_tag')
+    .select('id, approved_draft, topic_tag, media_type, media_url')
     .eq('status', 'approved')
     .lte('scheduled_at', new Date().toISOString());
 
@@ -65,6 +66,8 @@ export default async function handler(req, res) {
         token: THREADS_TOKEN,
         text: row.approved_draft,
         topicTag: row.topic_tag,
+        mediaType: row.media_type,
+        mediaUrl: row.media_url,
       });
 
       await supabase
@@ -95,13 +98,13 @@ export default async function handler(req, res) {
   return res.status(200).json({ ok: true, processed: results.length, results });
 }
 
-async function publishToThreads({ userId, token, text, topicTag }) {
-  const createParams = new URLSearchParams({
-    media_type: 'TEXT',
-    text,
-    access_token: token,
-  });
+async function publishToThreads({ userId, token, text, topicTag, mediaType, mediaUrl }) {
+  const type = mediaType && mediaUrl ? mediaType : 'TEXT';
+  const createParams = new URLSearchParams({ media_type: type, access_token: token });
+  if (text) createParams.set('text', text);
   if (topicTag) createParams.set('topic_tag', topicTag);
+  if (type === 'IMAGE') createParams.set('image_url', mediaUrl);
+  if (type === 'VIDEO') createParams.set('video_url', mediaUrl);
 
   const createRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads`, {
     method: 'POST',
@@ -112,8 +115,8 @@ async function publishToThreads({ userId, token, text, topicTag }) {
     throw new Error(`建立容器失敗: ${JSON.stringify(createData)}`);
   }
 
-  // Threads API 建立容器後需要幾秒處理時間，太快發布會 "Media Not Found"
-  await new Promise((resolve) => setTimeout(resolve, 30000));
+  // 圖片/影片需要 Threads 端下載處理，輪詢容器狀態直到完成才能發布
+  await waitUntilContainerReady(createData.id, token);
 
   const publishParams = new URLSearchParams({
     creation_id: createData.id,
@@ -129,6 +132,26 @@ async function publishToThreads({ userId, token, text, topicTag }) {
   }
 
   return publishData.id;
+}
+
+async function waitUntilContainerReady(creationId, token, { maxWaitMs = 100000, intervalMs = 3000 } = {}) {
+  const deadline = Date.now() + maxWaitMs;
+  // 先固定等一下，容器建立後不會立刻查得到狀態
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  while (Date.now() < deadline) {
+    const res = await fetch(
+      `https://graph.threads.net/v1.0/${creationId}?fields=status,error_message&access_token=${token}`
+    );
+    const data = await res.json();
+    if (data.status === 'FINISHED') return;
+    if (data.status === 'ERROR') {
+      throw new Error(`媒體處理失敗: ${data.error_message || JSON.stringify(data)}`);
+    }
+    // IN_PROGRESS / EXPIRED(視為還在處理) → 繼續等
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error('媒體處理逾時，可能檔案過大或處理時間超過 function 執行上限');
 }
 
 async function notifyTelegram(token, chatId, text) {
