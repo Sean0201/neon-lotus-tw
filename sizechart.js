@@ -288,7 +288,28 @@
     const product = typeof productOrId === 'string' ? findProduct(productOrId) : productOrId;
     if (!product) { console.warn('[sizechart] product not found:', productOrId); return; }
     const brand = findBrand(product.brand_id);
-    const sc = product.size_chart || null;
+    let sc = product.size_chart || null;
+
+    // Migration 018 — 新扁平格式優先 (若 admin 有填新欄位就用新的)
+    //   product.size_chart_image  (text URL)
+    //   product.size_chart_table  (jsonb array: [{size,chest,length,shoulder,sleeve}, ...])
+    const hasNewImg   = !!(product.size_chart_image);
+    const hasNewTable = Array.isArray(product.size_chart_table) && product.size_chart_table.length > 0;
+    if (!sc && (hasNewImg || hasNewTable)) {
+      const rows = hasNewTable ? product.size_chart_table.map(r => {
+        const values = {};
+        if (r.chest    != null && r.chest    !== '') values['胸圍'] = r.chest;
+        if (r.length   != null && r.length   !== '') values['衣長'] = r.length;
+        if (r.shoulder != null && r.shoulder !== '') values['肩寬'] = r.shoulder;
+        if (r.sleeve   != null && r.sleeve   !== '') values['袖長'] = r.sleeve;
+        return { size: r.size, values };
+      }) : [];
+      sc = {
+        image_url: product.size_chart_image || null,
+        headers: ['尺碼','胸圍','衣長','肩寬','袖長'],
+        rows
+      };
+    }
 
     const mask = document.createElement('div');
     mask.className = 'neon-sc-mask';
