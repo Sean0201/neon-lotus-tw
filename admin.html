@@ -1924,6 +1924,31 @@
                     </div>
                     <button type="button" class="btn-add-item" onclick="addGalleryField()">+ 新增相片</button>
 
+                    <!-- 尺寸表 -->
+                    <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+                    <h3 style="margin-bottom: 1rem;">尺寸表</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="productSizeChartImageUrl">尺寸表圖片 URL</label>
+                            <input type="text" id="productSizeChartImageUrl" placeholder="貼 URL 或用下方按鈕上傳圖片">
+                            <div style="margin-top: 0.5rem;">
+                                <input type="file" id="productSizeChartImageFile" accept="image/*" style="display: none;">
+                                <button type="button" class="btn-small" onclick="document.getElementById('productSizeChartImageFile').click()">上傳尺寸表圖</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <img id="productSizeChartImagePreview" class="image-preview" style="display: none; margin-top: 0.5rem; max-width: 200px;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">文字表格(單位:公分,留白代表不適用)</label>
+                        <div id="sizeChartHeader" style="display:grid;grid-template-columns:80px 80px 80px 80px 80px 40px;gap:0.5rem;font-size:0.85rem;color:var(--text-muted);margin-bottom:0.35rem;">
+                            <div>尺寸</div><div>胸圍</div><div>衣長</div><div>肩寬</div><div>袖長</div><div></div>
+                        </div>
+                        <div class="dynamic-list" id="sizeChartList"></div>
+                        <button type="button" class="btn-add-item" onclick="addSizeChartRow()">+ 新增尺寸列</button>
+                    </div>
+
                     <!-- 狀態 -->
                     <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
                     <h3 style="margin-bottom: 1rem;">狀態</h3>
@@ -2827,6 +2852,7 @@
             });
             clearProductSizes();
             clearProductGallery();
+            clearSizeChart();
             // 重置 NT$ 覆蓋狀態提示 (form.reset() 已清空 input,但提示需顯式刷新)
             try { _updateNtdOverrideStatus(); } catch (_) {}
             document.getElementById('productModal').classList.add('active');
@@ -2860,15 +2886,99 @@
             const item = document.createElement('div');
             item.className = 'list-item';
             item.innerHTML = `
-                <input type="text" placeholder="Image URL" value="">
-                <select style="width: 100px;">
+                <input type="text" placeholder="Image URL" value="" style="flex:1;">
+                <select style="width: 90px;">
                     <option>image</option>
                     <option>video</option>
                 </select>
+                <input type="file" accept="image/*" style="display:none;" class="gallery-file-input">
+                <button type="button" class="btn-small gallery-upload-btn">📁 上傳</button>
                 <button type="button" class="btn-icon" onclick="this.parentElement.remove()">🗑️</button>
             `;
             galleryList.appendChild(item);
         }
+
+        // ── 尺寸表:動態列(固定 5 欄:size/chest/length/shoulder/sleeve) ──
+        function addSizeChartRow(data) {
+            const list = document.getElementById('sizeChartList');
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.style.display = 'grid';
+            item.style.gridTemplateColumns = '80px 80px 80px 80px 80px 40px';
+            item.style.gap = '0.5rem';
+            item.innerHTML = `
+                <input type="text"   placeholder="S/M/L" value="${(data && data.size)     ?? ''}" data-k="size">
+                <input type="number" placeholder="88"    value="${(data && data.chest)    ?? ''}" data-k="chest"    step="0.1">
+                <input type="number" placeholder="65"    value="${(data && data.length)   ?? ''}" data-k="length"   step="0.1">
+                <input type="number" placeholder="42"    value="${(data && data.shoulder) ?? ''}" data-k="shoulder" step="0.1">
+                <input type="number" placeholder="20"    value="${(data && data.sleeve)   ?? ''}" data-k="sleeve"   step="0.1">
+                <button type="button" class="btn-icon" onclick="this.parentElement.remove()">🗑️</button>
+            `;
+            list.appendChild(item);
+        }
+
+        function clearSizeChart() {
+            document.getElementById('sizeChartList').innerHTML = '';
+            document.getElementById('productSizeChartImageUrl').value = '';
+            const p = document.getElementById('productSizeChartImagePreview');
+            if (p) { p.src = ''; p.style.display = 'none'; }
+        }
+
+        // ── Gallery 每一列:事件委派處理「📁 上傳」 ──
+        document.getElementById('galleryList').addEventListener('click', (e) => {
+            if (!e.target.classList.contains('gallery-upload-btn')) return;
+            const row = e.target.closest('.list-item');
+            row.querySelector('.gallery-file-input').click();
+        });
+        document.getElementById('galleryList').addEventListener('change', async (e) => {
+            if (!e.target.classList.contains('gallery-file-input')) return;
+            const file = e.target.files[0];
+            if (!file) return;
+            const row = e.target.closest('.list-item');
+            try {
+                const filename = `${Date.now()}-${file.name}`;
+                const path = `products/${editingProductId || 'temp'}/gallery/${filename}`;
+                const { error } = await sb.storage.from('product-images').upload(path, file);
+                if (error) throw error;
+                const { data: { publicUrl } } = sb.storage.from('product-images').getPublicUrl(path);
+                row.querySelector('input[type="text"]').value = publicUrl;
+                showToast('相片已上傳', 'success');
+            } catch (err) {
+                showToast(err.message || '上傳失敗', 'error');
+            } finally {
+                e.target.value = '';
+            }
+        });
+
+        // ── 尺寸表圖片:上傳處理 ──
+        document.getElementById('productSizeChartImageFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const filename = `${Date.now()}-${file.name}`;
+                const path = `products/${editingProductId || 'temp'}/size-chart/${filename}`;
+                const { error } = await sb.storage.from('product-images').upload(path, file);
+                if (error) throw error;
+                const { data: { publicUrl } } = sb.storage.from('product-images').getPublicUrl(path);
+                document.getElementById('productSizeChartImageUrl').value = publicUrl;
+                const p = document.getElementById('productSizeChartImagePreview');
+                p.src = publicUrl;
+                p.style.display = 'block';
+                showToast('尺寸表圖已上傳', 'success');
+            } catch (err) {
+                showToast(err.message || '上傳失敗', 'error');
+            } finally {
+                e.target.value = '';
+            }
+        });
+
+        // ── 尺寸表圖片 URL 手動貼上時同步 preview ──
+        document.getElementById('productSizeChartImageUrl').addEventListener('input', (e) => {
+            const url = e.target.value.trim();
+            const p = document.getElementById('productSizeChartImagePreview');
+            if (url) { p.src = url; p.style.display = 'block'; }
+            else     { p.style.display = 'none'; }
+        });
 
         async function editProduct(id) {
             editingProductId = id;
@@ -2929,6 +3039,15 @@
                 });
             }
 
+            // 尺寸表 (Migration 018)
+            clearSizeChart();
+            const _sci = product.size_chart_image || '';
+            document.getElementById('productSizeChartImageUrl').value = _sci;
+            const _sciPrev = document.getElementById('productSizeChartImagePreview');
+            if (_sci) { _sciPrev.src = _sci; _sciPrev.style.display = 'block'; }
+            const _sct = Array.isArray(product.size_chart_table) ? product.size_chart_table : [];
+            _sct.forEach(row => addSizeChartRow(row));
+
             clearProductGallery();
             const { data: gallery } = await sb.from('product_gallery').select('*').eq('product_id', id).order('sort_order', { ascending: true });
             if (gallery) {
@@ -2937,11 +3056,13 @@
                     const elem = document.createElement('div');
                     elem.className = 'list-item';
                     elem.innerHTML = `
-                        <input type="text" placeholder="Image URL" value="${item.url || ''}">
-                        <select style="width: 100px;">
+                        <input type="text" placeholder="Image URL" value="${item.url || ''}" style="flex:1;">
+                        <select style="width: 90px;">
                             <option ${item.type === 'image' ? 'selected' : ''}>image</option>
                             <option ${item.type === 'video' ? 'selected' : ''}>video</option>
                         </select>
+                        <input type="file" accept="image/*" style="display:none;" class="gallery-file-input">
+                        <button type="button" class="btn-small gallery-upload-btn">📁 上傳</button>
                         <button type="button" class="btn-icon" onclick="this.parentElement.remove()">🗑️</button>
                     `;
                     galleryList.appendChild(elem);
@@ -2978,6 +3099,20 @@
         document.getElementById('productForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            // 尺寸表:從 #sizeChartList 抓所有列,轉成 JSON array (Migration 018)
+            const _sizeChartTable = [];
+            document.querySelectorAll('#sizeChartList .list-item').forEach((row) => {
+                const rowObj = {};
+                row.querySelectorAll('input[data-k]').forEach((inp) => {
+                    const k = inp.dataset.k;
+                    const v = inp.value.trim();
+                    if (v === '') return;
+                    rowObj[k] = (k === 'size') ? v : (Number(v));
+                });
+                // 只保留至少有 size 標籤的列
+                if (rowObj.size) _sizeChartTable.push(rowObj);
+            });
+
             const data = {
                 brand_id: document.getElementById('productBrand').value,
                 name: document.getElementById('productName').value,
@@ -3000,6 +3135,9 @@
                 // 多語描述 (Migration 20260501 後新增) — 此站只寫中文 + 英文
                 description_zh: document.getElementById('productDescZh').value || null,
                 description_en: document.getElementById('productDescEn').value || null,
+                // 尺寸表 (Migration 018 後新增)
+                size_chart_image: (document.getElementById('productSizeChartImageUrl').value || '').trim() || null,
+                size_chart_table: _sizeChartTable.length ? _sizeChartTable : null,
                 updated_at: new Date().toISOString()
             };
             // 自動產生 ID:留空時用 brand-randomhash 格式 (新增模式)
@@ -3009,11 +3147,15 @@
                 document.getElementById('productId').value = `${brand}-${hash}`;
             }
 
-            // 把可能還沒在 schema 裡的多語描述欄位拆出來,失敗時可 fallback 拿掉重試
+            // 把可能還沒在 schema 裡的欄位拆出來,失敗時可 fallback 拿掉重試
+            // - description_zh / description_en (Migration 20260501)
+            // - size_chart_image / size_chart_table (Migration 018)
             const _retryWithoutDesc = async (op) => {
                 const stripped = { ...data };
                 delete stripped.description_zh;
                 delete stripped.description_en;
+                delete stripped.size_chart_image;
+                delete stripped.size_chart_table;
                 return op(stripped);
             };
 
@@ -3021,7 +3163,7 @@
                 if (editingProductId) {
                     let { error } = await sb.from('products').update(data).eq('id', editingProductId);
                     // 如果 description_* 欄位還沒 migrate,移除這 3 欄重試
-                    if (error && error.code === 'PGRST204' && /description_/.test(error.message)) {
+                    if (error && error.code === 'PGRST204' && /description_|size_chart_/.test(error.message)) {
                         ({ error } = await _retryWithoutDesc(d => sb.from('products').update(d).eq('id', editingProductId)));
                         if (!error) showToast('已存(描述欄位需先在 Supabase 跑 migration)', 'success');
                     }
@@ -3059,7 +3201,7 @@
                     data.created_at = new Date().toISOString();
 
                     let { error } = await sb.from('products').insert([data]);
-                    if (error && error.code === 'PGRST204' && /description_/.test(error.message)) {
+                    if (error && error.code === 'PGRST204' && /description_|size_chart_/.test(error.message)) {
                         ({ error } = await _retryWithoutDesc(d => sb.from('products').insert([d])));
                         if (!error) showToast('已存(描述欄位需先在 Supabase 跑 migration)', 'success');
                     }
