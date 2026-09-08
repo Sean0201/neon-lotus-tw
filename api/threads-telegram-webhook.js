@@ -12,9 +12,11 @@
  *   7. 已核准的貼文按「❌ 拒絕」＝取消核准（按鈕會保留，不會因為核准而消失），
  *      會轉為 rejected 並自動重新產一則新草稿
  *   8. 直接輸入「查詢」「排程」「status」會回覆目前所有貼文的排程總覽
- *   9. 回覆草稿訊息並附上照片/影片 → 自動上傳到 Supabase Storage，發文時會帶圖/影片；
- *      回覆一個 http(s) 網址 → 直接引用該網址（例如網站上的商品圖）；
- *      回覆「移除圖片」→ 清除已附加的媒體
+ *   9. 回覆草稿訊息並附上照片/影片（可分次回覆多張，或直接傳相簿）→ 自動上傳到 Supabase Storage，
+ *      依附加順序累積進 media_items，發文時組成 Threads 相簿（CAROUSEL，最多 20 筆，圖片/影片可混）；
+ *      只附加 1 筆時發單張圖/影片貼文；
+ *      回覆一個 http(s) 網址 → 直接引用該網址加入媒體清單（例如網站上的商品圖）；
+ *      回覆「移除圖片」→ 清除已附加的所有媒體，下次重新附加會從頭開始算
  *
  * 環境變數:
  *   SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL
@@ -181,6 +183,7 @@ export default async function handler(req, res) {
 }
 
 const REMOVE_MEDIA_KEYWORDS = ['移除圖片', '移除媒體', '刪除圖片', '移除素材', 'remove media', 'remove image'];
+const MAX_CAROUSEL_ITEMS = 20; // Threads CAROUSEL 上限（Meta 官方文件）
 
 // 使用者回覆某則草稿訊息 → 依內容類型分派：圖片/影片附加媒體、網址引用、關鍵字移除媒體、一般文字改稿
 async function handleReplyToTracked({ supabase, TG_TOKEN, msg }) {
@@ -205,14 +208,14 @@ async function handleReplyToTracked({ supabase, TG_TOKEN, msg }) {
     const largest = msg.photo[msg.photo.length - 1];
     const { buffer, filePath } = await downloadTelegramFile(TG_TOKEN, largest.file_id);
     const publicUrl = await uploadToMediaBucket(supabase, buffer, filePath || 'photo.jpg');
-    await applyMediaUpdate({ supabase, TG_TOKEN, chatId, msg, row, mediaType: 'IMAGE', mediaUrl: publicUrl });
+    await appendMediaItem({ supabase, TG_TOKEN, chatId, msg, row, mediaType: 'IMAGE', mediaUrl: publicUrl });
     return;
   }
 
   if (msg.video) {
     const { buffer, filePath } = await downloadTelegramFile(TG_TOKEN, msg.video.file_id);
     const publicUrl = await uploadToMediaBucket(supabase, buffer, filePath || 'video.mp4');
-    await applyMediaUpdate({ supabase, TG_TOKEN, chatId, msg, row, mediaType: 'VIDEO', mediaUrl: publicUrl });
+    await appendMediaItem({ supabase, TG_TOKEN, chatId, msg, row, mediaType: 'VIDEO', mediaUrl: publicUrl });
     return;
   }
 
@@ -221,13 +224,13 @@ async function handleReplyToTracked({ supabase, TG_TOKEN, msg }) {
 
   if (/^https?:\/\//i.test(text)) {
     const isVideo = /\.(mp4|mov|webm)(\?|$)/i.test(text);
-    await applyMediaUpdate({ supabase, TG_TOKEN, chatId, msg, row, mediaType: isVideo ? 'VIDEO' : 'IMAGE', mediaUrl: text });
+    await appendMediaItem({ supabase, TG_TOKEN, chatId, msg, row, mediaType: isVideo ? 'VIDEO' : 'IMAGE', mediaUrl: text });
     return;
   }
 
   if (REMOVE_MEDIA_KEYWORDS.includes(text.toLowerCase())) {
-    await supabase.from('threads_posts').update({ media_type: null, media_url: null }).eq('id', row.id);
-    await sendReply(TG_TOKEN, chatId, msg.message_id, '✅ 已移除附加的圖片/影片，這篇會發純文字。');
+    await supabase.from('threads_posts').update({ media_type: null, media_url: null, media_items: [] }).eq('id', row.id);
+    await sendReply(TG_TOKEN, chatId, msg.message_id, '✅ 已移除已附加的圖片/影片，這篇會發純文字（下次重新附加會從頭開始算）。');
     return;
   }
 
@@ -264,22 +267,33 @@ async function applyDraftTextUpdate({ supabase, TG_TOKEN, chatId, msg, row, newT
   await sendReply(TG_TOKEN, chatId, msg.message_id, confirmText);
 }
 
-async function applyMediaUpdate({ supabase, TG_TOKEN, chatId, msg, row, mediaType, mediaUrl }) {
-  const { error } = await supabase
-    .from('threads_posts')
-    .update({ media_type: mediaType, media_url: mediaUrl })
-    .eq('id', row.id);
+// 附加一筆媒體到 media_items（透過 Postgres function 原子附加，避免相簿的多則訊息互相蓋掉彼此）
+async function appendMediaItem({ supabase, TG_TOKEN, chatId, msg, row, mediaType, mediaUrl }) {
+  const { data, error } = await supabase.rpc('threads_append_media_item', {
+    p_id: row.id,
+    p_item: { type: mediaType, url: mediaUrl },
+  });
 
   if (error) {
-    await sendReply(TG_TOKEN, chatId, msg.message_id, `⚠️ 更新失敗：${error.message}`);
+    await sendReply(TG_TOKEN, chatId, msg.message_id, `⚠️ 附加媒體失敗：${error.message}`);
     return;
   }
 
+  const items = Array.isArray(data) ? data : [];
   const label = mediaType === 'VIDEO' ? '影片' : '圖片';
+
+  if (items.length > MAX_CAROUSEL_ITEMS) {
+    await sendReply(
+      TG_TOKEN, chatId, msg.message_id,
+      `⚠️ 已附加${label}，但目前累積 ${items.length} 筆，超過 Threads 相簿上限（${MAX_CAROUSEL_ITEMS} 筆）。發文時只會用前 ${MAX_CAROUSEL_ITEMS} 筆，多的不會出現。要換一批的話，先回覆「移除圖片」再重新附加。`
+    );
+    return;
+  }
+
   const note =
     row.status === 'approved'
-      ? `✅ 已附加${label}，狀態仍是已核准，發文時會一起帶${label}。`
-      : `✅ 已附加${label}，發文時會一起帶${label}。`;
+      ? `✅ 已附加${label}（目前共 ${items.length} 筆），狀態仍是已核准，發文時會依附加順序帶上。`
+      : `✅ 已附加${label}（目前共 ${items.length} 筆），發文時會依附加順序帶上。`;
   await sendReply(TG_TOKEN, chatId, msg.message_id, note);
 }
 
