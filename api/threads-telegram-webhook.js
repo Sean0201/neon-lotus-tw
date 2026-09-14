@@ -256,6 +256,13 @@ async function applyDraftTextUpdate({ supabase, TG_TOKEN, chatId, msg, row, newT
       chat_id: chatId,
       message_id: msg.reply_to_message.message_id,
       text: displayText,
+      // 一定要帶 reply_markup，否則 Telegram 編輯訊息文字時會把原本的核准/拒絕按鈕拿掉
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '✅ 核准', callback_data: `approve:${row.id}` },
+          { text: '❌ 拒絕', callback_data: `reject:${row.id}` },
+        ]],
+      },
     }),
   });
 
