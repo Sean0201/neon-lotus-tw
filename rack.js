@@ -507,6 +507,7 @@
         }).join('')}</div>` : ''}
       <div class="rk-lbl"><span>${t('尺寸', 'Size')}</span><button type="button" data-act="sizechart">${t('尺寸表', 'Size chart')} →</button></div>
       ${sizeBlock}
+      ${p.tag === 'SETS' ? `<div class="rk-note">${t('套組上下身為同一尺寸;需要不同尺寸請在購物車備註告知。', 'Top and bottom come in the same size — leave a note in your cart for mixed sizes.')}</div>` : ''}
       <button type="button" class="rk-add" data-act="add"${p.sold_out ? ' disabled' : ''}>${p.sold_out ? t('已售完', 'Sold out') : t('加入購物車', 'Add to cart')}</button>
       <button type="button" class="rk-brandlink" data-act="brand">${t('看 ' + esc(brand.name) + ' 全部商品', 'All ' + esc(brand.name) + ' items')} →</button>`;
   }

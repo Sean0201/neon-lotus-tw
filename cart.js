@@ -1672,6 +1672,7 @@
         });
         html += `
             </div>
+            ${product.tag === 'SETS' ? '<p style="margin:10px 0 0;font-size:12px;color:#9ca3af;">套組上下身為同一尺寸；需要不同尺寸請在購物車備註告知。</p>' : ''}
           </div>
         `;
       }
