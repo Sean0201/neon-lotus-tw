@@ -1,7 +1,7 @@
 {
   "brands": [
     {
-      "id": "23sptmbr",
+      "id": "23september",
       "name": "23'SPTMBR",
       "style": "Vietnamese Streetwear",
       "color_hex": "#0a0a0f",
@@ -27,7 +27,7 @@
       "enabled": true
     },
     {
-      "id": "aesir",
+      "id": "aesirstudio",
       "name": "AESIR STUDIOS",
       "style": "Streetwear",
       "color_hex": "#15151f",
@@ -37,7 +37,164 @@
       },
       "platform": "woocommerce",
       "collection_url": "https://aesir-studios.com/product-category/men/",
-      "enabled": false
+      "enabled": false,
+      "note": "WooCommerce — 目前 scrape script 不支援，需要新 adapter"
+    },
+    {
+      "id": "badhabits",
+      "name": "BAD HABITS",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#0f0f0f",
+      "meta": {
+        "website": "https://www.badhabitsstore.vn",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://www.badhabitsstore.vn/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "badrabbit",
+      "name": "BAD RABBIT CLUB",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#1a1a1a",
+      "meta": {
+        "website": "https://badrabbitclub.vn",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://badrabbitclub.vn/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "bunnyhillconcept",
+      "name": "BUNNYHILL CONCEPT",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#1f1a2a",
+      "meta": {
+        "website": "https://bunnyhill.vn",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://bunnyhill.vn/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "fnos",
+      "name": "FNOS",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#1a1a1a",
+      "meta": {
+        "website": "https://fnos.vn",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://fnos.vn/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "gamble",
+      "name": "GAMBLE WORLDWIDE",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#1a1a1a",
+      "meta": {
+        "website": "https://gambleworldwide.vn",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://gambleworldwide.vn/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "goldie",
+      "name": "GOLDIE",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#1a1a1a",
+      "meta": {
+        "website": "https://goldievietnam.com",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://goldievietnam.com/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "hades",
+      "name": "HADES",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#1a1a1a",
+      "meta": {
+        "website": "https://hades.vn",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://hades.vn/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "mbi",
+      "name": "MBI",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#1a1a1a",
+      "meta": {
+        "website": "https://mbiproject.vn",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://mbiproject.vn/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "pushpush",
+      "name": "PUSH PUSH",
+      "style": "Urban Sports / Modern Streetwear",
+      "color_hex": "#0a0a0f",
+      "meta": {
+        "website": "https://pushpush.vn",
+        "location": "Vietnam"
+      },
+      "platform": "shopify",
+      "collection_url": "https://pushpush.vn/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "swe",
+      "name": "SWE",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#1a1a1a",
+      "meta": {
+        "website": "https://swe.vn",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://swe.vn/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "uniz-world",
+      "name": "UNIZ WORLDWIDE",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#0a0a0f",
+      "meta": {
+        "website": "https://unizworldwide.com",
+        "location": "Vietnam"
+      },
+      "platform": "shopify",
+      "collection_url": "https://unizworldwide.com/collections/all",
+      "enabled": true
+    },
+    {
+      "id": "whenever-atelier",
+      "name": "WHENEVER ATELIER",
+      "style": "Vietnamese Streetwear",
+      "color_hex": "#1a1a1a",
+      "meta": {
+        "website": "https://whenever.vn",
+        "location": "Vietnam"
+      },
+      "platform": "haravan",
+      "collection_url": "https://whenever.vn/collections/all",
+      "enabled": true
     }
   ]
 }

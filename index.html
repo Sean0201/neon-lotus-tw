@@ -161,7 +161,8 @@
   </script>
 
   <!-- Slimmed font loading: dropped unused 800/900 weights, saves ~120KB -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700&family=Montserrat:wght@600;700&family=Syncopate:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700&family=Montserrat:ital,wght@0,600;0,700;1,500&family=Syncopate:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="rack.css?v=7" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -2412,6 +2413,27 @@
      ====================================================== -->
 <div id="page-home" class="page">
 
+  <!-- ============ 本週精選 — 衣架展示 (rack.js / rack.css) ============ -->
+  <section class="rk-section" id="rack-section" aria-label="本週精選">
+    <div class="rk-head">
+      <div>
+        <p class="section-eyebrow" data-en="FEATURED" data-tw="熱門商品">熱門商品</p>
+        <h2 class="rk-title" data-en="This Week's Picks" data-tw="本週精選">本週精選</h2>
+      </div>
+      <div class="rk-meta">
+        <div><span data-en="SAIGON — TAIPEI" data-tw="SAIGON — TAIPEI">SAIGON — TAIPEI</span></div>
+        <div><b id="rk-count">00</b> <span data-en="PIECES" data-tw="件">件</span></div>
+      </div>
+    </div>
+    <div class="rk-stage">
+      <span class="rk-mount l"></span><span class="rk-mount r"></span>
+      <div class="rk-rod"></div>
+      <div class="rk-rail" id="rk-rail"></div>
+    </div>
+    <div class="rk-caption" id="rk-caption" aria-live="polite"></div>
+    <div class="rk-ticker" aria-hidden="true"><div class="track" id="rk-track"></div></div>
+  </section>
+
   <div class="hero">
     <div id="hero-banners" style="display:none"></div>
     <div class="hero-bg"></div>
@@ -2430,19 +2452,6 @@
     </div>
     <div class="hero-scroll"><span data-en="SCROLL" data-tw="下滑探索">下滑探索</span><div class="scroll-line"></div></div>
   </div>
-
-  <!-- ============ FEATURED HOT PRODUCTS ============ -->
-  <section class="featured-section">
-    <div class="featured-inner">
-      <div class="featured-header fade-in">
-        <p class="section-eyebrow" data-en="FEATURED" data-tw="熱門商品">熱門商品</p>
-        <h2 class="featured-title" data-en="This Week's Picks" data-tw="本週精選">本週精選</h2>
-      </div>
-      <div class="featured-grid" id="featured-grid">
-        <!-- Rendered by renderFeatured() in main.js -->
-      </div>
-    </div>
-  </section>
 
   <section class="section" id="brands-section">
     <div class="container">
@@ -3424,6 +3433,8 @@
 <!-- main.js: full app logic — uses window.BRANDS_DATA if available, else fetch() -->
 <script src="scripts/mask-generator.js?v=1"></script>
 <script src="scripts/outfit-builder.js?v=4"></script>
-    <script src="main.js?v=68" defer></script>
+<!-- rack.js: 首頁本週精選衣架展示 (main.js renderFeatured 呼叫 NLRack.render) -->
+<script src="rack.js?v=19"></script>
+<script src="main.js?v=69" defer></script>
 </body>
 </html>

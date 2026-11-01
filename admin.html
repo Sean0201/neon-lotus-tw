@@ -1128,6 +1128,8 @@
                                             <option value="deactivate">停用</option>
                                             <option value="sold-out">標記為已售完</option>
                                             <option value="clear-sold">取消已售完</option>
+                                            <option value="shopee-enable">加入蝦皮上架清單</option>
+                                            <option value="shopee-disable">移出蝦皮上架清單</option>
                                             <option value="delete">刪除所選</option>
                                         </select>
                                         <button id="batchApplyBtn" class="btn-small">套用</button>
@@ -1200,6 +1202,7 @@
                                     <tr>
                                         <th style="width: 5%;">⋮</th>
                                         <th style="width: 8%;">Cover</th>
+                                        <th style="width: 8%;">衣架去背</th>
                                         <th>Brand</th>
                                         <th>Product</th>
                                         <th style="width: 10%;">親自帶</th>
@@ -2122,6 +2125,23 @@
                             </div>
                         </div>
                     </div>
+                    <div class="form-row full">
+                        <div class="form-group full">
+                            <label for="featuredRackImage">衣架去背圖 (首頁衣架用;上傳透明背景 PNG / WebP,會自動裁邊並轉成寬 560px WebP)</label>
+                            <div style="display:flex;gap:1rem;align-items:flex-start;">
+                                <img id="featuredRackPreview" alt="" style="display:none;width:100px;height:130px;object-fit:contain;border-radius:4px;border:1px solid var(--border);background:repeating-conic-gradient(#2a2833 0% 25%, #1c1a24 0% 50%) 50% / 16px 16px;">
+                                <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+                                    <input type="file" id="featuredRackFile" accept="image/png,image/webp">
+                                    <input type="text" id="featuredRackImage" placeholder="或貼上圖片網址;留空 = 衣架改用原商品照">
+                                    <small style="color:var(--text-muted);font-size:12px;">存在商品本身 (products.rack_image),同一件商品放上衣架都會用這張。</small>
+                                </div>
+                            </div>
+                            <div id="featuredRackSiblings" style="display:none;margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);">
+                                <label style="display:block;margin-bottom:8px;">同款其他配色的去背圖 (衣架單品檢視切換色點時使用,上傳後立即儲存)</label>
+                                <div id="featuredRackSiblingList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label class="toggle-switch">
@@ -2724,7 +2744,10 @@
                 const promoBadge = product.is_promo
                     ? `<span class="status-badge promo" title="${(product.promo_note || '品牌方特價').replace(/"/g,'&quot;')}">⚡特價</span>`
                     : '';
-                const badge = `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">${mainBadge}${promoBadge}</div>`;
+                const shopeeBadge = product.shopee_enabled
+                    ? `<span class="status-badge" style="background:#ee4d2d;color:#fff;" title="已列入蝦皮上架清單">蝦皮</span>`
+                    : '';
+                const badge = `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">${mainBadge}${promoBadge}${shopeeBadge}</div>`;
 
                 const safeId = (product.id || '').replace(/'/g, "\\'");
 
@@ -2803,6 +2826,16 @@
                         await sb.from('products').update({ sold_out: false }).eq('id', id);
                     }
                     showToast(`${selectedProductIds.size} products cleared from sold out`, 'success');
+                } else if (action === 'shopee-enable') {
+                    for (const id of selectedProductIds) {
+                        await sb.from('products').update({ shopee_enabled: true }).eq('id', id);
+                    }
+                    showToast(`${selectedProductIds.size} 筆已加入蝦皮上架清單`, 'success');
+                } else if (action === 'shopee-disable') {
+                    for (const id of selectedProductIds) {
+                        await sb.from('products').update({ shopee_enabled: false }).eq('id', id);
+                    }
+                    showToast(`${selectedProductIds.size} 筆已移出蝦皮上架清單`, 'success');
                 } else if (action === 'delete') {
                     if (!confirm(`Delete ${selectedProductIds.size} products?`)) return;
                     for (const id of selectedProductIds) {
@@ -3468,9 +3501,13 @@
         // ============================================================================
         async function loadFeatured() {
             try {
-                const { data, error } = await sb.from('featured_products')
-                    .select('*, products(id, name, cover_image, original_cover_url, price_vnd, tag, category), brands(id, name)')
+                const cols = 'id, name, cover_image, original_cover_url, price_vnd, tag, category';
+                const q = (extra) => sb.from('featured_products')
+                    .select(`*, products(${cols}${extra}), brands(id, name)`)
                     .order('sort_order', { ascending: true });
+                // rack_image 需要 migration 020;還沒跑就退回不帶這欄
+                let { data, error } = await q(', rack_image');
+                if (error) ({ data, error } = await q(''));
                 if (error) throw error;
                 allFeatured = data || [];
                 renderFeaturedTable();
@@ -3638,9 +3675,14 @@
                 const carryStr = carry != null ? `NT$ ${carry.toLocaleString()}` : '-';
                 const shipStr  = ship  != null ? `NT$ ${ship.toLocaleString()}`  : '-';
 
+                const rackCell = product.rack_image
+                    ? `<img src="${product.rack_image}" title="已有去背圖" style="width:48px;height:60px;object-fit:contain;border-radius:4px;background:repeating-conic-gradient(#2a2833 0% 25%, #1c1a24 0% 50%) 50% / 12px 12px;">`
+                    : '<span style="opacity:0.5;font-size:11px" title="衣架會用原商品照">— 未上傳</span>';
+
                 tr.innerHTML = `
                     <td style="cursor: move; text-align: center;">⋮</td>
                     <td>${img}</td>
+                    <td>${rackCell}</td>
                     <td>${brand.name || '-'}</td>
                     <td>${product.name || '<span style="opacity:0.5">(missing)</span>'}</td>
                     <td>${carryStr}</td>
@@ -3735,6 +3777,148 @@
         document.getElementById('featuredBrandId').addEventListener('change', async (e) => {
             await populateFeaturedProductSelect(e.target.value, '');
             _updateFeaturedPreview();
+            _loadFeaturedRackImage();
+        });
+
+        // ── 衣架去背圖 (products.rack_image, migration 020) ──
+        let _featuredRackOriginal = '';
+        function _setFeaturedRackPreview(url) {
+            const img = document.getElementById('featuredRackPreview');
+            img.src = url || '';
+            img.style.display = url ? 'block' : 'none';
+        }
+        async function _loadFeaturedRackImage() {
+            const pid = document.getElementById('featuredProductId').value;
+            const input = document.getElementById('featuredRackImage');
+            _featuredRackOriginal = '';
+            input.value = '';
+            _setFeaturedRackPreview('');
+            if (!pid) return;
+            try {
+                const { data, error } = await sb.from('products').select('rack_image').eq('id', pid).maybeSingle();
+                if (error) throw error;
+                _featuredRackOriginal = data?.rack_image || '';
+                input.value = _featuredRackOriginal;
+                _setFeaturedRackPreview(_featuredRackOriginal);
+            } catch (err) {
+                console.warn('rack_image 讀取失敗 (是否已執行 migration 020?)', err);
+            }
+            _loadFeaturedRackSiblings();
+        }
+
+        // ── 同款其他配色:同品牌、品名去掉「 - 顏色」/「(顏色)」後相同 (與 rack.js splitName 一致) ──
+        function _rackBaseName(name) {
+            const parts = String(name || '').split(/\s+(?:-|–|—|\/\/|\|)\s+/).map(x => x.trim()).filter(Boolean);
+            let base = parts[0] || '';
+            const m = base.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+            if (m) base = m[1];
+            return base.trim().toLowerCase();
+        }
+        async function _loadFeaturedRackSiblings() {
+            const wrap = document.getElementById('featuredRackSiblings');
+            const list = document.getElementById('featuredRackSiblingList');
+            wrap.style.display = 'none';
+            list.innerHTML = '';
+            const pid = document.getElementById('featuredProductId').value;
+            const bid = document.getElementById('featuredBrandId').value;
+            if (!pid || !bid) return;
+            try {
+                const { data, error } = await sb.from('products').select('id, name, rack_image, original_cover_url, cover_image').eq('brand_id', bid);
+                if (error) throw error;
+                const me = (data || []).find(p => p.id === pid);
+                if (!me) return;
+                const base = _rackBaseName(me.name);
+                const sibs = data.filter(p => p.id !== pid && _rackBaseName(p.name) === base);
+                if (!sibs.length) return;
+                const checker = 'background:repeating-conic-gradient(#2a2833 0% 25%, #1c1a24 0% 50%) 50% / 12px 12px;';
+                list.innerHTML = sibs.map(p => `
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <img src="${p.rack_image || p.original_cover_url || p.cover_image || ''}" alt="" data-sib-preview="${p.id}" style="width:44px;height:56px;object-fit:contain;border-radius:4px;border:1px solid var(--border);${p.rack_image ? checker : 'opacity:.45;'}">
+                        <div style="flex:1;min-width:0;font-size:13px;">
+                            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
+                            <small style="color:var(--text-muted);" data-sib-status="${p.id}">${p.rack_image ? '✓ 已有去背圖' : '— 未上傳'}</small>
+                        </div>
+                        <input type="file" accept="image/png,image/webp" data-sib-file="${p.id}" style="max-width:190px;">
+                    </div>`).join('');
+                wrap.style.display = '';
+            } catch (err) {
+                console.warn('同款配色讀取失敗', err);
+            }
+        }
+        document.getElementById('featuredRackSiblingList').addEventListener('change', async e => {
+            const pid = e.target.dataset.sibFile;
+            const file = e.target.files && e.target.files[0];
+            if (!pid || !file) return;
+            const status = document.querySelector(`[data-sib-status="${pid}"]`);
+            try {
+                status.textContent = '處理中…';
+                const webp = await _normalizeRackImage(file);
+                const path = `rack/${pid}-${Date.now()}.webp`;
+                const { error } = await sb.storage.from('product-images').upload(path, webp, { contentType: 'image/webp' });
+                if (error) throw error;
+                const { data: { publicUrl } } = sb.storage.from('product-images').getPublicUrl(path);
+                const r = await sb.from('products').update({ rack_image: publicUrl }).eq('id', pid);
+                if (r.error) throw r.error;
+                const img = document.querySelector(`[data-sib-preview="${pid}"]`);
+                img.src = publicUrl; img.style.opacity = 1;
+                img.style.background = 'repeating-conic-gradient(#2a2833 0% 25%, #1c1a24 0% 50%) 50% / 12px 12px';
+                status.textContent = '✓ 已上傳並儲存';
+                showToast('配色去背圖已儲存', 'success');
+            } catch (err) {
+                status.textContent = '✗ ' + (err.message || '上傳失敗');
+                showToast(err.message || '上傳失敗', 'error');
+            }
+            e.target.value = '';
+        });
+        document.getElementById('featuredProductId').addEventListener('change', _loadFeaturedRackImage);
+        document.getElementById('featuredRackImage').addEventListener('input', e => _setFeaturedRackPreview(e.target.value.trim()));
+        // 去背圖統一處理:裁掉四周透明邊 → 縮成寬 560px → 轉透明 WebP(瀏覽器端完成)
+        async function _normalizeRackImage(file) {
+            const bmp = await createImageBitmap(file);
+            const c = document.createElement('canvas');
+            c.width = bmp.width; c.height = bmp.height;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(bmp, 0, 0);
+            const { data } = ctx.getImageData(0, 0, c.width, c.height);
+            let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+            for (let y = 0; y < c.height; y++) {
+                for (let x = 0; x < c.width; x++) {
+                    if (data[(y * c.width + x) * 4 + 3] > 8) {
+                        if (x < x0) x0 = x; if (x > x1) x1 = x;
+                        if (y < y0) y0 = y; if (y > y1) y1 = y;
+                    }
+                }
+            }
+            if (x1 < 0) throw new Error('圖片整張都是透明的');
+            if (x0 === 0 && y0 === 0 && x1 === c.width - 1 && y1 === c.height - 1 && data[3] > 250) {
+                throw new Error('這張圖沒有透明背景,請先去背再上傳');
+            }
+            const w = x1 - x0 + 1, h = y1 - y0 + 1;
+            const outW = Math.min(560, w), outH = Math.round(h * outW / w);
+            const out = document.createElement('canvas');
+            out.width = outW; out.height = outH;
+            const octx = out.getContext('2d');
+            octx.imageSmoothingQuality = 'high';
+            octx.drawImage(bmp, x0, y0, w, h, 0, 0, outW, outH);
+            const blob = await new Promise(r => out.toBlob(r, 'image/webp', 0.88));
+            if (!blob || blob.type !== 'image/webp') throw new Error('瀏覽器不支援 WebP 轉檔,請改用 Chrome');
+            return blob;
+        }
+        document.getElementById('featuredRackFile').addEventListener('change', async e => {
+            const file = e.target.files[0]; if (!file) return;
+            const pid = document.getElementById('featuredProductId').value;
+            if (!pid) { showToast('請先選擇商品', 'error'); e.target.value = ''; return; }
+            try {
+                const webp = await _normalizeRackImage(file);
+                const path = `rack/${pid}-${Date.now()}.webp`;
+                const { error } = await sb.storage.from('product-images').upload(path, webp, { contentType: 'image/webp' });
+                if (error) throw error;
+                const { data: { publicUrl } } = sb.storage.from('product-images').getPublicUrl(path);
+                document.getElementById('featuredRackImage').value = publicUrl;
+                _setFeaturedRackPreview(publicUrl);
+                showToast('去背圖已上傳,按 Save 後生效', 'success');
+            } catch (err) { showToast(err.message || '上傳失敗', 'error'); }
+            e.target.value = '';
         });
 
         document.getElementById('featuredProductId').addEventListener('change', _updateFeaturedPreview);
@@ -3746,6 +3930,8 @@
             document.getElementById('featuredActive').checked = true;
             document.getElementById('featuredPreviewImg').style.display = 'none';
             document.getElementById('featuredPreviewMeta').textContent = '— 選擇商品後預覽 —';
+            _featuredRackOriginal = '';
+            _setFeaturedRackPreview('');
             await populateFeaturedBrandSelect('');
             await populateFeaturedProductSelect('', '');
             document.getElementById('featuredModal').classList.add('active');
@@ -3761,6 +3947,7 @@
             await populateFeaturedBrandSelect(f.brand_id || '');
             await populateFeaturedProductSelect(f.brand_id || '', f.product_id || '');
             _updateFeaturedPreview();
+            await _loadFeaturedRackImage();
             document.getElementById('featuredModal').classList.add('active');
         }
 
@@ -3791,6 +3978,11 @@
                     result = await sb.from('featured_products').insert([payload]);
                     if (result.error) throw result.error;
                     showToast('Featured created', 'success');
+                }
+                const rackImage = document.getElementById('featuredRackImage').value.trim();
+                if (rackImage !== _featuredRackOriginal) {
+                    const r = await sb.from('products').update({ rack_image: rackImage || null }).eq('id', payload.product_id);
+                    if (r.error) showToast('衣架去背圖儲存失敗:' + r.error.message, 'error');
                 }
                 closeFeaturedModal();
                 loadFeatured();
@@ -5683,7 +5875,7 @@
                     sb.from('orders')
                       .select('id, order_number, customer_name, customer_email, created_at, ' +
                               'subtotal, tier_discount, birthday_discount, signup_credit_used, ' +
-                              'shipping_fee, total, payment_method, status, note, refund_amount')
+                              'shipping_fee, total, payment_method, status, note, refund_amount, channel, channel_fee')
                       .gte('created_at', startISO).lt('created_at', endISO)
                       .not('status', 'in', '(cancelled,rejected)')
                       .order('created_at', { ascending: true })
@@ -5728,6 +5920,7 @@
                         '',   // H: VND 進貨價 — 手填
                         null, // I: 公式佔位
                         null, // J: 公式佔位
+                        o.channel === 'shopee' ? '蝦皮' : '官網', // K: 通路
                     ];
                 }).filter(Boolean);
 
@@ -5739,7 +5932,7 @@
 
                 const ITEM_HEADERS = [
                     '訂單日期', '訂單編號', '客戶', 'SKU', '數量',
-                    '售價 NT$/件', '備註', 'VND 進貨價', '進貨成本 NT$/件', '商品毛利 NT$',
+                    '售價 NT$/件', '備註', 'VND 進貨價', '進貨成本 NT$/件', '商品毛利 NT$', '通路',
                 ];
                 const itemAoa = [
                     ['訂單記錄 — 一個品項一列 (' + monthInput + ')'],
@@ -5758,7 +5951,7 @@
                 }
                 wsItems['!cols'] = [
                     { wch: 12 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 6 },
-                    { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 16 }, { wch: 14 },
+                    { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 8 },
                 ];
                 wsItems['!freeze'] = { xSplit: 0, ySplit: 4 };
                 wsItems['!views']  = [{ state: 'frozen', ySplit: 4 }];
@@ -5777,11 +5970,12 @@
                     Number(o.shipping_fee) || 0,
                     o.total ?? '',
                     o.payment_method || '',
-                    '',                                    // M: 金流手續費 手填
+                    o.channel_fee != null ? Number(o.channel_fee) : '', // M: 金流/平台手續費 (蝦皮已知則自動帶,官網手填)
                     null,                                  // N: 公式 (實際入帳)
                     o.status || '',
                     o.note || '',
                     Number(o.refund_amount) || 0,
+                    o.channel === 'shopee' ? '蝦皮' : '官網', // R: 通路
                 ]);
 
                 const CASH_HEADERS = [
@@ -5789,13 +5983,13 @@
                     '折扣前小計 NT$', '等級折扣 NT$', '生日折扣 NT$', '註冊金抵用 NT$',
                     '折扣後小計 NT$', '運費 NT$', '訂單總額 NT$',
                     '付款方式', '金流手續費 NT$', '實際入帳 NT$',
-                    '狀態', '備註', '退款金額 NT$',
+                    '狀態', '備註', '退款金額 NT$', '通路',
                 ];
                 const cashAoa = [
                     ['訂單金流 — 一筆訂單一列 (' + monthInput + ')'],
-                    ['🟡 A-L,O,P,Q: admin 自動帶  🔵 M: 金流手續費手填  ⚪ I,N: 自動算  🟠 Q: 退款金額'],
+                    ['🟡 A-L,O,P,Q,R: admin 自動帶  🔵 M: 金流手續費手填  ⚪ I,N: 自動算  🟠 Q: 退款金額'],
                     ['🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🟡 SQL',
-                     '⚪ 公式', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🔵 手填', '⚪ 公式', '🟡 SQL', '🟡 SQL', '🟠 退款'],
+                     '⚪ 公式', '🟡 SQL', '🟡 SQL', '🟡 SQL', '🔵 手填', '⚪ 公式', '🟡 SQL', '🟡 SQL', '🟠 退款', '🟡 SQL'],
                     CASH_HEADERS,
                     ...cashRows,
                 ];
@@ -5812,7 +6006,7 @@
                     { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 },
                     { wch: 14 }, { wch: 10 }, { wch: 12 },
                     { wch: 12 }, { wch: 14 }, { wch: 14 },
-                    { wch: 10 }, { wch: 20 }, { wch: 14 },
+                    { wch: 10 }, { wch: 20 }, { wch: 14 }, { wch: 8 },
                 ];
                 wsCash['!freeze'] = { xSplit: 0, ySplit: 4 };
                 wsCash['!views']  = [{ state: 'frozen', ySplit: 4 }];

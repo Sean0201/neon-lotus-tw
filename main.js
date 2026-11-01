@@ -743,6 +743,7 @@ function setLang(lang) {
   // 6. Re-apply dynamic SEO & banners for current language
   applySeoMeta();
   renderBanners();
+  renderFeatured();   // 衣架的提示文字 / 跑馬燈跟著換語言
 }
 
 /* ── Lang-switch button click ─────────────────────────── */
@@ -825,12 +826,12 @@ function updateTexts() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   § 5b.  RENDER — HOME: FEATURED PRODUCTS (顯示具體商品+台幣售價)
+   § 5b.  RENDER — HOME: FEATURED PRODUCTS (首頁頂部衣架,rack.js)
    ═══════════════════════════════════════════════════════════════ */
 
 function renderFeatured() {
-  const grid = document.getElementById('featured-grid');
-  if (!grid || !BRANDS.length) return;
+  // 本週精選改成首頁頂部衣架 (rack.js);這裡只負責挑商品
+  if (!window.NLRack || !BRANDS.length) return;
 
   // ── Tier 1: 後台設定的 featured_products(window.FEATURED_DATA) ──
   // 由 supabase-client.js 灌入,已過濾 is_active=true 並按 sort_order 排序
@@ -873,29 +874,7 @@ function renderFeatured() {
     }
   }
 
-  if (!picks.length) {
-    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999;padding:40px">尚未設定精選商品</p>';
-    return;
-  }
-
-  grid.innerHTML = picks.map(({ brand, product: p }) => {
-    const cover = (p.images?.gallery?.[0]?.original_url) || p.original_cover_url || p.images?.cover || '';
-    const safeName = (p.name || '').replace(/'/g, "&#39;").replace(/"/g, "&quot;");
-    const ship  = p.price?.twd_shipping;
-    const carry = p.price?.twd_carryback;
-    return `
-      <div class="featured-card" onclick="showPage('brand','${brand.id}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')showPage('brand','${brand.id}')">
-        <img class="featured-card-img" src="${cover}" alt="${safeName}" loading="lazy" onerror="this.style.background='linear-gradient(135deg,#1a0520,#16141e)';this.style.opacity=0.4">
-        <div class="featured-card-info">
-          <p class="featured-brand">${brand.name || brand.id}</p>
-          <p class="featured-name">${safeName}</p>
-          <div class="featured-price">
-            ${ship  != null ? `<div class="featured-price-row"><span class="label" data-en="SHIPPING" data-tw="國際送">國際送</span><span class="amount">NT$ ${ship.toLocaleString()}</span></div>` : ''}
-            ${carry != null ? `<div class="featured-price-row"><span class="label" data-en="CARRY-BACK" data-tw="親自帶">親自帶</span><span class="amount carry">NT$ ${carry.toLocaleString()}</span></div>` : ''}
-          </div>
-        </div>
-      </div>`;
-  }).join('');
+  window.NLRack.render(picks);
 }
 
 /* ═══════════════════════════════════════════════════════════════

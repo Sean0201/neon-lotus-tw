@@ -1,0 +1,330 @@
+/* ═══════════════════════════════════════════════════════════════
+ * rack.css — 首頁「本週精選」衣架展示
+ * --------------------------------------------------------------------
+ * 所有 class 都以 rk- 開頭,不影響主站其他樣式。
+ * 色彩 / 字體直接沿用 index.html :root 的品牌 tokens。
+ * ═══════════════════════════════════════════════════════════════ */
+:root {
+  /* rack.js 支援時會換成真正的彈簧 linear() 曲線 */
+  --rk-spring: cubic-bezier(.3, 1.45, .5, 1);
+  --rk-tube: linear-gradient(90deg, #f472b6, #a855f7, #3b82f6);
+}
+.rk-section {
+  /* 衣服顯示寬度;每件只佔 0.2 倍,側掛時緊密排列 */
+  --rk-w: clamp(170px, 21vw, 320px);
+  /* 每件佔的寬度比例:件數少時 rack.js 會把 --rk-slotf 調大,避免全擠在中間 */
+  --rk-slot: calc(var(--rk-w) * var(--rk-slotf, 0.2));
+  --rk-shift: calc(var(--rk-w) * 0.47);
+  position: relative;
+  padding: 44px 0 0;
+  overflow-x: clip;
+  background:
+    radial-gradient(50vw 50% at 25% 45%, rgba(244,114,182,0.08), transparent 70%),
+    radial-gradient(50vw 50% at 75% 50%, rgba(168,85,247,0.10), transparent 70%);
+}
+.rk-head {
+  max-width: 1300px; margin: 0 auto; padding: 0 24px;
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 24px;
+}
+.rk-head .section-eyebrow { margin-bottom: 10px; }
+.rk-title {
+  margin: 0;
+  font-family: var(--font-headline);
+  font-size: clamp(1.5rem, 3.5vw, 2.1rem);
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.rk-meta {
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.9;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--lightgrey);
+  text-align: right; white-space: nowrap;
+}
+.rk-meta b { color: var(--white); font-weight: 400; }
+
+/* ── 衣桿 ─────────────────────────────────────────── */
+.rk-stage { position: relative; margin-top: 36px; padding-top: 14px; }
+/* 衣架後方的聚光,讓深色衣服不會融進背景 */
+.rk-stage::before {
+  content: ""; position: absolute; z-index: 0; pointer-events: none;
+  left: 50%; top: 4%; width: min(1100px, 92vw); height: 96%;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(ellipse 50% 55% at 50% 42%, rgba(232, 228, 238, 0.10), transparent 72%),
+    radial-gradient(ellipse 40% 12% at 50% 98%, rgba(192, 132, 252, 0.16), transparent 70%);
+}
+.rk-rod {
+  position: absolute; z-index: 30; pointer-events: none;
+  left: clamp(12px, 3vw, 40px); right: clamp(12px, 3vw, 40px);
+  top: calc(14px + var(--rk-w) * 0.035);
+  height: 10px; border-radius: 6px;
+  background: linear-gradient(180deg,
+    #ffffff 0%, #c9c8d1 18%, #7b7a86 42%, #fdfdff 55%, #8d8c98 72%, #4b4a55 100%);
+  box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 6px 14px rgba(0,0,0,.4);
+}
+.rk-rod::after { /* 霓虹燈管 */
+  content: ""; position: absolute; left: 4%; right: 4%; top: 12px; height: 2px; border-radius: 2px;
+  background: var(--rk-tube); filter: blur(1px); opacity: .9;
+  box-shadow: 0 0 18px rgba(244,114,182,.55), 0 0 40px rgba(168,85,247,.35);
+}
+.rk-mount {
+  position: absolute; z-index: 31; pointer-events: none;
+  top: calc(14px + var(--rk-w) * 0.035 - 13px);
+  width: 14px; height: 36px; border-radius: 3px;
+  background: linear-gradient(90deg, #5a5964, #e9e8ef 45%, #8e8d99 60%, #3d3c46);
+  box-shadow: 0 6px 12px rgba(0,0,0,.4);
+}
+.rk-mount::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, #fff, #a3a2ad 45%, #4a4954);
+}
+.rk-mount.l { left: clamp(4px, calc(3vw - 8px), 32px); }
+.rk-mount.r { right: clamp(4px, calc(3vw - 8px), 32px); }
+
+.rk-rail {
+  position: relative; z-index: 1;
+  display: flex; justify-content: center;
+  height: calc(var(--rk-w) * 1.62);
+  perspective: 1100px;
+  perspective-origin: 50% 20%;
+}
+.rk-item {
+  position: relative;
+  flex: 0 0 var(--rk-slot);
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .42s cubic-bezier(.2, .7, .3, 1);
+  outline: none; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rk-garment {
+  position: absolute; top: 0; left: 50%;
+  width: var(--rk-w); margin-left: calc(var(--rk-w) / -2);
+  transform-origin: 50% 0;
+  transform: rotateY(80deg);
+  filter: brightness(.9);
+  transition: transform .55s var(--rk-spring), filter .3s;
+}
+.rk-item.on { z-index: 20; }
+.rk-item.on .rk-garment { transform: rotateY(0deg); filter: none; }
+.rk-item.on ~ .rk-item { transform: translateX(var(--rk-shift)); }
+.rk-item:has(~ .rk-item.on) { transform: translateX(calc(var(--rk-shift) * -1)); }
+.rk-item:focus-visible .rk-garment { filter: none; outline: 2px solid var(--accent-pink); outline-offset: 4px; }
+
+.rk-hanger { display: block; width: 62%; margin: 0 auto; height: auto; position: relative; z-index: 2; overflow: visible; }
+/* 去背衣服:衣架在衣服裡面 — 橫桿被布料蓋住,只露出領口上方的掛勾 */
+.rk-garment.is-cut .rk-hanger { z-index: 0; width: 54%; } /* 尚未量好尺寸前的預設 */
+/* 量身衣架(rack.js fittedHangerSVG):蓋滿衣服寬度、從掛勾頂端畫到肩膀,衣服依 --rk-ct 往下放 */
+.rk-garment.is-cut .rk-hanger.is-fit { position: absolute; top: 0; left: 0; width: 100%; margin: 0; }
+.rk-garment.is-cut .rk-hanger.is-fit + .rk-cloth { margin-top: calc(var(--rk-w) * var(--rk-ct, 0.1)); }
+/* 翻正後以掛勾為支點輕輕擺動(用獨立的 rotate 屬性,不影響 rotateY 的翻轉) */
+.rk-item.on .rk-garment.is-cut,
+.rk-vstage .rk-garment.is-cut { animation: rk-sway 4.2s ease-in-out .6s infinite; }
+@keyframes rk-sway {
+  0%, 100% { rotate: 0deg; }
+  30% { rotate: 0.9deg; }
+  70% { rotate: -0.7deg; }
+}
+.rk-cloth { position: relative; z-index: 1; margin-top: calc(var(--rk-w) * var(--rk-mt, -0.12)); }
+/* --rk-mt:rack.js 依每張去背圖的肩線位置算出,讓衣架橫桿剛好落在肩膀 */
+.rk-cloth img {
+  display: block; width: 100%; height: auto;
+  /* 亮邊 + 霓虹光暈 + 落影:黑色衣服在深色背景上也看得清楚 */
+  filter:
+    drop-shadow(0 0 1px rgba(245, 244, 248, 0.55))
+    drop-shadow(0 0 14px rgba(192, 132, 252, 0.28))
+    drop-shadow(0 18px 22px rgba(0, 0, 0, 0.5));
+}
+/* 沒有去背圖時:原商品照當成吊牌卡片掛著 */
+.rk-cloth.is-photo { margin: calc(var(--rk-w) * -0.035) 6% 0; }
+.rk-cloth.is-photo img {
+  aspect-ratio: 3 / 4; object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(192,132,252,0.18);
+  background: var(--grey);
+}
+
+.rk-caption { text-align: center; min-height: 68px; padding: 8px 16px 28px; }
+.rk-caption .nm {
+  font-family: var(--font-display); font-style: italic; font-weight: 500;
+  font-size: clamp(18px, 2.2vw, 26px);
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
+.rk-caption .sub { margin-top: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .16em; color: var(--lightgrey); }
+.rk-caption .hint { font-family: var(--font-mono); font-size: 11px; letter-spacing: .3em; color: var(--lightgrey); padding-top: 14px; }
+
+/* ── 跑馬燈 ───────────────────────────────────────── */
+.rk-ticker {
+  background: var(--grey);
+  overflow: hidden; white-space: nowrap;
+  border-block: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .2em; text-transform: uppercase;
+}
+.rk-ticker .track { display: inline-flex; padding: 13px 0; animation: rk-tick 38s linear infinite; }
+.rk-ticker span { padding: 0 22px; }
+.rk-ticker .s { color: var(--accent-pink); padding: 0; text-shadow: 0 0 10px var(--accent-pink); }
+@keyframes rk-tick { to { transform: translateX(-50%); } }
+
+/* ── 單品檢視 ─────────────────────────────────────── */
+.rk-viewer {
+  position: fixed; inset: 0; z-index: 3000; /* 高於 nav(2000),低於尺寸表 / 購物車(9998+) */
+  background: rgba(10, 10, 15, 0.66);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  display: grid; place-items: center;
+  overflow-y: auto; overscroll-behavior: contain;
+  opacity: 0; visibility: hidden;
+  transition: opacity .3s, visibility 0s .3s;
+}
+.rk-viewer.open { opacity: 1; visibility: visible; transition: opacity .3s; }
+.rk-vbox {
+  --rk-vw: min(400px, 34vw);
+  display: grid;
+  grid-template-columns: auto auto minmax(280px, 380px) auto;
+  align-items: center; gap: clamp(16px, 3vw, 44px);
+  padding: 48px 24px;
+  max-width: 1200px;
+}
+.rk-vstage { width: var(--rk-vw); perspective: 1100px; }
+.rk-vstage .rk-garment {
+  position: relative; left: auto; margin: 0; width: var(--rk-vw);
+  --rk-w: var(--rk-vw);
+  transform: rotateY(0); filter: none;
+  transition: transform .55s var(--rk-spring);
+  display: flow-root; /* 避免 .rk-cloth 的 margin-top 合併到外框,把衣架一起推下去 */
+}
+/* 衣架視圖 / 商品照切換 */
+.rk-vcol { width: var(--rk-vw); display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; }
+.rk-vstage .rk-photo { transform-origin: 50% 50%; }
+.rk-vstage .rk-photo img {
+  display: block; width: 100%; max-height: min(64vh, calc(var(--rk-vw) * 1.4)); object-fit: contain;
+  border-radius: 4px; border: 1px solid var(--border); background: var(--grey);
+}
+.rk-thumbs {
+  display: flex; gap: 8px; width: 100%;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin;
+  padding: 4px 2px 6px;
+}
+.rk-thumbs:empty { display: none; }
+.rk-thumb {
+  flex: 0 0 52px; height: 66px; padding: 0; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 3px; overflow: hidden;
+  background: var(--grey); opacity: .6;
+  transition: opacity .2s, border-color .2s, box-shadow .2s;
+}
+.rk-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rk-thumb.is-hanger img { object-fit: contain; padding: 4px; }
+.rk-thumb:hover { opacity: .9; }
+.rk-thumb.on { opacity: 1; border-color: var(--accent-pink); box-shadow: var(--neon-pink); }
+.rk-arrow {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(22, 20, 30, 0.7); color: var(--white);
+  display: grid; place-items: center; cursor: pointer;
+  transition: border-color .2s, color .2s, box-shadow .2s;
+}
+.rk-arrow:hover { border-color: var(--accent-pink); color: var(--accent-pink); box-shadow: var(--neon-pink); }
+.rk-arrow svg { width: 16px; height: 16px; }
+.rk-close {
+  position: fixed; top: 18px; right: 18px; z-index: 2;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; color: var(--white);
+  padding: 10px 14px; min-height: 44px; border: 1px solid var(--border); border-radius: 999px;
+  background: rgba(22, 20, 30, 0.7); cursor: pointer;
+}
+.rk-info { color: var(--white); }
+.rk-info .no { font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; color: var(--lightgrey); }
+.rk-info .brandline {
+  margin-top: 16px; font-family: var(--font-headline); font-size: 10px; letter-spacing: .38em; text-transform: uppercase;
+  background: var(--gradient-main); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.rk-info h3 {
+  margin: 8px 0 0; font-family: var(--font-display); font-style: italic; font-weight: 500;
+  font-size: clamp(24px, 2.6vw, 34px); line-height: 1.12; letter-spacing: 0;
+}
+.rk-info .zh { margin-top: 8px; font-size: 14px; color: var(--lightgrey); letter-spacing: .06em; }
+.rk-info .promo { display: inline-block; margin-top: 10px; padding: 3px 10px; border-radius: 999px; font-size: 11px; letter-spacing: .1em; color: var(--accent-pink); border: 1px solid rgba(244,114,182,.4); }
+.rk-info .desc {
+  margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border);
+  font-size: 13px; line-height: 1.8; color: var(--lightgrey); white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+}
+.rk-info .desc:empty { display: none; }
+.rk-lbl { margin-top: 20px; display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-mono); font-size: 10px; letter-spacing: .2em; color: var(--lightgrey); text-transform: uppercase; }
+.rk-lbl button { font: inherit; letter-spacing: .1em; color: var(--accent); background: none; border: 0; padding: 4px 0; cursor: pointer; text-transform: none; }
+.rk-ships { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.rk-ship {
+  padding: 10px 12px; min-height: 52px; text-align: left; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--white);
+  transition: border-color .2s, box-shadow .2s, background-color .2s;
+}
+.rk-ship small { display: block; font-size: 11px; color: var(--lightgrey); letter-spacing: .08em; }
+.rk-ship b { display: block; margin-top: 2px; font-family: var(--font-mono); font-size: 15px; font-weight: 400; }
+.rk-ship.on { border-color: var(--accent-pink); background: rgba(244,114,182,0.08); box-shadow: var(--neon-pink); }
+.rk-dots { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.rk-dot {
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.25);
+  box-shadow: 0 0 0 3px var(--black), 0 0 0 3px transparent;
+  transition: box-shadow .2s;
+}
+.rk-dot.on { box-shadow: 0 0 0 3px var(--black), 0 0 0 4px var(--accent-pink); }
+.rk-sizes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.rk-size {
+  min-width: 48px; height: 44px; padding: 0 12px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 2px; background: transparent; color: var(--white);
+  font-family: var(--font-mono); font-size: 12px;
+  transition: border-color .2s, background-color .2s, color .2s;
+}
+.rk-size:hover:not(:disabled) { border-color: var(--white); }
+.rk-size.on { background: var(--white); color: var(--black); border-color: var(--white); }
+.rk-size:disabled { opacity: .35; text-decoration: line-through; cursor: not-allowed; }
+.rk-note { margin-top: 10px; font-size: 12px; color: var(--lightgrey); }
+.rk-add {
+  margin-top: 24px; width: 100%; height: 52px; cursor: pointer;
+  background: var(--white); color: var(--black); border: 0;
+  font-size: 12px; letter-spacing: .3em; font-weight: 600;
+  position: relative; overflow: hidden;
+  transition: box-shadow .25s;
+}
+.rk-add::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--rk-tube); }
+.rk-add:hover:not(:disabled) { box-shadow: var(--neon-pink), var(--neon-purple); }
+.rk-add:disabled { opacity: .45; cursor: not-allowed; }
+.rk-brandlink { display: block; margin-top: 14px; text-align: center; font-size: 12px; letter-spacing: .1em; color: var(--lightgrey); background: none; border: 0; width: 100%; padding: 8px; cursor: pointer; }
+.rk-brandlink:hover { color: var(--accent); }
+
+.rk-toast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 3100;
+  transform: translate(-50%, 20px); opacity: 0;
+  max-width: calc(100vw - 32px);
+  background: var(--grey); color: var(--white);
+  border: 1px solid var(--border);
+  padding: 13px 20px; font-size: 13px; letter-spacing: .04em;
+  box-shadow: 0 10px 30px rgba(0,0,0,.4);
+  transition: transform .35s var(--rk-spring), opacity .25s;
+  pointer-events: none;
+}
+.rk-toast::before { content: "✦ "; color: var(--accent-pink); }
+.rk-toast.show { transform: translate(-50%, 0); opacity: 1; }
+.neon-cart-badge.rk-bump { animation: rk-bump .45s var(--rk-spring); }
+@keyframes rk-bump { 0% { transform: scale(1); } 40% { transform: scale(1.7); } 100% { transform: scale(1); } }
+
+/* ── 手機 ─────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .rk-section { --rk-w: clamp(130px, 40vw, 190px); padding-top: 28px; }
+  .rk-head { flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 16px; }
+  .rk-meta { text-align: left; }
+  .rk-vbox {
+    --rk-vw: min(260px, 62vw);
+    grid-template-columns: minmax(0, 1fr); justify-items: center;
+    width: 100%; padding: 72px 16px 40px; gap: 12px;
+  }
+  .rk-vbox .rk-arrow { position: fixed; top: 34vh; z-index: 3; }
+  .rk-vbox .rk-arrow.prev { left: 10px; }
+  .rk-vbox .rk-arrow.next { right: 10px; }
+  .rk-info { width: 100%; max-width: 380px; text-align: center; }
+  .rk-dots, .rk-sizes { justify-content: center; }
+  .rk-ship { text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rk-section *, .rk-viewer *, .rk-toast { transition: none !important; animation: none !important; }
+}
