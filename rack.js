@@ -633,7 +633,9 @@
       vStage.innerHTML = garmentHTML(p, true, VIEWER_LIFT);
       applyHang(vStage);
     } else {
-      vStage.innerHTML = `<div class="rk-garment rk-photo"><img src="${esc(photos[view - 1])}" alt="${esc(splitName(p.name).base)} ${view}" decoding="async" referrerpolicy="no-referrer"></div>`;
+      // 選項照片(opt-01…)是去背圖:站在小層板上;一般照片放相框
+      const cls = /\/opt-\d+[-.]/.test(photos[view - 1]) ? 'rk-garment rk-standing' : 'rk-garment rk-photo';
+      vStage.innerHTML = `<div class="${cls}"><img src="${esc(photos[view - 1])}" alt="${esc(splitName(p.name).base)} ${view}" decoding="async" referrerpolicy="no-referrer"></div>`;
     }
     vThumbs.querySelectorAll('.rk-thumb').forEach((b) => {
       const on = +b.dataset.view === view;
@@ -712,7 +714,12 @@
     const sz = e.target.closest('.rk-size');
     if (sz && !sz.disabled) {
       size = sz.dataset.s;
-      vInfo.querySelectorAll('.rk-size').forEach((b) => b.classList.toggle('on', b === sz));
+      const btns = [...vInfo.querySelectorAll('.rk-size')];
+      btns.forEach((b) => b.classList.toggle('on', b === sz));
+      // 選項有對應照片時(檔名 opt-01、opt-02…,依選項順序),左邊大圖換成那張,例如桌燈的各顏色
+      const n = String(btns.indexOf(sz) + 1).padStart(2, '0');
+      const k = galleryOf(curProduct).findIndex((u) => new RegExp(`/opt-${n}[-.]`).test(u));
+      if (k >= 0 && view !== k + 1) { const d = k + 1 > view ? 1 : -1; view = k + 1; renderStage(d); }
       return;
     }
     const sh = e.target.closest('.rk-ship');
