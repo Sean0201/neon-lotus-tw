@@ -509,6 +509,7 @@
   /* ── 單品檢視 ─────────────────────────────────────── */
   let viewer, vStage, vThumbs, vInfo, toast;
   let view = 0;          // 0 = 衣架視圖;1.. = 商品照第幾張(背面 / 細節 / 穿搭)
+  let descOpen = false;  // 「看完整介紹」展開狀態(資料晚到重畫時保留,換商品才重設)
   let cur = -1;          // picks index
   let curProduct = null; // 目前顯示的商品(可能是色點切過去的同款)
   let size = null, ship = 'shipping', lastFocus = null;
@@ -582,12 +583,12 @@
       <h3>${esc(base)}</h3>
       ${color || p.tag ? `<div class="zh">${esc([color, p.tag].filter(Boolean).join(' · '))}</div>` : ''}
       ${p.is_promo ? `<span class="promo">${t('品牌特價', 'Brand promo')}${p.promo_note ? ' · ' + esc(p.promo_note) : ''}</span>` : ''}
-      <div class="desc">${esc(descCache[p.id] || '')}</div>
+      <div class="desc${descOpen ? ' open' : ''}">${esc(descCache[p.id] || '')}</div>
       ${(descCache[p.id] || '').split('\n').length > 5 || (descCache[p.id] || '').length > 160
-        ? `<button type="button" class="rk-more" data-act="more">${t('看完整介紹', 'Read more')} ↓</button>` : ''}
+        ? `<button type="button" class="rk-more" data-act="more">${descOpen ? `${t('收起', 'Less')} ↑` : `${t('看完整介紹', 'Read more')} ↓`}</button>` : ''}
       <div class="rk-lbl"><span>${t('配送方式', 'Delivery')}</span></div>
       <div class="rk-ships">${shipBtn('shipping', t('國際配送', 'Shipping'), priceS)}${shipBtn('carryback', t('親自帶回', 'Carry-back'), priceC)}</div>
-      ${sibs.length > 1 ? `<div class="rk-lbl"><span>${t('配色', 'Color')} · ${esc(color || '—')}</span></div>
+      ${sibs.length > 1 ? `<div class="rk-lbl"><span>${kindOf(p) === 'ACCESSORIES' ? t('款式', 'Style') : t('配色', 'Color')} · ${esc(color || '—')}</span></div>
         <div class="rk-dots">${sibs.map((q) => {
           const c = splitName(q.name).color;
           // 認得的顏色用色票;認不得(如 ROSE GLOW、PETITE BOW)就用商品小圖
@@ -654,6 +655,7 @@
     const { brand } = picks[cur];
     const p = curProduct;
     view = 0;
+    descOpen = false;
     renderThumbs();
     renderStage(dir);
     vInfo.innerHTML = infoHTML(brand, p);
@@ -722,6 +724,7 @@
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'more') {
       const d = vInfo.querySelector('.desc'), open = d.classList.toggle('open');
+      descOpen = open;
       e.target.closest('[data-act]').textContent = open ? `${t('收起', 'Less')} ↑` : `${t('看完整介紹', 'Read more')} ↓`;
       return;
     }
