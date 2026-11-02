@@ -184,13 +184,14 @@
     const ctx = c.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(im, 0, 0, w, h);
     const d = ctx.getImageData(0, 0, w, h).data;
-    const span = new Array(h).fill(0), mid = new Array(h).fill(0.5);
+    const span = new Array(h).fill(0), mid = new Array(h).fill(0.5), fill = new Array(h).fill(0);
     const colTop = new Array(w).fill(-1);       // 每一直條最上面的不透明像素
     let top = -1, maxSpan = 0;
     for (let y = 0; y < h; y++) {
       let x0 = -1, x1 = -1;
       for (let x = 0; x < w; x++) {
         if (d[(y * w + x) * 4 + 3] > 40) {
+          fill[y]++;
           if (x0 < 0) x0 = x;
           x1 = x;
           if (colTop[x] < 0) colTop[x] = y;
@@ -200,8 +201,9 @@
       if (span[y] > maxSpan) maxSpan = span[y];
     }
     if (top < 0) return null;
+    // 肩線:左右範圍夠寬,而且中間實際有布料(兩條分很開的細帶不算)
     let sh = top;
-    while (sh < h - 1 && span[sh] < maxSpan * 0.55) sh++;
+    while (sh < h - 1 && (span[sh] < maxSpan * 0.55 || fill[sh] / w < span[sh] * 0.6)) sh++;
     const probe = Math.min(h - 1, sh + Math.round(w * 0.03));
     const shoulder = Math.max(span[sh], span[probe]);
     // 以下都換成 W 單位(圖片寬 = W),座標以衣服頂端為 0
@@ -219,13 +221,23 @@
       const edge = colTop[x] / w + droop;
       // 帽子比肩線高的部分不算(衣架在帽子後面),只看肩線附近的布料
       if (edge < sh / w - 0.02) continue;
+      // 領口中間不算(V 領、綁脖的開口很深),只看兩側肩膀那段衣架臂
+      if (Math.abs(fx - cx) < half * 0.4) continue;
       neckRel = Math.max(neckRel, edge + inset - Math.abs(fx - cx) * ARM_SLOPE);
     }
-    const armDrop = half * ARM_SLOPE;
+    // 太長的衣服(套裝、洋裝)縮小顯示,高度最多約 1.35 倍衣寬;以下換成縮放後的 W 單位
+    const cs = Math.min(1, 1.35 / (h / w));
+    let hw = half * cs, ccx = 0.5 + (cx - 0.5) * cs, neck = neckRel * cs;
+    // 綁脖 / 細肩帶:肩線上方只有很長的細帶 → 帶子頂端直接勾在掛勾上,橫桿縮小藏在帶子後面
+    if ((sh - top) / w > 0.22) {
+      neck = (top / w + 0.03) * cs;
+      hw = 0.05;
+    }
+    const armDrop = hw * ARM_SLOPE;
     // 至少往下放 0.12W:衣桿下方到領口 / 帽子之間露出一段掛勾
-    const ct = Math.max(0.12, HOOK_H - neckRel);
-    const neckY = ct + neckRel;
-    return { ct, hw: half, neckY, endY: neckY + armDrop, topY: top / w, cx };
+    const ct = Math.max(0.12, HOOK_H - neck);
+    const neckY = ct + neck;
+    return { ct, hw, neckY, endY: neckY + armDrop, topY: top / w * cs, cx: ccx, cs };
   }
 
   function analyzeHang(url) {
@@ -278,7 +290,9 @@
         if (g) {
           const old = el.querySelector('.rk-hanger');
           if (old && !old.classList.contains('is-fit')) old.outerHTML = fittedHangerSVG(g);
-          el.querySelector('.rk-cloth').style.setProperty('--rk-ct', g.ct.toFixed(4));
+          const cl = el.querySelector('.rk-cloth');
+          cl.style.setProperty('--rk-ct', g.ct.toFixed(4));
+          cl.style.setProperty('--rk-cs', g.cs.toFixed(4));
         }
         const img = el.querySelector('.rk-cloth img');
         if (drapeSrc[url] && img && img.getAttribute('src') !== drapeSrc[url]) img.src = drapeSrc[url];
@@ -337,7 +351,7 @@
       // 去背衣服:衣架依衣服量身畫在布料後方,只露出掛勾
       const g = hangGeo[cut] && lifted(hangGeo[cut], lift);
       return `<div class="rk-garment is-cut" data-hang="${esc(cut)}"${lift ? ` data-lift="${lift}"` : ''}>${g ? fittedHangerSVG(g) : hangerSVG()}` +
-        `<div class="rk-cloth"${g ? ` style="--rk-ct:${g.ct.toFixed(4)}"` : ''}>` +
+        `<div class="rk-cloth"${g ? ` style="--rk-ct:${g.ct.toFixed(4)};--rk-cs:${g.cs.toFixed(4)}"` : ''}>` +
         `<img src="${esc(shown)}" alt="" draggable="false" loading="${load}" decoding="async" referrerpolicy="no-referrer"></div></div>`;
     }
     return `<div class="rk-garment">${hangerSVG()}<div class="rk-cloth is-photo">` +

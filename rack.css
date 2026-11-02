@@ -116,6 +116,8 @@
 /* 量身衣架(rack.js fittedHangerSVG):蓋滿衣服寬度、從掛勾頂端畫到肩膀,衣服依 --rk-ct 往下放 */
 .rk-garment.is-cut .rk-hanger.is-fit { position: absolute; top: 0; left: 0; width: 100%; margin: 0; }
 .rk-garment.is-cut .rk-hanger.is-fit + .rk-cloth { margin-top: calc(var(--rk-w) * var(--rk-ct, 0.1)); }
+/* 太長的衣服縮小置中(--rk-cs,rack.js 依圖片比例算) */
+.rk-garment.is-cut .rk-cloth img { width: calc(100% * var(--rk-cs, 1)); margin: 0 auto; }
 /* 翻正後以掛勾為支點輕輕擺動(用獨立的 rotate 屬性,不影響 rotateY 的翻轉) */
 .rk-item.on .rk-garment.is-cut,
 .rk-vstage .rk-garment.is-cut { animation: rk-sway 4.2s ease-in-out .6s infinite; }
