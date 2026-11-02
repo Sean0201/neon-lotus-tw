@@ -3812,6 +3812,8 @@
             let base = parts[0] || '';
             const m = base.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
             if (m) base = m[1];
+            // 顏色直接接在最後(沒有分隔符號),與 rack.js TRAILING_COLOR 一致
+            if (parts.length < 2) base = base.replace(/\s+((?:light |dark |baby |off )?(?:black|white|grey|gray|pink|brown|blue|red|green|cream|beige|navy|yellow|orange|purple|khaki|olive|tan|ivory))$/i, '');
             return base.trim().toLowerCase();
         }
         async function _loadFeaturedRackSiblings() {

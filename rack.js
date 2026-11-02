@@ -44,6 +44,7 @@
 
   /* ── 商品資料整理 ─────────────────────────────────── */
   // "ÁO THUN CLASSIC BOXY TEE - BLACK"、"AA DOLLAR BOY RINGER TEE // WHITE" → 品名 + 顏色
+  const TRAILING_COLOR = /\s+((?:light |dark |baby |off )?(?:black|white|grey|gray|pink|brown|blue|red|green|cream|beige|navy|yellow|orange|purple|khaki|olive|tan|ivory))$/i;
   // 也處理 "HADES ETE CLUB TEE - BLACK - BLACK"(顏色重複)、"RADBITLE TOP (GREY) - GREY"(括號顏色)
   function splitName(name) {
     const parts = String(name || '').split(/\s+(?:-|–|—|\/\/|\|)\s+/).map((x) => x.trim()).filter(Boolean);
@@ -51,6 +52,11 @@
     const colors = parts.slice(1);
     const paren = base.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
     if (paren) { base = paren[1]; colors.unshift(paren[2]); }
+    // 沒有分隔符號、顏色直接接在最後:"DirtyCoins Script Boston Mules Black"
+    if (!colors.length) {
+      const m = base.match(TRAILING_COLOR);
+      if (m) { base = base.slice(0, m.index); colors.push(m[1]); }
+    }
     const seen = new Set();
     const color = colors.filter((c) => { const k = c.toLowerCase(); return seen.has(k) ? false : seen.add(k); }).join(' / ');
     return { base: base.trim(), color };
@@ -358,6 +364,29 @@
       `<img src="${esc(shown)}" alt="" draggable="false" loading="${load}" decoding="async" referrerpolicy="no-referrer"></div></div>`;
   }
 
+  /* ── 衣架 / 木櫃分流:鞋子、包包、帽子、配件(桌燈等)放木櫃,其他掛衣架 ── */
+  const SHELF_KINDS = new Set(['FOOTWEAR', 'BAGS', 'CAPS', 'ACCESSORIES']);
+  // 分類是 OTHER / 空白時(資料常見),依品名推斷鞋子、包包、帽子、燈具
+  const NAME_KINDS = [
+    ['FOOTWEAR', /\b(mules?|slides?|sandals?|sneakers?|boots?|loafers?|clogs?|shoes?)\b|dép|giày|鞋|拖/i],
+    ['BAGS', /\b(bag|backpack|tote|pouch|wallet)\b|túi|balo|包/i],
+    ['CAPS', /\b(cap|hat|beanie|bucket)\b|nón|mũ|帽/i],
+    ['ACCESSORIES', /\b(lamp|light)\b|đèn|燈/i],
+  ];
+  const kindOf = (p) => {
+    const k = String(p.tag || p.category || '').toUpperCase();
+    if (k && k !== 'OTHER') return k;
+    const hit = NAME_KINDS.find(([, re]) => re.test(p.name || ''));
+    return hit ? hit[0] : k;
+  };
+  const onShelf = (p) => SHELF_KINDS.has(kindOf(p));
+
+  // 木櫃商品:站著擺(沒有衣架);沒有去背圖就用商品照當立牌
+  function standingHTML(p, cls) {
+    const cut = rackImg[p.id];
+    return `<div class="${cls}${cut ? '' : ' is-photo'}"><img src="${esc(cut || photoUrl(p))}" alt="" draggable="false" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>`;
+  }
+
   /* ── 狀態 ─────────────────────────────────────────── */
   let picks = [];      // [{ brand, product }]
   let on = -1;
@@ -373,8 +402,16 @@
       caption: $('#rk-caption', section),
       count: $('#rk-count', section),
       track: $('#rk-track', section),
+      stage: $('.rk-stage', section),
     };
+    els.shelf = document.createElement('div');
+    els.shelf.className = 'rk-shelf';
+    els.shelf.setAttribute('aria-label', '本週精選 · 木櫃');
+    els.shelf.hidden = true;
+    const ticker = $('.rk-ticker', section);
+    section.insertBefore(els.shelf, ticker || null);
     bindRail();
+    bindShelf();
     buildViewer();
     return els;
   }
@@ -382,7 +419,7 @@
   function setOn(i) {
     if (!els || i === on) return;
     on = i;
-    [...els.rail.children].forEach((el, k) => el.classList.toggle('on', k === i));
+    els.rail.querySelectorAll('.rk-item').forEach((el) => el.classList.toggle('on', +el.dataset.i === i));
     if (i < 0) {
       els.caption.innerHTML = `<div class="hint">${noHover.matches ? t('點一下衣架 · 再點查看', 'Tap a hanger · tap again to view') : t('滑過衣架 · 點擊查看', 'Hover the rack · click to view')}</div>`;
     } else {
@@ -394,16 +431,50 @@
   }
 
   function renderRail() {
-    els.rail.innerHTML = picks.map(({ brand, product: p }, i) =>
-      `<div class="rk-item" role="button" tabindex="0" data-i="${i}" aria-label="${pad(i + 1)} ${esc(brand.name)} ${esc(p.name)}">${garmentHTML(p, i < 6)}</div>`).join('');
+    const hanging = picks.map((x, i) => ({ ...x, i })).filter(({ product }) => !onShelf(product));
+    els.rail.innerHTML = hanging.map(({ brand, product: p, i }, k) =>
+      `<div class="rk-item" role="button" tabindex="0" data-i="${i}" aria-label="${pad(i + 1)} ${esc(brand.name)} ${esc(p.name)}">${garmentHTML(p, k < 6)}</div>`).join('');
     applyHang(els.rail);
+    els.stage.hidden = els.caption.hidden = hanging.length === 0;
+    renderShelf();
     // 件數少時每件多佔一點寬度,衣架不會全擠在中間
-    const n = picks.length;
+    const n = hanging.length;
     els.section.style.setProperty('--rk-slotf', n <= 6 ? 0.34 : n <= 10 ? 0.26 : 0.2);
-    els.count.textContent = pad(n);
+    els.count.textContent = pad(picks.length);
     const tick = TICKER.map(([tw, en]) => `<span>${esc(t(tw, en))}</span><span class="s">✦</span>`).join('');
     els.track.innerHTML = tick + tick;
     const prev = on; on = -2; setOn(prev < picks.length ? prev : -1);
+  }
+
+  function renderShelf() {
+    const items = picks.map((x, i) => ({ ...x, i })).filter(({ product }) => onShelf(product));
+    els.shelf.hidden = items.length === 0;
+    if (!items.length) { els.shelf.innerHTML = ''; return; }
+    const rows = [];
+    for (let k = 0; k < items.length; k += 5) rows.push(items.slice(k, k + 5));   // 每層最多 5 件
+    els.shelf.innerHTML = rows.map((row) => `<div class="rk-shelf-scroll"><div class="rk-shelf-track">${
+      row.map(({ brand, product: p, i }) => {
+        const price = p.price?.twd_shipping || p.price?.twd_carryback;
+        const lamp = /lamp|đèn|燈/i.test(p.name) ? ' is-lamp' : '';
+        return `<button type="button" class="rk-sitem${lamp}" data-i="${i}" data-kind="${esc(kindOf(p))}" aria-label="${pad(i + 1)} ${esc(brand.name)} ${esc(p.name)}">` +
+          standingHTML(p, 'rk-simg') +
+          `<span class="rk-slabel"><b>${esc(splitName(p.name).base)}</b>${price ? `<span>${nt(price)}</span>` : ''}</span></button>`;
+      }).join('')
+    }</div></div>`).join('');
+  }
+
+  function bindShelf() {
+    els.shelf.addEventListener('click', (e) => {
+      const it = e.target.closest('.rk-sitem');
+      if (!it) return;
+      const i = +it.dataset.i;
+      // 觸控裝置:第一下轉正,第二下才打開(和衣架一致)
+      if (noHover.matches && !it.classList.contains('on')) {
+        els.shelf.querySelectorAll('.rk-sitem').forEach((b) => b.classList.toggle('on', b === it));
+        return;
+      }
+      openViewer(i);
+    });
   }
 
   function bindRail() {
@@ -429,6 +500,9 @@
     });
     document.addEventListener('click', (e) => {
       if (noHover.matches && !e.target.closest('.rk-item, .rk-viewer')) setOn(-1);
+      if (noHover.matches && els.shelf && !e.target.closest('.rk-sitem, .rk-viewer')) {
+        els.shelf.querySelectorAll('.rk-sitem.on').forEach((b) => b.classList.remove('on'));
+      }
     });
   }
 
@@ -519,7 +593,7 @@
           const bg = hex ? `background:${hex}` : `background:#2a2833 center / cover no-repeat url('${esc(photoUrl(q))}')`;
           return `<button type="button" class="rk-dot${q.id === p.id ? ' on' : ''}" data-pid="${esc(q.id)}" style="${bg}" aria-label="${esc(c || q.name)}" title="${esc(c)}"></button>`;
         }).join('')}</div>` : ''}
-      <div class="rk-lbl"><span>${t('尺寸', 'Size')}</span><button type="button" data-act="sizechart">${t('尺寸表', 'Size chart')} →</button></div>
+      <div class="rk-lbl"><span>${kindOf(p) === 'ACCESSORIES' ? t('選項', 'Options') : t('尺寸', 'Size')}</span><button type="button" data-act="sizechart">${t('尺寸表', 'Size chart')} →</button></div>
       ${sizeBlock}
       ${p.tag === 'SETS' ? `<div class="rk-note">${t('套組上下身為同一尺寸;需要不同尺寸請在購物車備註告知。', 'Top and bottom come in the same size — leave a note in your cart for mixed sizes.')}</div>` : ''}
       <button type="button" class="rk-add" data-act="add"${p.sold_out ? ' disabled' : ''}>${p.sold_out ? t('已售完', 'Sold out') : t('加入購物車', 'Add to cart')}</button>
@@ -550,7 +624,9 @@
     const p = curProduct;
     const photos = galleryOf(p);
     if (view > photos.length) view = 0;
-    if (view === 0) {
+    if (view === 0 && onShelf(p)) {
+      vStage.innerHTML = standingHTML(p, 'rk-garment rk-standing');
+    } else if (view === 0) {
       vStage.innerHTML = garmentHTML(p, true, VIEWER_LIFT);
       applyHang(vStage);
     } else {
