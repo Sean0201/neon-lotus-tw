@@ -678,7 +678,13 @@
   /* ── 對外 API ─────────────────────────────────────── */
   async function render(nextPicks) {
     if (!ensureDom()) return;
-    picks = (previewPicks() || nextPicks || []).filter(({ product }) => photoUrl(product));
+    // 同款不同色只掛一件(第一個出現的顏色);其他顏色在單品檢視用色點切換
+    const seen = new Set();
+    picks = (previewPicks() || nextPicks || []).filter(({ brand, product }) => {
+      if (!photoUrl(product)) return false;
+      const key = brand.id + '|' + splitName(product.name).base.toLowerCase();
+      return seen.has(key) ? false : seen.add(key);
+    });
     els.section.hidden = picks.length === 0;
     if (!picks.length) return;
     renderRail();
