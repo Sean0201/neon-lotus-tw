@@ -583,6 +583,8 @@
       ${color || p.tag ? `<div class="zh">${esc([color, p.tag].filter(Boolean).join(' · '))}</div>` : ''}
       ${p.is_promo ? `<span class="promo">${t('品牌特價', 'Brand promo')}${p.promo_note ? ' · ' + esc(p.promo_note) : ''}</span>` : ''}
       <div class="desc">${esc(descCache[p.id] || '')}</div>
+      ${(descCache[p.id] || '').split('\n').length > 5 || (descCache[p.id] || '').length > 160
+        ? `<button type="button" class="rk-more" data-act="more">${t('看完整介紹', 'Read more')} ↓</button>` : ''}
       <div class="rk-lbl"><span>${t('配送方式', 'Delivery')}</span></div>
       <div class="rk-ships">${shipBtn('shipping', t('國際配送', 'Shipping'), priceS)}${shipBtn('carryback', t('親自帶回', 'Carry-back'), priceC)}</div>
       ${sibs.length > 1 ? `<div class="rk-lbl"><span>${t('配色', 'Color')} · ${esc(color || '—')}</span></div>
@@ -718,6 +720,11 @@
       return;
     }
     const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'more') {
+      const d = vInfo.querySelector('.desc'), open = d.classList.toggle('open');
+      e.target.closest('[data-act]').textContent = open ? `${t('收起', 'Less')} ↑` : `${t('看完整介紹', 'Read more')} ↓`;
+      return;
+    }
     if (act === 'add') addToCart();
     else if (act === 'sizechart' && typeof window.showSizeChart === 'function') window.showSizeChart(curProduct.id);
     else if (act === 'brand' && typeof window.showPage === 'function') { closeViewer(); window.showPage('brand', brand.id); }
