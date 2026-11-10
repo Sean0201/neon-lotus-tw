@@ -1,7 +1,21 @@
-# Cloudflare Pages 設定(本機 wrangler pages dev / 部署共用)
-# 環境變數與金鑰不寫在這裡:到 Cloudflare 後台 Settings → Variables and Secrets 設定
-name = "neon-lotus-tw"
-pages_build_output_dir = "dist"
+# Cloudflare Workers 設定(Workers Builds 建置部署、本機 wrangler dev 共用)
+# 環境變數與金鑰不寫在這裡:到 Cloudflare 後台的 Worker → Settings 設定
+name = "neon-lotus-tw"            # 必須和 Cloudflare 後台的 Worker 名稱一樣
+main = "worker/index.js"
 compatibility_date = "2025-10-01"
-# api/*.js 用到 Node 的 crypto、Buffer、process.env
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat"]   # api/*.js 用到 Node 的 crypto、Buffer、process.env
+keep_vars = true                  # 部署時保留後台設定的變數(否則每次部署會被清掉)
+
+[assets]
+directory = "./dist"              # npm run build:cf 產生
+binding = "ASSETS"
+not_found_handling = "single-page-application"   # 找不到的網址回 index.html(/policy/... 等)
+run_worker_first = ["/api/*", "/__scheduled"]   # API 交給 worker/index.js;/__scheduled 是本機測試排程用
+
+[observability]
+enabled = true                    # 後台可以看 API 的 log
+
+# Threads 排程發文:UTC 04:00 / 12:00 = 台灣 12:00 / 20:00
+# 需設定 ENABLE_CRON=1 才會真的發文(切換網域、停掉 Vercel 排程後再開)
+[triggers]
+crons = ["0 4,12 * * *"]

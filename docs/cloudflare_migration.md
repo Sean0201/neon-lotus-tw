@@ -1,87 +1,113 @@
-# Vercel → Cloudflare Pages 搬家手冊
+# Vercel → Cloudflare Workers 搬家手冊
 
-網站程式已經可以在 Cloudflare Pages 上執行(`feat/cloudflare-pages` 分支)。
-`api/` 底下 18 支 API **完全沒改寫**,由 `functions/_lib/vercel-adapter.js` 轉接。
+網站程式已經可以在 Cloudflare Workers 上執行(`feat/cloudflare-pages` 分支)。
+`api/` 底下 18 支 API **完全沒改寫**,由 `worker/vercel-adapter.js` 轉接。
 
-| 項目 | Vercel(現在) | Cloudflare Pages(搬家後) |
+| 項目 | Vercel(現在) | Cloudflare Workers(搬家後) |
 |---|---|---|
 | 網站檔案 | 整個專案根目錄 | 只有 `dist/`(`scripts/build-pages.mjs` 白名單複製) |
-| API | `api/*.js` | `functions/api/[name].js` → 轉接 `api/*.js` |
-| 建置 | `node scripts/dump-snapshot.js` | `npm run build:pages`(快照 + 複製 + `_headers`) |
-| 網址轉址、標頭 | `vercel.json` | Pages 內建單頁應用轉址 + `dist/_headers` |
-| Threads 排程 | `vercel.json` crons | GitHub Actions(`.github/workflows/threads-cron.yml`) |
-| 「重建快照」按鈕 | `VERCEL_DEPLOY_HOOK_URL` | `DEPLOY_HOOK_URL`(Cloudflare 部署 Hook) |
+| API | `api/*.js` | `worker/index.js` → 轉接 `api/*.js` |
+| 建置 | `node scripts/dump-snapshot.js` | `npm run build:cf`(快照 + 複製 + `_headers`) |
+| 網址轉址、標頭 | `vercel.json` | `wrangler.toml` 的 assets(單頁應用模式)+ `dist/_headers` |
+| Threads 排程 | `vercel.json` crons | `wrangler.toml` 的 `[triggers]`,需 `ENABLE_CRON=1` 才發文 |
+| 「重建快照」按鈕 | `VERCEL_DEPLOY_HOOK_URL` | `DEPLOY_HOOK_URL`(Workers Builds 部署 Hook) |
 
 ---
 
-## 步驟 1:建立 Pages 專案
+## 步驟 1:Worker 的建置設定
 
-Cloudflare 後台 → **Workers & Pages** → **Create** → **Pages** → **Connect to Git** → 選 `Sean0201/neon-lotus-tw`
+Worker → **Settings** → **Build**
 
 | 設定 | 值 |
 |---|---|
-| Production branch | `main`(DNS 還沒切之前,`*.pages.dev` 網址不會影響正式網站) |
-| Framework preset | None |
-| Build command | `npm run build:pages` |
-| Build output directory | `dist` |
-| Root directory | (留空) |
+| Git repository | `Sean0201/neon-lotus-tw` |
+| Branch control → Production branch | `main` |
+| Builds for non-production branches | **開啟**(測試 `feat/cloudflare-pages` 分支用) |
+| Build command | `npm run build:cf` |
+| Deploy command | `npx wrangler deploy` |
+| Non-production branch deploy command | `npx wrangler versions upload` |
+| Root directory | `/`(留空) |
 
-## 步驟 2:環境變數
+⚠️ Worker 名稱必須是 `neon-lotus-tw`(和 `wrangler.toml` 的 `name` 一樣),不一樣會建置失敗。
 
-**Settings → Variables and Secrets**,Production 和 Preview 都要設。
-值直接從 Vercel 複製:Vercel 專案 → Settings → Environment Variables(每一個都能點開看值)。
-金鑰類請選 **Secret(加密)**。
+**建置變數**(Settings → Build → **Variables and secrets**,建置快照時用):
 
-| 變數 | 用途 | 備註 |
-|---|---|---|
-| `NODE_VERSION` | 建置用 Node 版本 | 填 `20` |
-| `NEXT_PUBLIC_SUPABASE_URL` | 快照、API | |
-| `SUPABASE_SERVICE_ROLE_KEY` | 快照、API | Secret |
-| `SITE_URL` | 金流 / 物流回呼網址 | 正式:`https://www.neonlotus-tw.com`;Preview 填 pages.dev 網址 |
-| `ADMIN_EMAILS` | 後台權限 | |
-| `NEWEBPAY_MERCHANT_ID` `NEWEBPAY_HASH_KEY` `NEWEBPAY_HASH_IV` `NEWEBPAY_API_URL` `NEWEBPAY_PAYMENT_METHODS` | 藍新金流 | Secret;**Preview 建議填藍新測試環境** |
-| `ECPAY_MERCHANT_ID` `ECPAY_HASH_KEY` `ECPAY_HASH_IV` `ECPAY_LOGISTICS_*` `ECPAY_MAP_API_URL` | 綠界物流 | 依 Vercel 上有設的照填 |
-| `TELEGRAM_BOT_TOKEN` `TELEGRAM_CHAT_ID` `TELEGRAM_WEBHOOK_SECRET` | 訂單通知、Threads 機器人 | Secret |
-| `THREADS_USER_ID` `THREADS_USER_ACCESS_TOKEN` | Threads 發文 | Secret |
-| `OPENAI_API_KEY` | Threads 改稿 | Secret |
-| `GEMINI_API_KEY` | 試衣間 | Secret |
-| `CRON_SECRET` | 排程驗證 | 自訂一串亂碼,GitHub Actions 也要填同一個 |
-| `DEPLOY_HOOK_URL` | 後台「重建快照」 | 步驟 3 建立後填入 |
+| 變數 | 值 |
+|---|---|
+| `NODE_VERSION` | `20` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 網址 |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role 金鑰(Secret) |
+
+另外到 Settings → **Domains & Routes**,確認 **Preview URLs** 是開啟的。
+
+## 步驟 2:執行時的環境變數
+
+Worker → **Settings** → **Variables and Secrets** → **Add**(勾 Production / Previews)
+
+**兩邊都勾**:`NEXT_PUBLIC_SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`(Secret)、`ADMIN_EMAILS`、
+`TELEGRAM_BOT_TOKEN`(Secret)、`TELEGRAM_CHAT_ID`、`GEMINI_API_KEY`(Secret)
+
+**只勾 Production**:
+
+| 變數 | 值 |
+|---|---|
+| `SITE_URL` | `https://www.neonlotus-tw.com` |
+| `NEWEBPAY_MERCHANT_ID` `NEWEBPAY_HASH_KEY` `NEWEBPAY_HASH_IV` | 正式值(Secret) |
+| `NEWEBPAY_API_URL` | `https://core.newebpay.com/MPG/mpg_gateway` |
+| `NEWEBPAY_PAYMENT_METHODS` | 照 Vercel |
+| 綠界 `ECPAY_*` | 照 Vercel(金鑰類 Secret) |
+| `TELEGRAM_WEBHOOK_SECRET` `THREADS_USER_ACCESS_TOKEN` `OPENAI_API_KEY` `CRON_SECRET` | Secret |
+| `THREADS_USER_ID` | 照 Vercel |
+| `DEPLOY_HOOK_URL` | 步驟 3 建立後填(Secret) |
+| `ENABLE_CRON` | **先不要加**,步驟 5 切換網域後才加 `1` |
+
+**只勾 Previews**:
+
+| 變數 | 值 |
+|---|---|
+| `SITE_URL` | 預覽網址(見步驟 4) |
+| `NEWEBPAY_MERCHANT_ID` `NEWEBPAY_HASH_KEY` `NEWEBPAY_HASH_IV` | **測試商店**的值(Secret) |
+| `NEWEBPAY_API_URL` | `https://ccore.newebpay.com/MPG/mpg_gateway` |
+| `NEWEBPAY_PAYMENT_METHODS` | `CREDIT,VACC` |
+
+Preview 不要填 Threads,避免測試時誤發文。
 
 ## 步驟 3:部署 Hook(後台「🚀 重建快照 + 發佈」用)
 
-Pages 專案 → Settings → **Builds** → **Deploy hooks** → 建立(分支 `main`)→ 複製網址填進 `DEPLOY_HOOK_URL` → 重新部署一次讓變數生效。
+Worker → Settings → **Builds** → **Deploy Hooks** → 建立(分支 `main`)→ 複製網址 → 填進 `DEPLOY_HOOK_URL`。
 
-## 步驟 4:在 pages.dev 網址測試
+## 步驟 4:在預覽網址測試
+
+推送 `feat/cloudflare-pages` 分支後,Worker → **Deployments** 會出現這個分支的版本,點開可以看到預覽網址。
 
 - [ ] 首頁、衣架、木櫃、品牌頁、單品檢視
-- [ ] 會員登入(Supabase → Authentication → URL Configuration 的 Redirect URLs 要加上 pages.dev 網址)
+- [ ] 會員登入(Supabase → Authentication → URL Configuration 的 Redirect URLs 加上預覽網址)
 - [ ] 後台登入、精選商品、會員查詢
-- [ ] **藍新測試環境**完整付款一次(Preview 的 `SITE_URL` 要是 pages.dev 網址,付款通知才會回到測試站)
+- [ ] **藍新測試環境**完整付款一次(Previews 的 `SITE_URL` 要是預覽網址,付款通知才會回到測試站)
 - [ ] 超商門市選擇(綠界電子地圖)
 - [ ] 獵物雷達送出(會發 Telegram 通知)
-- [ ] 後台「重建快照」按鈕
 
 ## 步驟 5:切換網域
 
-1. Pages 專案 → **Custom domains** → 加入 `www.neonlotus-tw.com`(和根網域)→ 照指示改 DNS
-   - 網域的 DNS 若不在 Cloudflare,`www` 可以用 CNAME 指到 `<專案>.pages.dev`;根網域通常需要把 DNS 搬到 Cloudflare
-2. 藍新、綠界後台的回呼網址若是寫正式網域,**不用改**
-3. **停掉 Vercel 的排程,避免重複發文**:Vercel 專案 → Settings → Cron Jobs 停用(或刪除 `vercel.json` 的 `crons`)
-4. GitHub → Settings → Secrets and variables → Actions:設定 `SITE_URL`、`CRON_SECRET` → Threads 排程開始由 GitHub Actions 執行
-   (Actions 頁面可以手動按 **Run workflow** 測試一次)
-5. 觀察幾天沒問題,再把 Vercel 專案停用。期間有狀況可以把 DNS 切回 Vercel。
+1. `feat/cloudflare-pages` 合併到 `main`(Vercel 照樣能建置,兩邊並存)
+2. Worker → Settings → **Domains & Routes** → **Add** → **Custom domain** → `www.neonlotus-tw.com`(和根網域)
+   - 網域的 DNS 需要在 Cloudflare 上;不在的話照畫面指示把 nameserver 改到 Cloudflare
+3. 藍新、綠界後台的回呼網址寫的是正式網域,**不用改**
+4. **先停掉 Vercel 的排程**(Vercel 專案 → Settings → Cron Jobs 停用),再在 Cloudflare 加 `ENABLE_CRON=1`(Production),避免重複發文
+5. 觀察幾天沒問題,再把 Vercel 專案停用。期間有狀況可以把網域切回 Vercel。
 
 ---
 
 ## 本機測試
 
 ```bash
-node scripts/build-pages.mjs --skip-snapshot   # 沿用現有 data/,不連資料庫
-npx wrangler@4 pages dev dist --port 8788      # 金鑰放 .dev.vars(已在 .gitignore)
+node scripts/build-pages.mjs --skip-snapshot        # 沿用現有 data/,不連資料庫
+npx wrangler@4 dev --port 8788 --test-scheduled     # 金鑰放 .dev.vars(已在 .gitignore)
+curl "http://127.0.0.1:8788/__scheduled?cron=0+4%2C12+*+*+*"   # 測排程(ENABLE_CRON 未開只會寫 log)
 ```
 
 ## 注意
 
 - Cloudflare 免費方案每次請求約 10 毫秒 CPU 時間(等待外部回應不算)。藍新加解密已在本機的 Cloudflare 執行環境測過 PKCS#7 與 zero-padding 兩種格式。
-- 新增 API:在 `api/` 加檔案後,也要在 `functions/api/[name].js` 加一行 import 和路由。
+- 靜態檔案(網頁、圖片、快照)不算進 Worker 請求次數;只有 `/api/*` 會。
+- 新增 API:在 `api/` 加檔案後,也要在 `worker/routes.js` 加一行 import 和路由。

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * build-pages.mjs — Cloudflare Pages 建置
+ * build-pages.mjs — Cloudflare(Workers)建置
  * ─────────────────────────────────────────────────────────────────
  * 1. 重建快照(scripts/dump-snapshot.js → data/)
  * 2. 只把「網站需要公開的檔案」複製到 dist/(白名單)
@@ -8,10 +8,10 @@
  * 3. 寫出 dist/_headers(快取與安全標頭,對應原本 vercel.json 的 headers)
  * 4. 檢查 index.html / admin.html 引用的本機檔案都在 dist/ 裡
  *
- * Cloudflare Pages 設定:
- *   Build command:          npm run build:pages
- *   Build output directory: dist
- *   環境變數:NEXT_PUBLIC_SUPABASE_URL、SUPABASE_SERVICE_ROLE_KEY(快照用)
+ * Cloudflare Workers Builds 設定:
+ *   Build command:   npm run build:cf
+ *   Deploy command:  npx wrangler deploy(預設)
+ *   建置變數:NEXT_PUBLIC_SUPABASE_URL、SUPABASE_SERVICE_ROLE_KEY(快照用)
  *
  * 本機:node scripts/build-pages.mjs --skip-snapshot   (沿用現有 data/,不連資料庫)
  * ─────────────────────────────────────────────────────────────────
@@ -60,7 +60,7 @@ for (const f of fs.readdirSync(ROOT)) if (ROOT_FILE.test(f) && fs.statSync(path.
 for (const d of DIRS) if (fs.existsSync(path.join(ROOT, d))) walk(d);
 for (const f of FILES) copy(f);
 
-// ── 3. _headers(Cloudflare Pages 格式)──────────────────────────
+// ── 3. _headers(Cloudflare 靜態檔案標頭)──────────────────────────
 fs.writeFileSync(path.join(DIST, '_headers'), `/supabase-client.js
   Cache-Control: public, max-age=0, must-revalidate
 

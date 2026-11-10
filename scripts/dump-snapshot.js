@@ -73,7 +73,7 @@ function clearGalleryDir() {
 
 // ── Write JSON pretty-printed only in dev, minified in build ──
 function writeJson(file, data) {
-  const isProd = process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.NODE_ENV === 'production';
+  const isProd = process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.WORKERS_CI === '1' || process.env.NODE_ENV === 'production';
   const content = isProd ? JSON.stringify(data) : JSON.stringify(data, null, 2);
   fs.writeFileSync(file, content, 'utf-8');
   const kb = (Buffer.byteLength(content) / 1024).toFixed(1);
