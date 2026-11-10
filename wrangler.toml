@@ -21,7 +21,10 @@ enabled = true                    # 後台可以看 API 的 log
 crons = ["0 4,12 * * *"]
 
 # 預覽版(非 main 分支,`npx wrangler preview`)用的設定。
-# 機密(Supabase、藍新測試商店金鑰…)在 Cloudflare 後台 Previews 的 Variables and secrets 設定。
+# 預覽版的一般變數只看這裡(後台加的一般變數會被覆蓋)。
+# 機密(Supabase、藍新測試商店金鑰…)在後台「該預覽」的 Settings → Runtime variables and secrets 設定,
+# 之後每次部署會自動沿用。Previews Base 只在「新建」預覽時套用。
 [previews.vars]
+SITE_URL = "https://feat-cloudflare-pages-neon-lotus-tw.nhkbee184.workers.dev"
 NEWEBPAY_API_URL = "https://ccore.newebpay.com/MPG/mpg_gateway"
 NEWEBPAY_PAYMENT_METHODS = "CREDIT,VACC"
