@@ -26,7 +26,7 @@ Worker → **Settings** → **Build**
 | Builds for non-production branches | **開啟**(測試 `feat/cloudflare-pages` 分支用) |
 | Build command | `npm run build:cf` |
 | Deploy command | `npx wrangler deploy` |
-| Non-production branch deploy command | `npx wrangler versions upload` |
+| Previews Base → Preview command | `npx wrangler preview`(需要 `wrangler.toml` 的 `[previews]` 區塊,已加) |
 | Root directory | `/`(留空) |
 
 ⚠️ Worker 名稱必須是 `neon-lotus-tw`(和 `wrangler.toml` 的 `name` 一樣),不一樣會建置失敗。
@@ -67,8 +67,8 @@ Worker → **Settings** → **Variables and Secrets** → **Add**(勾 Production
 |---|---|
 | `SITE_URL` | 預覽網址(見步驟 4) |
 | `NEWEBPAY_MERCHANT_ID` `NEWEBPAY_HASH_KEY` `NEWEBPAY_HASH_IV` | **測試商店**的值(Secret) |
-| `NEWEBPAY_API_URL` | `https://ccore.newebpay.com/MPG/mpg_gateway` |
-| `NEWEBPAY_PAYMENT_METHODS` | `CREDIT,VACC` |
+
+`NEWEBPAY_API_URL`(測試環境)和 `NEWEBPAY_PAYMENT_METHODS=CREDIT,VACC` 已寫在 `wrangler.toml` 的 `[previews.vars]`,不用在後台加。
 
 Preview 不要填 Threads,避免測試時誤發文。
 

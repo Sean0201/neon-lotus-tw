@@ -19,3 +19,9 @@ enabled = true                    # 後台可以看 API 的 log
 # 需設定 ENABLE_CRON=1 才會真的發文(切換網域、停掉 Vercel 排程後再開)
 [triggers]
 crons = ["0 4,12 * * *"]
+
+# 預覽版(非 main 分支,`npx wrangler preview`)用的設定。
+# 機密(Supabase、藍新測試商店金鑰…)在 Cloudflare 後台 Previews 的 Variables and secrets 設定。
+[previews.vars]
+NEWEBPAY_API_URL = "https://ccore.newebpay.com/MPG/mpg_gateway"
+NEWEBPAY_PAYMENT_METHODS = "CREDIT,VACC"
