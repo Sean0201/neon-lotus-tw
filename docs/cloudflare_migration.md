@@ -1,7 +1,8 @@
 # Vercel → Cloudflare Workers 搬家手冊
 
 網站程式已經可以在 Cloudflare Workers 上執行(`feat/cloudflare-pages` 分支)。
-`api/` 底下 18 支 API **完全沒改寫**,由 `worker/vercel-adapter.js` 轉接。
+`api/` 底下 14 支 API **完全沒改寫**,由 `worker/vercel-adapter.js` 轉接。
+綠界物流的 4 支(`api/logistics-*.js`)**不部署**:前台結帳沒有使用,之後改接藍新物流。
 
 | 項目 | Vercel(現在) | Cloudflare Workers(搬家後) |
 |---|---|---|
@@ -55,7 +56,6 @@ Worker → **Settings** → **Variables and Secrets** → **Add**(勾 Production
 | `NEWEBPAY_MERCHANT_ID` `NEWEBPAY_HASH_KEY` `NEWEBPAY_HASH_IV` | 正式值(Secret) |
 | `NEWEBPAY_API_URL` | `https://core.newebpay.com/MPG/mpg_gateway` |
 | `NEWEBPAY_PAYMENT_METHODS` | 照 Vercel |
-| 綠界 `ECPAY_*` | 照 Vercel(金鑰類 Secret) |
 | `TELEGRAM_WEBHOOK_SECRET` `THREADS_USER_ACCESS_TOKEN` `OPENAI_API_KEY` `CRON_SECRET` | Secret |
 | `THREADS_USER_ID` | 照 Vercel |
 | `DEPLOY_HOOK_URL` | 步驟 3 建立後填(Secret) |
@@ -84,7 +84,6 @@ Worker → Settings → **Builds** → **Deploy Hooks** → 建立(分支 `main`
 - [ ] 會員登入(Supabase → Authentication → URL Configuration 的 Redirect URLs 加上預覽網址)
 - [ ] 後台登入、精選商品、會員查詢
 - [ ] **藍新測試環境**完整付款一次(Previews 的 `SITE_URL` 要是預覽網址,付款通知才會回到測試站)
-- [ ] 超商門市選擇(綠界電子地圖)
 - [ ] 獵物雷達送出(會發 Telegram 通知)
 
 ## 步驟 5:切換網域
@@ -92,7 +91,7 @@ Worker → Settings → **Builds** → **Deploy Hooks** → 建立(分支 `main`
 1. `feat/cloudflare-pages` 合併到 `main`(Vercel 照樣能建置,兩邊並存)
 2. Worker → Settings → **Domains & Routes** → **Add** → **Custom domain** → `www.neonlotus-tw.com`(和根網域)
    - 網域的 DNS 需要在 Cloudflare 上;不在的話照畫面指示把 nameserver 改到 Cloudflare
-3. 藍新、綠界後台的回呼網址寫的是正式網域,**不用改**
+3. 藍新後台的回呼網址寫的是正式網域,**不用改**
 4. **先停掉 Vercel 的排程**(Vercel 專案 → Settings → Cron Jobs 停用),再在 Cloudflare 加 `ENABLE_CRON=1`(Production),避免重複發文
 5. 觀察幾天沒問題,再把 Vercel 專案停用。期間有狀況可以把網域切回 Vercel。
 
