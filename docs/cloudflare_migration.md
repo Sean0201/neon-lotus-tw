@@ -35,7 +35,7 @@ Worker → **Settings** → **Build**
 
 | 變數 | 值 |
 |---|---|
-| `NODE_VERSION` | `20` |
+| `NODE_VERSION` | `22`(新版 supabase-js 需要 Node 22 以上) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 網址 |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role 金鑰(Secret) |
 
