@@ -1,0 +1,7 @@
+# Cloudflare Pages 設定(本機 wrangler pages dev / 部署共用)
+# 環境變數與金鑰不寫在這裡:到 Cloudflare 後台 Settings → Variables and Secrets 設定
+name = "neon-lotus-tw"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-10-01"
+# api/*.js 用到 Node 的 crypto、Buffer、process.env
+compatibility_flags = ["nodejs_compat"]

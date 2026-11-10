@@ -16,7 +16,8 @@
     "threads-sync-voice": "node scripts/seed-threads-brand-voice.js",
     "shopee-export-products": "node scripts/shopee-export-products-csv.js",
     "shopee-import-orders": "node scripts/shopee-import-orders-csv.js",
-    "images": "node scripts/process-images.mjs"
+    "images": "node scripts/process-images.mjs",
+    "build:pages": "node scripts/build-pages.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",

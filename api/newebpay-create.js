@@ -359,7 +359,7 @@ export default async function handler(req, res) {
     const HASH_IV     = process.env.NEWEBPAY_HASH_IV;
     const API_URL     = process.env.NEWEBPAY_API_URL
                         || 'https://ccore.newebpay.com/MPG/mpg_gateway';  // 預設測試
-    const SITE_URL    = process.env.SITE_URL || 'https://neon-lotus-tw.vercel.app';
+    const SITE_URL    = process.env.SITE_URL || 'https://www.neonlotus-tw.com';
 
     // 付款方式 (依商店實際開通狀態,以 env var 控制 sandbox 與 production 不同清單)
     // 範例: CREDIT,APPLEPAY,VACC,WEBATM,CVS

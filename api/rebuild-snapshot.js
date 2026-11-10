@@ -22,7 +22,8 @@
  *   })
  *
  * Env vars required:
- *   VERCEL_DEPLOY_HOOK_URL                      Deploy Hook URL from Vercel
+ *   DEPLOY_HOOK_URL                             Deploy Hook URL(Cloudflare Pages 或 Vercel)
+ *   VERCEL_DEPLOY_HOOK_URL                      舊名稱,仍支援
  *   SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL)  Supabase project URL
  *   SUPABASE_SERVICE_KEY (or SUPABASE_SERVICE_ROLE_KEY)
  *   ADMIN_EMAILS                                comma-separated admin email allowlist
@@ -53,14 +54,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   }
 
-  const HOOK = process.env.VERCEL_DEPLOY_HOOK_URL;
+  const HOOK = process.env.DEPLOY_HOOK_URL || process.env.VERCEL_DEPLOY_HOOK_URL;
   const { url: SB_URL, key: SB_KEY } = getSupabaseEnv();
 
   if (!HOOK || !SB_URL || !SB_KEY) {
     return res.status(500).json({
       ok: false,
       error: 'server_misconfigured',
-      detail: 'Missing VERCEL_DEPLOY_HOOK_URL / Supabase URL / Service Role Key',
+      detail: 'Missing DEPLOY_HOOK_URL / Supabase URL / Service Role Key',
     });
   }
 

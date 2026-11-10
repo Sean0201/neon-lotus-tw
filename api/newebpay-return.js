@@ -64,7 +64,7 @@ function classifyOutcome({ verified, decryptOk, status, respondCode }) {
 export default async function handler(req, res) {
   // 藍新可能 GET 或 POST,主要是 POST
   const method = req.method;
-  const SITE_URL = (process.env.SITE_URL || 'https://neon-lotus-tw.vercel.app').trim();
+  const SITE_URL = (process.env.SITE_URL || 'https://www.neonlotus-tw.com').trim();
 
   try {
     if (method !== 'POST' && method !== 'GET') {

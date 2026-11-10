@@ -69,7 +69,7 @@ export default async function handler(req, res) {
   const HASH_KEY    = process.env.ECPAY_LOGISTICS_HASH_KEY    || process.env.ECPAY_HASH_KEY;
   const HASH_IV     = process.env.ECPAY_LOGISTICS_HASH_IV     || process.env.ECPAY_HASH_IV;
   const MAP_URL     = process.env.ECPAY_MAP_API_URL;
-  const SITE_URL    = process.env.SITE_URL || 'https://neon-lotus-tw.vercel.app';
+  const SITE_URL    = process.env.SITE_URL || 'https://www.neonlotus-tw.com';
 
   if (!MERCHANT_ID || !HASH_KEY || !HASH_IV || !MAP_URL) {
     return res.status(500).json({ error: 'ECPay logistics map credentials not configured' });
