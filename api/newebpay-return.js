@@ -15,12 +15,27 @@ import crypto from 'crypto';
 
 export const config = { runtime: 'nodejs', maxDuration: 15 };
 
+// 與 newebpay-notify.js 相同:先試 PKCS#7,失敗再改用 zero-padding strip
+// (部分商店帳號回傳的 TradeInfo 是 zero-padding,只用 PKCS#7 會解密失敗,
+//  導致付款成功的客人被導到「處理中」頁面)
 function aesDecrypt(encryptedHex, key, iv) {
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  decipher.setAutoPadding(true);
-  let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    decipher.setAutoPadding(true);
+    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (_) {
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    decipher.setAutoPadding(false);
+    const buf = Buffer.concat([
+      decipher.update(Buffer.from(encryptedHex, 'hex')),
+      decipher.final(),
+    ]);
+    let endIdx = buf.length;
+    while (endIdx > 0 && buf[endIdx - 1] < 0x20) endIdx--;
+    return buf.slice(0, endIdx).toString('utf8');
+  }
 }
 
 function verifyTradeSha(tradeInfo, receivedSha, key, iv) {
