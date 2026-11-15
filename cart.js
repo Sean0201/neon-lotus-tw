@@ -1975,14 +1975,16 @@
       submitBtn.textContent = '處理中...';
 
       try {
-        const supabase = window.supabase.createClient(
-          'https://epemuyojkprepknuzuzc.supabase.co',
-          [
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
-            'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZW11eW9qa3ByZXBrbnV6dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDMwMTAsImV4cCI6MjA5MTM3OTAxMH0',
-            'nTv7W1_ndzzAQGNgVzSKSkruvsnEgt6N7PbnRK31l0M'
-          ].join('.')
-        );
+        // 有登入就用會員的連線(RLS 以會員身分驗證 member_id),沒登入才用訪客 anon 連線
+        const supabase = (window.AuthSystem && window.AuthSystem._getClient && window.AuthSystem._getClient())
+          || window.supabase.createClient(
+            'https://epemuyojkprepknuzuzc.supabase.co',
+            [
+              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+              'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZW11eW9qa3ByZXBrbnV6dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDMwMTAsImV4cCI6MjA5MTM3OTAxMH0',
+              'nTv7W1_ndzzAQGNgVzSKSkruvsnEgt6N7PbnRK31l0M'
+            ].join('.')
+          );
 
         const now = new Date();
         const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
@@ -2006,9 +2008,12 @@
         const _cbCredit        = discountResult.credit_used || 0;
         const _cbTierBundle    = Math.max(0, (totalDiscount - _cbBirthday - _cbCredit));
 
-        const { data: orderData, error: orderError } = await supabase
+        // 訂單 id 由前端產生:訪客沒有讀取訂單的權限,insert 後無法 .select() 讀回
+        const orderId = crypto.randomUUID();
+        const { error: orderError } = await supabase
           .from('orders')
           .insert([{
+            id: orderId,
             order_number: orderNumber,
             customer_name: name,
             customer_phone: phone,
@@ -2027,13 +2032,9 @@
             note: note,
             line_notified: false,
             member_id: _carryMemberId,
-          }])
-          .select();
+          }]);
 
         if (orderError) throw new Error(orderError.message);
-        if (!orderData || !orderData[0]) throw new Error('Failed to create order');
-
-        const orderId = orderData[0].id;
 
         // Migration 015 — brand_promo 歷史欄位:從 discountResult.brand_promo.items 抓
         //   下單當下該 line 觸發的品牌活動 (label / 折扣 % / 是否免運)。unit_price 仍存原價
@@ -2534,14 +2535,16 @@
 
       try {
         // Get Supabase client
-        const supabase = window.supabase.createClient(
-          'https://epemuyojkprepknuzuzc.supabase.co',
-          [
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
-            'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZW11eW9qa3ByZXBrbnV6dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDMwMTAsImV4cCI6MjA5MTM3OTAxMH0',
-            'nTv7W1_ndzzAQGNgVzSKSkruvsnEgt6N7PbnRK31l0M'
-          ].join('.')
-        );
+        // 有登入就用會員的連線(RLS 以會員身分驗證 member_id),沒登入才用訪客 anon 連線
+        const supabase = (window.AuthSystem && window.AuthSystem._getClient && window.AuthSystem._getClient())
+          || window.supabase.createClient(
+            'https://epemuyojkprepknuzuzc.supabase.co',
+            [
+              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+              'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZW11eW9qa3ByZXBrbnV6dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDMwMTAsImV4cCI6MjA5MTM3OTAxMH0',
+              'nTv7W1_ndzzAQGNgVzSKSkruvsnEgt6N7PbnRK31l0M'
+            ].join('.')
+          );
 
         // Generate order number: NL-YYYYMMDD-XXXX
         const now = new Date();
@@ -2579,10 +2582,13 @@
         const _shTierBundle = Math.max(0, (totalDiscount - _shBirthday - _shCredit));
 
         // Insert order (含 Phase 2.2 折扣拆解)
-        const { data: orderData, error: orderError } = await supabase
+        // 訂單 id 由前端產生:訪客沒有讀取訂單的權限,insert 後無法 .select() 讀回
+        const orderId = crypto.randomUUID();
+        const { error: orderError } = await supabase
           .from('orders')
           .insert([
             {
+              id: orderId,
               order_number: orderNumber,
               customer_name: name,
               customer_phone: phone,
@@ -2602,13 +2608,9 @@
               line_notified: false,
               member_id: _shipMemberId,
             },
-          ])
-          .select();
+          ]);
 
         if (orderError) throw new Error(orderError.message);
-        if (!orderData || !orderData[0]) throw new Error('Failed to create order');
-
-        const orderId = orderData[0].id;
 
         // Insert order items
         // Migration 015 — brand_promo 歷史欄位(見 carryback 分支註解)
