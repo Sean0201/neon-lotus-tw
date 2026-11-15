@@ -38,6 +38,7 @@ const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 //      cache 結構未變,但升 V15 強制清舊 cache,避免 stale 資料混淆偵錯。
 const CACHE_KEY     = 'NEON_LOTUS_TW_V15';
 const CACHE_TS_KEY  = 'NEON_LOTUS_TW_V15_TS';
+const CACHE_VER_KEY = 'NEON_LOTUS_TW_V15_VER';   // 寫入 cache 時的快照版本(manifest.generated_at)
 const CACHE_TTL     = 60 * 60 * 1000;  // 60 minutes — 減少 egress,同訪客 1 小時內不重抓
 const PAGE_SIZE     = 1000;             // Supabase max rows per request
 
@@ -49,6 +50,22 @@ const _brandDetailCache = {};           // { brandId: true } — already fetched
 // 前台載入順序:snapshot → Supabase(fallback)。降低 90%+ Supabase egress。
 const SNAPSHOT_CORE_URL    = '/data/products.json';
 const SNAPSHOT_GALLERY_URL = brandId => `/data/gallery/${encodeURIComponent(brandId)}.json`;
+const SNAPSHOT_MANIFEST_URL = '/data/manifest.json';
+
+// 快照版本:每次重建快照 manifest.generated_at 都會變。
+// 用來判斷 localStorage cache 是否過期,並加在快照網址後面避開瀏覽器 HTTP cache,
+// 後台調價「重建快照 + 發佈」後,訪客下次開頁面就會拿到新資料(不用等 60 分鐘 TTL)。
+let _snapshotVer = '';
+async function _fetchSnapshotVersion() {
+  try {
+    const r = await fetch(SNAPSHOT_MANIFEST_URL, { cache: 'no-store' });
+    if (!r.ok) return '';
+    return String((await r.json()).generated_at || '');
+  } catch (_) {
+    return '';   // 拿不到版本就退回原本的 TTL 判斷
+  }
+}
+const _withVer = url => _snapshotVer ? `${url}?v=${encodeURIComponent(_snapshotVer)}` : url;
 
 async function _fetchSnapshot(url) {
   // cache: 'default' 讓瀏覽器走 HTTP cache header(Vercel 設 max-age=60 s-maxage=300 SWR=1d)
@@ -117,6 +134,7 @@ function _writeCoreCache(data) {
       const slim = tiers[i]();
       localStorage.setItem(CACHE_KEY, JSON.stringify(slim));
       localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
+      localStorage.setItem(CACHE_VER_KEY, _snapshotVer);
       if (i > 0) console.log(`[supabase-client] Cache written at trim level ${i}`);
       return;
     } catch (_) {
@@ -127,11 +145,16 @@ function _writeCoreCache(data) {
 }
 
 async function loadSupabaseData() {
+  _snapshotVer = await _fetchSnapshotVersion();
+
   // ── Try localStorage cache ──────────────────────────────────
+  // 快照版本不同(後台剛發佈過)就略過 cache;拿不到版本時只看 TTL。
   try {
-    const cached   = localStorage.getItem(CACHE_KEY);
-    const cachedTs = localStorage.getItem(CACHE_TS_KEY);
-    if (cached && cachedTs && (Date.now() - Number(cachedTs)) < CACHE_TTL) {
+    const cached    = localStorage.getItem(CACHE_KEY);
+    const cachedTs  = localStorage.getItem(CACHE_TS_KEY);
+    const cachedVer = localStorage.getItem(CACHE_VER_KEY) || '';
+    const sameVer   = !_snapshotVer || cachedVer === _snapshotVer;
+    if (cached && cachedTs && sameVer && (Date.now() - Number(cachedTs)) < CACHE_TTL) {
       const data = JSON.parse(cached);
       if (data && data.brands && data.products) {
         console.log('[supabase-client] Using cached data (' +
@@ -155,7 +178,7 @@ async function loadSupabaseData() {
   // 90%+ 的訪客在此結束,不會打 Supabase。snapshot 由 admin 面板按鈕觸發 rebuild。
   try {
     const t0 = performance.now();
-    const data = await _fetchSnapshot(SNAPSHOT_CORE_URL);
+    const data = await _fetchSnapshot(_withVer(SNAPSHOT_CORE_URL));
     if (data && data.brands && data.products) {
       const ms = Math.round(performance.now() - t0);
       console.log(`[supabase-client] Snapshot loaded in ${ms}ms — ` +
@@ -363,7 +386,7 @@ async function loadBrandDetail(brandId) {
   // ── Try static snapshot first ────────────────────────────────
   try {
     const t0 = performance.now();
-    const snap = await _fetchSnapshot(SNAPSHOT_GALLERY_URL(brandId));
+    const snap = await _fetchSnapshot(_withVer(SNAPSHOT_GALLERY_URL(brandId)));
     if (snap && (snap.gallery || snap.sizes)) {
       // lsoul URL 修補: 過期 /cache/<hash>/ thumbnail 路徑要剝掉
       const fixLsoul = (url) => {
