@@ -25,7 +25,8 @@ import fs from 'fs';
 import path from 'path';
 
 // ── Env ────────────────────────────────────────────────────────
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// 只取第一段:避免後台變數誤貼成「網址 + 空格 + 其他內容」時建置失敗
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim().split(/\s+/)[0];
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
