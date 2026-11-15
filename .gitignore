@@ -48,3 +48,11 @@ outputs/
 /data/products.json
 /data/manifest.json
 /data/gallery/
+
+# 比奇堡集團內部看板 (僅本機使用；含角色頭像，絕不可推上 GitHub / 部署)
+hq/
+
+# Cloudflare Pages
+dist/
+.wrangler/
+.dev.vars

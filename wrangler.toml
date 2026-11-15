@@ -1,0 +1,30 @@
+# Cloudflare Workers 設定(Workers Builds 建置部署、本機 wrangler dev 共用)
+# 環境變數與金鑰不寫在這裡:到 Cloudflare 後台的 Worker → Settings 設定
+name = "neon-lotus-tw"            # 必須和 Cloudflare 後台的 Worker 名稱一樣
+main = "worker/index.js"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]   # api/*.js 用到 Node 的 crypto、Buffer、process.env
+keep_vars = true                  # 部署時保留後台設定的變數(否則每次部署會被清掉)
+
+[assets]
+directory = "./dist"              # npm run build:cf 產生
+binding = "ASSETS"
+not_found_handling = "single-page-application"   # 找不到的網址回 index.html(/policy/... 等)
+run_worker_first = ["/api/*", "/__scheduled"]   # API 交給 worker/index.js;/__scheduled 是本機測試排程用
+
+[observability]
+enabled = true                    # 後台可以看 API 的 log
+
+# Threads 排程發文:UTC 04:00 / 12:00 = 台灣 12:00 / 20:00
+# 需設定 ENABLE_CRON=1 才會真的發文(切換網域、停掉 Vercel 排程後再開)
+[triggers]
+crons = ["0 4,12 * * *"]
+
+# 預覽版(非 main 分支,`npx wrangler preview`)用的設定。
+# 預覽版的一般變數只看這裡(後台加的一般變數會被覆蓋)。
+# 機密(Supabase、藍新測試商店金鑰…)在後台「該預覽」的 Settings → Runtime variables and secrets 設定,
+# 之後每次部署會自動沿用。Previews Base 只在「新建」預覽時套用。
+[previews.vars]
+SITE_URL = "https://feat-cloudflare-pages-neon-lotus-tw.nhkbee184.workers.dev"
+NEWEBPAY_API_URL = "https://ccore.newebpay.com/MPG/mpg_gateway"
+NEWEBPAY_PAYMENT_METHODS = "CREDIT,VACC"
