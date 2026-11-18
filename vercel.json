@@ -7,9 +7,6 @@
           { "source": "/api/(.*)", "destination": "/api/$1" },
           { "source": "/((?!api/|data/).*)", "destination": "/index.html" }
     ],
-    "crons": [
-          { "path": "/api/threads-publish-due", "schedule": "0 4,12 * * *" }
-    ],
     "headers": [
           {
                   "source": "/supabase-client.js",
