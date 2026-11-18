@@ -13,11 +13,13 @@
  *   SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_KEY / SUPABASE_SERVICE_ROLE_KEY
  *   THREADS_USER_ID           — Threads 帳號 id (numeric, from /me)
- *   THREADS_USER_ACCESS_TOKEN — 長期 access token
+ *   THREADS_USER_ACCESS_TOKEN — 長期 access token(每 7 天自動續期,見 lib/threads-token.js)
  *   TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID
  *   CRON_SECRET — 若有設定，只有帶正確 Authorization: Bearer <CRON_SECRET>
  *                 的請求才會執行（Vercel Cron 會自動帶這個 header）
  */
+
+import { getThreadsToken } from './lib/threads-token.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 120 };
 
@@ -38,17 +40,21 @@ export default async function handler(req, res) {
 
   const { url: SUPABASE_URL, key: SUPABASE_KEY } = getSupabaseEnv();
   const THREADS_USER_ID = process.env.THREADS_USER_ID;
-  const THREADS_TOKEN = process.env.THREADS_USER_ACCESS_TOKEN;
+  const ENV_THREADS_TOKEN = process.env.THREADS_USER_ACCESS_TOKEN;
   const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
   const TG_CHAT = process.env.TELEGRAM_CHAT_ID;
 
-  if (!SUPABASE_URL || !SUPABASE_KEY || !THREADS_USER_ID || !THREADS_TOKEN) {
+  if (!SUPABASE_URL || !SUPABASE_KEY || !THREADS_USER_ID || !ENV_THREADS_TOKEN) {
     console.error('[threads-publish-due] missing env vars');
     return res.status(500).json({ error: 'server_misconfigured' });
   }
 
   const { createClient } = await import('@supabase/supabase-js');
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+
+  // 每次排程都檢查權杖,滿 7 天自動續期(沒有待發貼文也會續期)
+  const THREADS_TOKEN = await getThreadsToken(supabase, ENV_THREADS_TOKEN,
+    (msg) => (TG_TOKEN && TG_CHAT ? notifyTelegram(TG_TOKEN, TG_CHAT, msg) : null));
 
   const { data: due, error: fetchErr } = await supabase
     .from('threads_posts')
