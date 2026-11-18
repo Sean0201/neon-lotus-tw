@@ -2659,6 +2659,7 @@
                         .from('products')
                         .select('*')
                         .order('sort_order', { ascending: true })
+                        .order('id', { ascending: true })   // sort_order 大量同值,沒有唯一排序會導致分頁重複/漏抓
                         .range(offset, offset + PAGE - 1);
                     if (error) throw error;
                     if (!data || data.length === 0) break;
