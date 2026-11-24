@@ -1805,7 +1805,7 @@ function initTryOnRoom() {
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX = 1024;
+      const MAX = 1280;   // 試衣間:臉與衣服細節需要足夠解析度
       let w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -1822,10 +1822,6 @@ function initTryOnRoom() {
       preview.style.display = 'block';
       placeholder.style.display = 'none';
       changeBtn.style.display = 'inline-flex';
-      /* Phase 3 — kick off MediaPipe model preload while user picks items */
-      if (window.MaskGenerator && window.MaskGenerator.preload) {
-        window.MaskGenerator.preload();
-      }
     };
     img.src = url;
   }
@@ -2059,9 +2055,6 @@ function initTryOnRoom() {
       if (progressEl) progressEl.style.display = "block";
       /* Hide add-cart button while loading (will be re-shown on success) */
       if (addCartBtn) addCartBtn.style.display = "none";
-      /* Read precise-mode toggle (Phase 3 mask) */
-      var preciseEl = document.getElementById('tryon-precise-mode');
-      var useMask = preciseEl ? preciseEl.checked : true;
       /* Call OutfitBuilder API */
       OB.executeTryOn(
         function onProgress(i, total, stepLabel) {
@@ -2120,8 +2113,7 @@ function initTryOnRoom() {
           if (progressEl) progressEl.style.display = "none";
           errorEl.style.display = "block";
           errorMsg.textContent   = msg;
-        },
-        { useMask: useMask }
+        }
       );
     }
 

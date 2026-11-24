@@ -1,148 +1,156 @@
 /**
- * /api/tryon.js — Vercel Edge Function
- * Proxies virtual try-on requests to Google Gemini 2.5 Flash Image
- * Supports: tops, bottoms, bags, hats — with layered outfit composition
+ * /api/tryon.js — AI 試衣間
+ * ─────────────────────────────────────────────────────────────────
+ * 一次生成整套穿搭(不再逐層重畫,臉與構圖不會越畫越走樣)。
  *
  * Pipeline:
- *   1. Content moderation pre-check (Gemini Flash vision) — blocks porn/illegal/minor
- *   2. Structured try-on prompt (face/body/background preservation locked)
- *   3. Gemini 2.5 Flash Image generates final image
+ *   1. 內容審查(Gemini Flash 視覺)— 擋裸露 / 未成年 / 暴力等
+ *   2. 依 product_id 從資料庫取商品資料與參考圖(衣架去背圖 + 封面圖),
+ *      不接受前端傳任意網址(避免被當成下載代理)
+ *   3. 主力 OpenAI gpt-image-2(中等畫質);失敗(含安全審查拒絕)→ 備援 Gemini 3.1 Flash Image
+ *      2026-11 實測(scripts/tryon-compare.mjs):gpt-image-2 最忠於 logo / 圖案且保留臉與構圖
+ *
+ * Request: { selfieBase64, selfieType, items: [{ product_id, slot }] }
+ *   slot = top | bottom | outerwear | bag | hat(前端試衣格位)
+ * Response: { success, image, mimeType, model }
+ *
+ * 環境變數:OPENAI_API_KEY、GEMINI_API_KEY(至少一個)、Supabase service role
+ *   TRYON_OPENAI_MODEL(預設 gpt-image-2)、TRYON_OPENAI_QUALITY(預設 medium)
+ *   TRYON_GEMINI_MODEL(預設 gemini-3.1-flash-image)
+ * ─────────────────────────────────────────────────────────────────
  */
+import { Buffer } from 'node:buffer';
 
-export const config = { runtime: 'edge', maxDuration: 300, regions: ['iad1'] };
+export const config = { runtime: 'edge', maxDuration: 300 };
 
-/* ── Phase 2: Structured prompt builder ───────────────────────────── */
-function getPrompt(category, productName) {
-  const pname = productName || 'this item';
+const MAX_ITEMS = 5;
+const MAX_REFS_PER_ITEM = 2;
 
-  /* Shared rules — user's template:
-     "Keep the original person unchanged. Preserve face, identity, body shape, and pose.
-      Do not modify skin, face, or background. Only replace the clothing in the specified region.
-      The clothing must fit naturally to the body. Keep lighting and perspective consistent." */
-  const PRESERVE_RULES = [
-    'PRESERVATION (LOCKED — DO NOT MODIFY):',
-    '- Face: identity, facial features, expression, makeup',
-    '- Hair: hairstyle, color, length, parting',
-    '- Skin: tone, texture, marks, tattoos',
-    '- Body: shape, proportions, height, weight, posture',
-    '- Pose: arms, legs, head angle, gesture',
-    '- Background: environment, lighting, shadows, perspective',
-    '- Camera: angle, framing, focal length'
-  ].join('\n');
+/* ── 商品類別 → 要換的部位 ───────────────────────────────── */
+function regionOf(product, slot) {
+  const cat = String(product.category || product.tag || '').toUpperCase();
+  if (cat === 'SETS' || /\bset\b|套組|套裝/i.test(product.name || '')) return 'set';
+  if (cat === 'DRESSES') return 'dress';
+  return slot;
+}
 
-  const NATURAL_FIT_RULES = [
-    'NATURAL FIT REQUIREMENTS:',
-    '- The garment must drape realistically over the body',
-    '- Folds, wrinkles, and shadows must match the lighting direction',
-    '- Edges must blend naturally with skin and surrounding clothing',
-    '- Maintain consistent perspective with the original photo',
-    '- Photorealistic quality, no cartoon/illustration style'
-  ].join('\n');
+const REGION_TEXT = {
+  top:       'upper-body garment — replace the current top (shoulders to waist)',
+  outerwear: 'outer layer — worn OVER the current top, open or closed as styled in the reference',
+  bottom:    'lower-body garment — replace the current pants/shorts/skirt (waist down)',
+  set:       'matching set — replace BOTH the current top AND the current bottoms with the two pieces of this set',
+  dress:     'dress — replace both the current top and bottoms',
+  bag:       'bag — ADD it, carried naturally (shoulder, crossbody or hand, whichever suits the style)',
+  hat:       'hat/cap — ADD it on the head, matching head angle and size',
+};
 
-  const OUTPUT_RULES = [
-    'OUTPUT REQUIREMENTS:',
-    '- ONE single photorealistic image',
-    '- No text, no watermarks, no borders, no captions',
-    '- Same aspect ratio as the input selfie'
-  ].join('\n');
-
-  const prompts = {
-    top: [
-      'You are a professional virtual fitting room. The user wants to try on the TOP garment "' + pname + '".',
-      '',
-      'TASK: Replace ONLY the upper-body clothing in the first image with the garment shown in the second image.',
-      '',
-      'TARGET REGION (modify ONLY this area):',
-      '- Upper body: shirt / blouse / jacket / hoodie / sweater area',
-      '- From shoulders down to waistline',
-      '',
-      'KEEP UNCHANGED:',
-      '- Existing pants / shorts / skirt / bottoms',
-      '- Existing shoes and accessories',
-      '- Everything listed in PRESERVATION below',
-      '',
-      PRESERVE_RULES,
-      '',
-      NATURAL_FIT_RULES,
-      '',
-      OUTPUT_RULES
-    ].join('\n'),
-
-    bottom: [
-      'You are a professional virtual fitting room. The user wants to try on the BOTTOM garment "' + pname + '".',
-      '',
-      'TASK: Replace ONLY the lower-body clothing in the first image with the item shown in the second image.',
-      '',
-      'TARGET REGION (modify ONLY this area):',
-      '- Lower body: pants / shorts / skirt / trousers area',
-      '- From waistline down to ankles (or hem of new garment)',
-      '',
-      'KEEP UNCHANGED:',
-      '- Existing top / shirt / jacket / upper-body clothing',
-      '- Existing shoes and accessories',
-      '- Everything listed in PRESERVATION below',
-      '',
-      PRESERVE_RULES,
-      '',
-      NATURAL_FIT_RULES,
-      '',
-      OUTPUT_RULES
-    ].join('\n'),
-
-    bag: [
-      'You are a professional virtual fitting room. The user wants to try on the BAG "' + pname + '".',
-      '',
-      'TASK: ADD the bag from the second image onto the person in the first image — naturally carried.',
-      '',
-      'TARGET REGION (add bag here):',
-      '- On the shoulder, crossbody, or held in hand — choose the most natural placement based on bag style',
-      '- Match strap length and bag size to body proportions',
-      '',
-      'KEEP UNCHANGED:',
-      '- ALL existing clothing (top, bottom, shoes)',
-      '- ALL other accessories already in the photo',
-      '- Everything listed in PRESERVATION below',
-      '',
-      PRESERVE_RULES,
-      '',
-      NATURAL_FIT_RULES,
-      '',
-      OUTPUT_RULES
-    ].join('\n'),
-
-    hat: [
-      'You are a professional virtual fitting room. The user wants to try on the HAT "' + pname + '".',
-      '',
-      'TASK: ADD the hat/cap from the second image onto the head of the person in the first image.',
-      '',
-      'TARGET REGION (add hat here):',
-      '- On top of the head, matching the head angle',
-      '- Hat size proportional to head size',
-      '',
-      'KEEP UNCHANGED:',
-      '- ALL existing clothing',
-      '- Hairstyle visible below the hat brim',
-      '- Everything listed in PRESERVATION below',
-      '',
-      PRESERVE_RULES,
-      '',
-      NATURAL_FIT_RULES,
-      '',
-      OUTPUT_RULES
-    ].join('\n')
-  };
-
-  return prompts[category] || [
-    'You are a professional virtual fitting room. The user wants to try on "' + pname + '".',
+function buildPrompt(items) {
+  let n = 2;
+  const lines = items.map((it, i) => {
+    const from = n, to = n + it.refs.length - 1;
+    n = to + 1;
+    const imgs = from === to ? `image ${from}` : `images ${from}-${to}`;
+    return `${i + 1}. "${it.product.name}" (${imgs}): ${REGION_TEXT[it.region] || REGION_TEXT.top}`;
+  });
+  return [
+    'Virtual fitting room. Image 1 is the customer photo.',
+    'Dress the customer in the following product(s). Each product may have several reference photos:',
+    ...lines,
     '',
-    'TASK: Replace the relevant clothing in the first image with the item shown in the second image.',
+    'PRODUCT FIDELITY (most important):',
+    '- Reproduce each item exactly: same colors, prints, graphics, logos, text, stitching, buttons, zippers, pockets',
+    '- Keep graphic placement, scale and spelling identical to the reference',
+    '- Keep the cut, length, fit and fabric texture of the reference',
+    '- Ignore any model, pose, background or other clothing shown in the product photos',
     '',
-    PRESERVE_RULES,
+    'CUSTOMER (do not change):',
+    '- Same face, identity, expression, hair, skin tone, body shape and pose',
+    '- Same background, lighting and camera framing; do not crop or zoom',
+    '- Keep every piece of clothing and accessory that is not being replaced',
     '',
-    NATURAL_FIT_RULES,
-    '',
-    OUTPUT_RULES
+    'Make the garments drape naturally on this body with realistic folds and shadows matching the scene lighting.',
+    'Output one photorealistic image with the same aspect ratio as image 1. No text or watermark.',
   ].join('\n');
+}
+
+/* ── 從資料庫取商品與參考圖 ───────────────────────────────── */
+async function loadProducts(items) {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Supabase not configured');
+  const ids = items.map((it) => String(it.product_id));
+  const qs = new URLSearchParams({
+    select: 'id,name,category,tag,cover_image,rack_image',
+    id: `in.(${ids.map((i) => `"${i.replace(/["\\]/g, '')}"`).join(',')})`,
+  });
+  const res = await fetch(`${url}/rest/v1/products?${qs}`, {
+    headers: { apikey: key, authorization: `Bearer ${key}` },
+  });
+  if (!res.ok) throw new Error('products lookup failed: ' + res.status);
+  const rows = await res.json();
+  const byId = new Map(rows.map((r) => [String(r.id), r]));
+  return items.map((it) => {
+    const product = byId.get(String(it.product_id));
+    if (!product) throw Object.assign(new Error('找不到商品,請重新整理後再試'), { status: 400 });
+    return { product, slot: it.slot, region: regionOf(product, it.slot) };
+  });
+}
+
+async function fetchImage(src) {
+  const res = await fetch(src, { headers: { accept: 'image/webp,image/png,image/jpeg,*/*' } });
+  if (!res.ok) throw new Error(`image ${res.status}`);
+  const type = (res.headers.get('content-type') || 'image/jpeg').split(';')[0];
+  if (!/^image\/(jpeg|png|webp)$/.test(type)) throw new Error('unsupported image type ' + type);
+  return { buf: Buffer.from(await res.arrayBuffer()), type };
+}
+
+/* ── 生成:OpenAI ───────────────────────────────────────── */
+async function generateOpenAI(prompt, images) {
+  const form = new FormData();
+  form.append('model', process.env.TRYON_OPENAI_MODEL || 'gpt-image-2');
+  form.append('prompt', prompt);
+  form.append('size', 'auto');
+  form.append('quality', process.env.TRYON_OPENAI_QUALITY || 'medium');
+  form.append('output_format', 'jpeg');      // PNG 約 2.5MB,JPEG 小很多,手機載入快
+  form.append('output_compression', '88');
+  images.forEach((img, i) => {
+    const ext = img.type === 'image/png' ? 'png' : img.type === 'image/webp' ? 'webp' : 'jpg';
+    form.append('image[]', new Blob([img.buf], { type: img.type }), `ref${i}.${ext}`);
+  });
+  const res = await fetch('https://api.openai.com/v1/images/edits', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.data?.[0]?.b64_json) {
+    throw new Error('openai: ' + (data.error?.message || `HTTP ${res.status}`));
+  }
+  return { image: data.data[0].b64_json, mimeType: 'image/jpeg' };
+}
+
+/* ── 生成:Gemini ───────────────────────────────────────── */
+async function generateGemini(prompt, images) {
+  const model = process.env.TRYON_GEMINI_MODEL || 'gemini-3.1-flash-image';
+  const parts = [{ text: prompt }, ...images.map((img) => ({
+    inlineData: { mimeType: img.type, data: img.b64 || img.buf.toString('base64') },
+  }))];
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } }),
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = data.error?.message || `HTTP ${res.status}`;
+    throw new Error((msg.includes('location is not supported') ? 'region: ' : 'gemini: ') + msg);
+  }
+  const img = (data.candidates || []).flatMap((c) => c.content?.parts || []).find((p) => p.inlineData);
+  if (!img) throw new Error('gemini: no image (' + (data.candidates?.[0]?.finishReason || 'unknown') + ')');
+  return { image: img.inlineData.data, mimeType: img.inlineData.mimeType || 'image/png' };
 }
 
 /* ── Phase 1: Content moderation ──────────────────────────────────── */
@@ -251,188 +259,82 @@ function rejectionMessage(category) {
 }
 
 export default async function handler(request) {
-  // CORS
   if (request.method === 'OPTIONS') {
     return new Response(null, {
-      status: 200,
+      status: 204,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
     });
   }
+  if (request.method !== 'POST') return json(405, { error: 'Method not allowed' });
 
-  if (request.method !== 'POST') {
-    return json(405, { error: 'Method not allowed' });
-  }
-
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_KEY) return json(500, { error: 'GEMINI_API_KEY not configured' });
+  const hasOpenAI = !!process.env.OPENAI_API_KEY;
+  const hasGemini = !!process.env.GEMINI_API_KEY;
+  if (!hasOpenAI && !hasGemini) return json(500, { error: 'AI provider not configured' });
 
   try {
-    const body = await request.json();
-    const {
-      selfieBase64, selfieType,
-      clothingUrl, clothingBase64, clothingType,
-      maskBase64, maskType, maskRegion,
-      productName, category,
-      isLayered  // when true, selfieBase64 is a previous AI-generated result, skip moderation
-    } = body;
-
+    const { selfieBase64, selfieType, items } = await request.json();
     if (!selfieBase64) return json(400, { error: 'Missing selfie image' });
-    if (!clothingBase64 && !clothingUrl) return json(400, { error: 'Missing clothing image' });
+    if (!Array.isArray(items) || items.length === 0) return json(400, { error: '請至少選擇一件商品' });
+    if (items.length > MAX_ITEMS) return json(400, { error: `一次最多試穿 ${MAX_ITEMS} 件` });
+    const selfieMime = /^image\/(jpeg|png|webp)$/.test(selfieType) ? selfieType : 'image/jpeg';
 
-    /* ── Phase 1: Content moderation (only on first layer / real user-uploaded selfie) ── */
-    if (!isLayered) {
-      const verdict = await moderateImage(selfieBase64, selfieType, GEMINI_KEY);
+    /* 1. 內容審查 */
+    if (hasGemini) {
+      const verdict = await moderateImage(selfieBase64, selfieMime, process.env.GEMINI_API_KEY);
       if (!verdict.safe) {
         return json(403, {
-          error: 'content_blocked',
-          category: verdict.category,
-          message: rejectionMessage(verdict.category),
-          details: verdict.reason
+          error: 'content_blocked', category: verdict.category,
+          message: rejectionMessage(verdict.category), details: verdict.reason,
         });
       }
     }
 
-    // Build prompt based on category (and append mask instructions if a mask is provided)
-    let promptText = getPrompt(category, productName);
-    if (maskBase64) {
-      promptText += '\n\n' + [
-        'MASK GUIDANCE:',
-        'A third reference image is provided as a binary MASK.',
-        '- WHITE pixels in the mask = the ONLY region you may modify (the clothing area)',
-        '- BLACK pixels in the mask = STRICTLY PRESERVE — do not alter at all',
-        '- The mask precisely defines the ' + (maskRegion === 'bottom' ? 'lower-body' : 'upper-body') + ' clothing region within the person silhouette',
-        '- Outside the white region: face, skin, hair, background, lighting, and other clothing must remain pixel-identical to the input',
-        '- Use the mask as ground truth for editing boundaries — respect it precisely'
-      ].join('\n');
-    }
-
-    // Build image parts
-    const parts = [];
-    parts.push({ text: promptText });
-
-    // Selfie image (or previous result for layered composition)
-    parts.push({
-      inlineData: {
-        mimeType: selfieType || 'image/jpeg',
-        data: selfieBase64
+    /* 2. 商品與參考圖(衣架去背圖優先,再加封面圖) */
+    const loaded = await loadProducts(items);
+    for (const it of loaded) {
+      const srcs = [it.product.rack_image, it.product.cover_image].filter(Boolean).slice(0, MAX_REFS_PER_ITEM);
+      it.refs = [];
+      for (const src of srcs) {
+        try { it.refs.push(await fetchImage(src)); } catch (e) { console.warn('[tryon] ref image failed', it.product.id, e.message); }
       }
+      if (!it.refs.length) return json(400, { error: '商品圖片無法載入,請試試其他款式' });
+    }
+    const prompt = buildPrompt(loaded);
+    const selfie = { buf: Buffer.from(selfieBase64, 'base64'), b64: selfieBase64, type: selfieMime };
+    const images = [selfie, ...loaded.flatMap((it) => it.refs)];
+
+    /* 3. 生成:OpenAI → 失敗改 Gemini */
+    const attempts = [];
+    if (hasOpenAI) attempts.push(['openai', generateOpenAI]);
+    if (hasGemini) attempts.push(['gemini', generateGemini]);
+    const errors = [];
+    for (const [name, run] of attempts) {
+      try {
+        const out = await run(prompt, images);
+        return json(200, { success: true, image: out.image, mimeType: out.mimeType, model: name });
+      } catch (e) {
+        console.warn(`[tryon] ${name} failed:`, e.message);
+        errors.push(e.message);
+      }
+    }
+    const blocked = errors.some((m) => /safety|moderation|blocked|PROHIBITED|SAFETY/i.test(m));
+    return json(blocked ? 422 : 502, {
+      error: blocked ? 'generation_blocked' : 'generation_failed',
+      message: blocked ? '這套穿搭 AI 無法生成,請換一件商品或換張照片再試。' : 'AI 生成失敗,請稍後再試一次。',
+      details: errors.join(' | ').slice(0, 500),
     });
-
-    // Clothing image
-    if (clothingBase64) {
-      parts.push({
-        inlineData: {
-          mimeType: clothingType || 'image/jpeg',
-          data: clothingBase64
-        }
-      });
-    } else if (clothingUrl) {
-      const imgRes = await fetch(clothingUrl);
-      if (!imgRes.ok) return json(400, { error: 'Failed to fetch clothing image', details: 'status ' + imgRes.status + ' from ' + clothingUrl.substring(0, 100) });
-      const imgBuf = await imgRes.arrayBuffer();
-      const bytes = new Uint8Array(imgBuf);
-      /* Chunk-based btoa to avoid string size limits in Edge runtime */
-      const CHUNK = 8192;
-      let binary = '';
-      for (let i = 0; i < bytes.length; i += CHUNK) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
-      }
-      const imgBase64 = btoa(binary);
-      const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-      parts.push({
-        inlineData: {
-          mimeType: contentType,
-          data: imgBase64
-        }
-      });
-    }
-
-    // Mask image (Phase 3) — append as third reference if provided
-    if (maskBase64) {
-      parts.push({
-        inlineData: {
-          mimeType: maskType || 'image/png',
-          data: maskBase64
-        }
-      });
-    }
-
-    // Call Gemini API with timeout protection
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 250000); // 250s timeout
-
-    let geminiRes;
-    try {
-      geminiRes = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + GEMINI_KEY,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts }],
-            generationConfig: {
-              responseModalities: ['TEXT', 'IMAGE'],
-              temperature: 0.4
-            }
-          })
-        }
-      );
-    } catch (fetchErr) {
-      clearTimeout(timeoutId);
-      if (fetchErr.name === 'AbortError') {
-        return json(504, { error: 'Gemini API timeout', details: 'The AI took too long to generate the image. Please try again.' });
-      }
-      throw fetchErr;
-    }
-    clearTimeout(timeoutId);
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      // Friendly error for region restriction
-      if (errText.includes('location is not supported')) {
-        return json(400, { error: 'Region not supported', details: 'location_error' });
-      }
-      return json(geminiRes.status, { error: 'Gemini API error', details: errText.substring(0, 500) });
-    }
-
-    const geminiData = await geminiRes.json();
-
-    // Extract image from response
-    const candidates = geminiData.candidates || [];
-    for (const candidate of candidates) {
-      const resParts = candidate.content?.parts || [];
-      for (const part of resParts) {
-        if (part.inlineData) {
-          return json(200, {
-            success: true,
-            image: part.inlineData.data,
-            mimeType: part.inlineData.mimeType || 'image/png'
-          });
-        }
-      }
-    }
-
-    return json(500, {
-      error: 'No image generated',
-      raw: JSON.stringify(geminiData).substring(0, 500)
-    });
-
   } catch (err) {
-    return json(500, { error: err.message || 'Unknown server error', details: String(err.stack || err).substring(0, 300) });
+    return json(err.status || 500, { error: err.message || 'Unknown server error' });
   }
 }
 
 function json(status, data) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
-    }
+    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
   });
 }

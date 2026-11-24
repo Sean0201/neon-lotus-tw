@@ -31,7 +31,7 @@ const ROOT_FILE = /^(?:[a-z0-9-]+\.(?:html|js|css)|logo\.PNG|robots\.txt|sitemap
 // 整個資料夾(底下的 .md 說明檔除外)
 const DIRS = ['data', 'assets'];
 // 個別檔案
-const FILES = ['scripts/mask-generator.js', 'scripts/outfit-builder.js'];
+const FILES = ['scripts/outfit-builder.js'];
 
 // ── 1. 快照 ──────────────────────────────────────────────────────
 if (!skipSnapshot) {

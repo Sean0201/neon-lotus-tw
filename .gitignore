@@ -56,3 +56,6 @@ hq/
 dist/
 .wrangler/
 .dev.vars
+
+# 試衣間比較測試(含使用者自拍,不可上傳)
+output/tryon-compare/

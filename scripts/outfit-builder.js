@@ -1,7 +1,6 @@
 /**
  * outfit-builder.js — Outfit Composition Engine
- * Manages layered try-on: top → bottom → bag → hat
- * Each layer uses the previous result as the new base image
+ * 管理試穿格位(上衣 / 褲子 / 外套 / 包包 / 帽子),整套一次送到 /api/tryon 生成
  */
 
 (function () {
@@ -119,155 +118,63 @@
     }
   }
 
-  /* ── Helper: fetch image URL and convert to base64 on client side ── */
-  async function imageUrlToBase64(url) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('fetch failed');
-      const blob = await res.blob();
-      return new Promise(function(resolve, reject) {
-        const reader = new FileReader();
-        reader.onloadend = function() {
-          const dataUrl = reader.result;
-          const comma = dataUrl.indexOf(',');
-          const mime = dataUrl.substring(5, dataUrl.indexOf(';'));
-          const b64 = dataUrl.substring(comma + 1);
-          resolve({ base64: b64, mimeType: mime });
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (e) {
-      return new Promise(function(resolve, reject) {
-        var img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = function() {
-          var c = document.createElement('canvas');
-          c.width = img.naturalWidth;
-          c.height = img.naturalHeight;
-          c.getContext('2d').drawImage(img, 0, 0);
-          var dataUrl = c.toDataURL('image/jpeg', 0.85);
-          var comma = dataUrl.indexOf(',');
-          resolve({ base64: dataUrl.substring(comma + 1), mimeType: 'image/jpeg' });
-        };
-        img.onerror = function() { reject(new Error('無法載入商品圖片')); };
-        img.src = url;
-      });
-    }
-  }
-
-  async function executeTryOn(onProgress, onComplete, onError, options) {
+  /* ── 試穿:整套一次生成(後端依 product_id 取去背圖/封面圖,OpenAI → Gemini 備援) ── */
+  async function executeTryOn(onProgress, onComplete, onError) {
     if (isProcessing) return;
     if (!selfieBase64) { onError('請先上傳照片'); return; }
     const layers = getSelectedLayers();
     if (layers.length === 0) { onError('請至少選擇一件商品'); return; }
-    options = options || {};
-    const useMask = options.useMask !== false;   // default: ON when MaskGenerator is available
     isProcessing = true;
-    let currentBase64 = selfieBase64;
-    let currentType = selfieType;
-    const results = [];
-    for (let i = 0; i < layers.length; i++) {
-      const cat = layers[i];
-      const item = outfit[cat];
-      const label = CATEGORY_LABELS[cat];
-      const lang = window.__currentLang || 'tw';
-      const stepLabel = lang === 'en'
-        ? label.en + ' (' + (i + 1) + '/' + layers.length + ')'
-        : label.tw + ' (' + (i + 1) + '/' + layers.length + ')';
-      onProgress(i, layers.length, stepLabel, cat);
-      try {
-        // Try client-side base64 conversion first, fall back to sending URL
-        let bodyObj = {
-          selfieBase64: currentBase64,
-          selfieType: currentType,
-          productName: item.product.name || 'item',
-          category: cat,
-          isLayered: i > 0  // skip moderation on AI-generated intermediate results
-        };
-        try {
-          const imgData = await imageUrlToBase64(item.imageUrl);
-          bodyObj.clothingBase64 = imgData.base64;
-          bodyObj.clothingType = imgData.mimeType;
-        } catch (imgErr) {
-          // Client-side conversion failed (CORS) — let server fetch the image
-          if (item.imageUrl) {
-            bodyObj.clothingUrl = item.imageUrl;
-          } else {
-            throw new Error('商品圖片無法載入，請試試其他款式！');
-          }
-        }
 
-        /* ── Phase 3: Region mask (top / bottom only, when MaskGenerator is loaded) ── */
-        if (useMask && window.MaskGenerator) {
-          const region = window.MaskGenerator.regionFor(cat);
-          if (region) {
-            try {
-              const mask = await window.MaskGenerator.generateMask(
-                currentBase64, currentType, region
-              );
-              bodyObj.maskBase64 = mask.base64;
-              bodyObj.maskType   = mask.mimeType;
-              bodyObj.maskRegion = region;
-              if (mask.debug) {
-                console.log('[tryon] mask generated for ' + cat + ' (' + region + ')', mask.debug);
-              }
-            } catch (mErr) {
-              // Mask generation failed — log and continue without mask (graceful degrade)
-              console.warn('[tryon] mask generation failed, falling back to prompt-only:', mErr.message || mErr);
-            }
-          }
-        }
+    const lang = window.__currentLang || 'tw';
+    const names = layers.map(function (cat) { return lang === 'en' ? CATEGORY_LABELS[cat].en : CATEGORY_LABELS[cat].tw; });
+    const label = (lang === 'en' ? 'Dressing you in ' : 'AI 正在幫你換上 ') + names.join(' + ')
+      + (lang === 'en' ? ' (about 30s)' : '(約 30 秒)');
 
-        /* Fetch with retry (max 2 attempts) */
-        var attempts = 0;
-        var maxRetries = 2;
-        var res, data;
-        while (attempts < maxRetries) {
-          attempts++;
-          res = await fetch('/api/tryon', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyObj)
-          });
-          if (res.ok) {
-            data = await res.json();
-            break;
-          }
-          var errBody = {};
-          try { errBody = await res.json(); } catch(e) {}
-          var errDetail = errBody.details || errBody.error || '';
-          console.warn('[tryon] attempt ' + attempts + '/' + maxRetries + ' status=' + res.status + ' ' + errDetail);
-          if (attempts < maxRetries && (res.status >= 500 || res.status === 429)) {
-            await new Promise(function(r){ setTimeout(r, 3000); });
-            continue;
-          }
-          if (res.status === 403 && errBody.error === 'content_blocked') {
-            /* Phase 1 — content moderation rejection, do not retry */
-            throw new Error(errBody.message || '上傳的照片不符規範，請更換照片再試。');
-          }
-          if (res.status === 429) throw new Error('目前排隊人數較多，請稍後再試！');
-          if (res.status === 504) throw new Error('AI 處理時間較長，請稍後再試一次！');
-          if (res.status >= 500) throw new Error('系統忙碌 (' + (errDetail || res.status) + ')');
-          throw new Error('API 錯誤 (' + res.status + '): ' + errDetail);
+    /* 單一請求沒有實際進度,用時間推估讓進度條緩慢前進(最多到 95%) */
+    const t0 = Date.now();
+    onProgress(0, 1, label);
+    const ticker = setInterval(function () {
+      const f = Math.min(0.95, (Date.now() - t0) / 40000);
+      onProgress(f - 0.5, 1, label);
+    }, 1000);
+
+    const body = JSON.stringify({
+      selfieBase64: selfieBase64,
+      selfieType: selfieType,
+      items: layers.map(function (cat) { return { product_id: outfit[cat].product.id, slot: cat }; })
+    });
+
+    try {
+      let res, data = {};
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        res = await fetch('/api/tryon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body });
+        data = await res.json().catch(function () { return {}; });
+        if (res.ok) break;
+        console.warn('[tryon] attempt ' + attempt + ' status=' + res.status, data.details || data.error || '');
+        /* 只有暫時性錯誤才重試(後端已經自動換過備援模型) */
+        if (attempt === 1 && (res.status === 429 || res.status === 503 || res.status === 504)) {
+          await new Promise(function (r) { setTimeout(r, 3000); });
+          continue;
         }
-        if (data.success && data.image) {
-          currentBase64 = data.image;
-          currentType = data.mimeType || 'image/png';
-          results.push({ category: cat, image: data.image, mimeType: data.mimeType || 'image/png', product: item.product });
-        } else {
-          const details = data.details || '';
-          if (details.includes('429') || details.includes('quota')) throw new Error('排隊人數較多，請稍後再試！');
-          throw new Error('AI 無法處理此組合，請換張照片再試！');
-        }
-      } catch (err) {
-        isProcessing = false;
-        onError(err.message || '發生錯誤，請重試');
-        return;
+        break;
       }
+      if (!res.ok || !data.success || !data.image) {
+        if (data.error === 'content_blocked') throw new Error(data.message || '上傳的照片不符規範，請更換照片再試。');
+        if (data.message) throw new Error(data.message);
+        if (res.status === 429) throw new Error('目前排隊人數較多，請稍後再試！');
+        throw new Error(data.error || ('系統忙碌 (' + res.status + ')'));
+      }
+      const results = layers.map(function (cat) {
+        return { category: cat, image: data.image, mimeType: data.mimeType || 'image/png', product: outfit[cat].product };
+      });
+      onComplete(results, selfieSrc);
+    } catch (err) {
+      onError(err.message || '發生錯誤，請重試');
+    } finally {
+      clearInterval(ticker);
+      isProcessing = false;
     }
-    isProcessing = false;
-    onComplete(results, selfieSrc);
   }
 
   function filterProductsByCategory(products, targetCat) {
