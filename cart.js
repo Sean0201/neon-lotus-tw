@@ -2635,7 +2635,6 @@
       try {
         const page = document.getElementById('neon-checkout-page');
         if (!page) return;
-        const mode = page.dataset.checkoutMode || 'shipping';
         // snapshot 所有 input / textarea / select 的值,等重畫完再灌回去
         const snap = {};
         page.querySelectorAll('input, textarea, select').forEach(el => {
