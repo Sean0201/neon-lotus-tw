@@ -65,6 +65,12 @@ async function getSupabaseAdmin() {
  *   member, result
  * }>}
  */
+// 運費規則(與 cart.js 結帳頁一致):滿 2 件、滿 NT$3,000 或品牌週免運 → 可免運,
+// 否則至少要付超商運費。用來擋掉被竄改成 0 的運費。
+const SHIPPING_FEE_CVS       = 70;
+const FREE_SHIP_THRESHOLD    = 3000;   // 超商免運門檻(宅配門檻較高,但下限以超商計)
+const FREE_SHIP_MIN_QTY      = 2;
+
 async function recalculateOrder(items, shippingFee, memberId, useCredit) {
   const supabase = await getSupabaseAdmin();
 
@@ -271,8 +277,41 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
     useCredit: useCredit !== false,
   });
 
+  // ── 運費下限 ──
+  const totalQty = engineItems.reduce((n, it) => n + it.quantity, 0);
+  // 門檻用 DB 原價計算(與前端「折扣前商品小計」一致),取不到就用 client 單價
+  const listSubtotal = items.reduce((sum, it) => {
+    const row = priceMap.get(it.product_id != null ? String(it.product_id) : null);
+    const base = row ? (it.shipping_method === 'carryback' ? (row.carryback || row.shipping) : (row.shipping || row.carryback)) : 0;
+    return sum + (base || Number(it.price) || 0) * (Number(it.quantity) || 0);
+  }, 0);
+  let brandFreeShip = false;
+  const tierKey = (member && member.tier) ? String(member.tier) : 'bronze';
+  const brandQty = {};
+  items.forEach((it) => {
+    const bid = it.product_id != null ? brandMap.get(String(it.product_id)) : null;
+    if (bid && brandPromoRules.has(bid)) brandQty[bid] = (brandQty[bid] || 0) + (Number(it.quantity) || 0);
+  });
+  for (const [bid, qty] of Object.entries(brandQty)) {
+    let matched = null;
+    for (const r of brandPromoRules.get(bid).tier_rules) {
+      const min = Number(r.min_qty) || 0;
+      if (qty >= min && (matched == null || min > (Number(matched.min_qty) || 0))) matched = r;
+    }
+    if (!matched) continue;
+    const benefit = (matched.default && typeof matched.default === 'object')
+      ? ((matched[tierKey] && typeof matched[tierKey] === 'object') ? matched[tierKey] : matched.default)
+      : matched;
+    if (benefit.free_shipping) { brandFreeShip = true; break; }
+  }
+  const freeShipEligible = totalQty >= FREE_SHIP_MIN_QTY
+    || Math.max(listSubtotal, result.raw_subtotal) >= FREE_SHIP_THRESHOLD
+    || brandFreeShip;
+  const minShippingFee = freeShipEligible ? 0 : SHIPPING_FEE_CVS;
+
   const fee = Number(shippingFee) || 0;
   return {
+    minShippingFee,
     rawSubtotal:        result.raw_subtotal,
     discountedSubtotal: result.final_subtotal,
     expectedDiscount:   result.total_savings,
@@ -389,6 +428,12 @@ export default async function handler(req, res) {
        *     create 階段該以「下單前的等級」為準
        */
     const recalc = await recalculateOrder(items, shippingFee, memberId, useCredit);
+    if ((Number(shippingFee) || 0) < recalc.minShippingFee) {
+      console.warn('[NewebPay create] shippingFee below minimum', {
+        declared: shippingFee, minimum: recalc.minShippingFee, items,
+      });
+      return res.status(400).json({ error: '運費計算不一致,請重新整理購物車再試' });
+    }
     const declaredTotal = Math.round(Number(totalAmount));
     const expectedTotal = Math.round(recalc.expectedTotal);
     const totalDiff = Math.abs(declaredTotal - expectedTotal);

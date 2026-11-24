@@ -1576,14 +1576,8 @@
 
     footer.querySelector('.neon-cart-btn-checkout').addEventListener('click', () => {
       closeCartDrawer();
-      // 判斷是否有國際配送商品 → 走物流結帳；全是親自運送 → 走簡單結帳
-      const cartItems = CartState.get();
-      const hasShipping = cartItems.some(i => i.shipping_method === 'shipping');
-      if (hasShipping) {
-        showCheckoutPage();          // 完整結帳 (超商/宅配 + 線上付款/貨到付款)
-      } else {
-        showCarrybackCheckoutPage(); // 簡單結帳 (親自運送)
-      }
+      // 國際配送、親自運回都一樣到台灣後寄出 → 一律走超商/宅配結帳(已取消面交)
+      showCheckoutPage();
     });
 
     footer.querySelector('.neon-cart-btn-continue').addEventListener('click', closeCartDrawer);
@@ -1747,427 +1741,7 @@
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // CARRYBACK (親自運送) CHECKOUT PAGE — 簡單結帳
-  // ─────────────────────────────────────────────────────────────────
-
-  async function showCarrybackCheckoutPage() {
-    injectStyles();
-
-    const pageDiv = document.createElement('div');
-    pageDiv.className = 'page neon-checkout-page';
-    pageDiv.id = 'neon-checkout-page';
-    pageDiv.dataset.checkoutMode = 'carryback';   // 給 setUseCredit re-render 用
-
-    const items           = CartState.get();
-    const rawSubtotal     = CartState.getRawSubtotal();
-    const discountResult  = CartState.getDiscountResult();
-    const totalDiscount   = discountResult.total_savings;
-    const discountedTotal = discountResult.final_subtotal;
-    const breakdown       = CartState.getDiscountBreakdown();
-    const member          = CartState._getMember();
-    const total           = discountedTotal; // 親自運送無物流費
-
-    // Tier label lookup
-    const TIER_LBL_CB = (window.DiscountEngine && window.DiscountEngine.TIER_LABELS) || {
-      bronze:  { emoji: '🥉', label: '銅卡' },
-      silver:  { emoji: '🥈', label: '銀卡' },
-      gold:    { emoji: '🥇', label: '金卡' },
-      diamond: { emoji: '💎', label: '鑽石卡' },
-      black:   { emoji: '🖤', label: '黑卡' },
-    };
-    const tierMetaCB = TIER_LBL_CB[discountResult.tier_key] || TIER_LBL_CB.bronze;
-    const tierPctCB  = Math.round(discountResult.tier_rate * 100);
-
-    let itemsSummary = '';
-    items.forEach((item) => {
-      itemsSummary += `
-        <div class="neon-checkout-summary-item">
-          <span class="neon-checkout-summary-item-name">${item.product_name}</span>
-          <span class="neon-checkout-summary-item-qty">\u00d7${item.quantity}</span>
-          <span class="neon-checkout-summary-item-price">NT$ ${(item.unit_price * item.quantity).toLocaleString()}</span>
-        </div>
-      `;
-    });
-
-    // 每組滿額現折「差多少」誘因提示行 — 僅會員
-    // (已套用的金額統一顯示在下方「滿額現折」行,不在此重複,避免看似折兩次)
-    let groupLines = '';
-    if (member) {
-      breakdown.forEach((g) => {
-        const label = SHIPPING_GROUP_LABELS[g.shipping_method] || g.shipping_method;
-        if (g.bulk_discount > 0) {
-          // 已套用 → 不重複顯示
-        } else if (g.nextRung) {
-          if (g.after_birthday !== undefined && g.after_birthday < g.subtotal) {
-            groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.muted || colors.lightgrey};font-size:11px;opacity:0.85"><span>└ 會員價後小計</span><span>NT$ ${g.after_birthday.toLocaleString()}</span></div>`;
-          }
-          groupLines += `<div class="neon-checkout-summary-row" style="color:${colors.accent};font-size:12px"><span>🛍 ${label} 再買</span><span>NT$ ${g.nextRung.gap.toLocaleString()} 享 -NT$ ${g.nextRung.discount.toLocaleString()}</span></div>`;
-        }
-      });
-    }
-
-    // 等級折扣行
-    const tierRowCB = (member && discountResult.tier_discount > 0) ? `
-      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
-        <span>${tierMetaCB.emoji} ${tierMetaCB.label} 折扣 (${tierPctCB}折):</span>
-        <span>-NT$ ${discountResult.tier_discount.toLocaleString()}</span>
-      </div>` : '';
-
-    // 生日 9 折行
-    const birthdayRowCB = discountResult.birthday_discount > 0 ? `
-      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
-        <span>🎂 生日月 9 折:</span>
-        <span>-NT$ ${discountResult.birthday_discount.toLocaleString()}</span>
-      </div>` : '';
-
-    // 滿額現折行 (總計)
-    const bulkRowCB = discountResult.bulk_discount_total > 0 ? `
-      <div class="neon-checkout-summary-row" style="color:#4ade80;font-size:13px">
-        <span>🛍 滿額現折:</span>
-        <span>-NT$ ${discountResult.bulk_discount_total.toLocaleString()}</span>
-      </div>` : '';
-
-    // 折抵金行 — 有餘額就顯示 toggle (含未使用狀態)
-    const _useCreditNowCB  = CartState.getUseCredit();
-    const _creditBalanceCB = Number(discountResult.credit_balance) || 0;
-    const _creditUsedCB    = Number(discountResult.credit_used) || 0;
-    let creditRowCB = '';
-    if (_creditBalanceCB > 0) {
-      const _checkedCB = _useCreditNowCB ? 'checked' : '';
-      const _valueColorCB = _useCreditNowCB && _creditUsedCB > 0 ? '#4ade80' : (colors.muted || colors.lightgrey);
-      const _valueTextCB  = _useCreditNowCB && _creditUsedCB > 0 ? '-NT$ ' + _creditUsedCB.toLocaleString() : '未使用';
-      const _cappedHintCB = (_useCreditNowCB && _creditUsedCB === 0)
-        ? `<div class="neon-checkout-summary-row" style="color:#fbbf24;font-size:11px"><span>已勾選但折扣已達樓地板,本次無法扣抵</span><span></span></div>`
-        : '';
-      creditRowCB = `
-        <div class="neon-checkout-summary-row" style="font-size:13px">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1">
-            <input type="checkbox" ${_checkedCB}
-                   onchange="window.CartSystem.setUseCredit(this.checked)"
-                   style="width:14px;height:14px;cursor:pointer;accent-color:${colors.accent}">
-            💴 使用註冊禮金折抵 (餘額 NT$ ${_creditBalanceCB.toLocaleString()})
-          </label>
-          <span style="color:${_valueColorCB};white-space:nowrap">${_valueTextCB}</span>
-        </div>
-        ${_cappedHintCB}
-      `;
-    }
-
-    // 樓地板拉回行
-    const floorRowCB = discountResult.floor_clamped ? `
-      <div class="neon-checkout-summary-row" style="color:#fbbf24;font-size:12px">
-        <span>⛔ 等級樓地板 (${Math.round(discountResult.floor_rate * 100)}%):</span>
-        <span>折扣已封頂</span>
-      </div>` : '';
-
-    // 品牌活動促銷行 (migration 015)
-    const brandPromoRowCB = (discountResult.brand_promo && discountResult.brand_promo.brand_summary)
-      ? Object.entries(discountResult.brand_promo.brand_summary).map(([bid, s]) => {
-          const pct       = 100 - (Number(s.discount_percent) || 0);
-          const pctText   = s.discount_percent > 0 ? `${pct} 折` : '促銷價';
-          const shipText  = s.free_shipping ? ' + 免運' : '';
-          const savingTxt = s.savings > 0
-            ? `-NT$ ${s.savings.toLocaleString()}`
-            : (s.free_shipping ? '免運' : '');
-          return `
-            <div class="neon-checkout-summary-row" style="color:#fb7185;font-size:13px">
-              <span>🔥 ${s.label} (${s.qty} 件,${pctText}${shipText}):</span>
-              <span>${savingTxt}</span>
-            </div>`;
-        }).join('')
-      : '';
-
-    // 訪客誘因 banner
-    const guestBannerCB = (!member) ? `
-      <div class="neon-checkout-summary-row" style="background:rgba(192,132,252,0.08);border:1px solid ${colors.border};border-radius:8px;padding:8px 10px;font-size:12px;color:${colors.accent};line-height:1.5;display:block">
-        🔓 登入會員享 95–85 折 + 滿額現折最高 -NT$2,500 + 註冊禮金 NT$100
-      </div>` : '';
-
-    const discountRow = totalDiscount > 0
-      ? `<div class="neon-checkout-summary-row" style="color:${colors.accent};font-size:12px"><span>您共省下:</span><span>NT$ ${totalDiscount.toLocaleString()}</span></div>`
-      : '';
-
-    const html = `
-      <div class="neon-checkout-header">
-        <button type="button" id="checkout-back" style="position:absolute;left:20px;top:50%;transform:translateY(-50%);background:none;border:1px solid ${colors.border};color:${colors.white};padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;">\u2190 返回</button>
-        <h1 class="neon-checkout-title">結帳 — 親自運送</h1>
-      </div>
-      <div class="neon-checkout-container">
-        <div class="neon-checkout-grid">
-          <div class="neon-checkout-form-section">
-            <div class="neon-checkout-form-group">
-              <label class="neon-checkout-form-label">姓名 *</label>
-              <input class="neon-checkout-form-input" id="checkout-name" type="text" placeholder="你的姓名" required />
-            </div>
-            <div class="neon-checkout-form-group">
-              <label class="neon-checkout-form-label">電話 *</label>
-              <input class="neon-checkout-form-input" id="checkout-phone" type="tel" placeholder="你的電話號碼" required />
-            </div>
-            <div class="neon-checkout-form-group">
-              <label class="neon-checkout-form-label">Email *</label>
-              <input class="neon-checkout-form-input" id="checkout-email" type="email" placeholder="你的 Email" required />
-            </div>
-            <div class="neon-checkout-form-group">
-              <label class="neon-checkout-form-label">備註</label>
-              <textarea class="neon-checkout-form-textarea" id="checkout-note" placeholder="有任何特殊要求嗎?"></textarea>
-            </div>
-          </div>
-
-          <div class="neon-checkout-summary">
-            <div class="neon-checkout-summary-title">訂單摘要</div>
-            <div class="neon-checkout-summary-items">
-              ${itemsSummary}
-            </div>
-            <div class="neon-checkout-summary-totals">
-              <div class="neon-checkout-summary-row">
-                <span class="neon-checkout-summary-label">商品小計:</span>
-                <span class="neon-checkout-summary-value">NT$ ${rawSubtotal.toLocaleString()}</span>
-              </div>
-              ${guestBannerCB}
-              ${groupLines}
-              ${brandPromoRowCB}
-              ${tierRowCB}
-              ${birthdayRowCB}
-              ${bulkRowCB}
-              ${creditRowCB}
-              ${floorRowCB}
-              ${discountRow}
-              <div class="neon-checkout-summary-row">
-                <span class="neon-checkout-summary-label">配送方式:</span>
-                <span class="neon-checkout-summary-value">親自運送</span>
-              </div>
-              <div class="neon-checkout-summary-total">
-                <span>合計:</span>
-                <span class="neon-checkout-summary-total-value">NT$ ${total.toLocaleString()}</span>
-              </div>
-            </div>
-            <button type="button" class="neon-checkout-btn" id="checkout-submit">確認訂單</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    pageDiv.innerHTML = html;
-    document.body.appendChild(pageDiv);
-    document.body.style.overflow = 'hidden';
-    pageDiv.scrollTop = 0;
-
-    // Back button
-    pageDiv.querySelector('#checkout-back').addEventListener('click', () => {
-      pageDiv.remove();
-      document.body.style.overflow = '';
-    });
-
-    // Submit
-    pageDiv.querySelector('#checkout-submit').addEventListener('click', async () => {
-      const name  = pageDiv.querySelector('#checkout-name').value.trim();
-      const phone = pageDiv.querySelector('#checkout-phone').value.trim();
-      const email = pageDiv.querySelector('#checkout-email').value.trim();
-      const note  = pageDiv.querySelector('#checkout-note').value.trim();
-
-      if (!name || !phone || !email) {
-        alert('請填入姓名、電話和 Email');
-        return;
-      }
-
-      const submitBtn = pageDiv.querySelector('#checkout-submit');
-      submitBtn.disabled = true;
-      submitBtn.textContent = '處理中...';
-
-      try {
-        // 有登入就用會員的連線(RLS 以會員身分驗證 member_id),沒登入才用訪客 anon 連線
-        const supabase = (window.AuthSystem && window.AuthSystem._getClient && window.AuthSystem._getClient())
-          || window.supabase.createClient(
-            'https://epemuyojkprepknuzuzc.supabase.co',
-            [
-              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
-              'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZW11eW9qa3ByZXBrbnV6dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDMwMTAsImV4cCI6MjA5MTM3OTAxMH0',
-              'nTv7W1_ndzzAQGNgVzSKSkruvsnEgt6N7PbnRK31l0M'
-            ].join('.')
-          );
-
-        const now = new Date();
-        const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
-        const rand = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-        // 親自帶回訂單前綴用 NLC,讓付款成功頁可以顯示對應的取貨說明
-        const orderNumber = `NLC-${dateStr}-${rand}`;
-
-        // 若登入會員,把 member_id 寫進訂單 — Phase 2.2 累積消費 / 消費次數要用
-        const _carryMember   = (window.AuthSystem && typeof window.AuthSystem.getMember === 'function')
-          ? (window.AuthSystem.getMember() || null)
-          : null;
-        const _carryMemberId = _carryMember?.id || null;
-
-        // Phase 2.2 訂單欄位拆解:
-        //   tier_at_purchase     = 下單當下會員等級 (歷史快照)
-        //   tier_discount        = 等級折扣 + 滿額現折 - 樓地板補回 (折抵金、生日除外)
-        //   birthday_discount    = 生日月 9 折金額
-        //   signup_credit_used   = 註冊禮金扣抵
-        const _cbTierKey       = _carryMember ? (discountResult.tier_key || null) : null;
-        const _cbBirthday      = discountResult.birthday_discount || 0;
-        const _cbCredit        = discountResult.credit_used || 0;
-        const _cbTierBundle    = Math.max(0, (totalDiscount - _cbBirthday - _cbCredit));
-
-        // 訂單 id 由前端產生:訪客沒有讀取訂單的權限,insert 後無法 .select() 讀回
-        const orderId = crypto.randomUUID();
-        const { error: orderError } = await supabase
-          .from('orders')
-          .insert([{
-            id: orderId,
-            order_number: orderNumber,
-            customer_name: name,
-            customer_phone: phone,
-            customer_email: email,
-            customer_address: '',
-            shipping_method: '親自運送',
-            payment_method: '待確認',
-            status: 'pending',
-            subtotal: rawSubtotal,
-            shipping_fee: 0,
-            tier_at_purchase:   _cbTierKey,
-            tier_discount:      _cbTierBundle,
-            birthday_discount:  _cbBirthday,
-            signup_credit_used: _cbCredit,
-            total: total,
-            note: note,
-            line_notified: false,
-            member_id: _carryMemberId,
-          }]);
-
-        if (orderError) throw new Error(orderError.message);
-
-        // Migration 015 — brand_promo 歷史欄位:從 discountResult.brand_promo.items 抓
-        //   下單當下該 line 觸發的品牌活動 (label / 折扣 % / 是否免運)。unit_price 仍存原價
-        //   以維持既有帳務語意 (report / backfill 假設 unit_price=原價),brand_promo_*
-        //   欄位提供 audit 與後續 GMV 分解用。
-        const brandItemsRecCB = (discountResult.brand_promo && Array.isArray(discountResult.brand_promo.items))
-          ? discountResult.brand_promo.items : null;
-        const orderItems = items.map((item, idx) => {
-          const bp = brandItemsRecCB && brandItemsRecCB[idx] && brandItemsRecCB[idx]._brand_promo;
-          return {
-            order_id: orderId,
-            product_id: item.product_id,
-            product_name: item.product_name,
-            brand_id: item.brand_id,
-            size: item.size,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            image_url: item.image_url,
-            is_promo: !!item.is_promo, // Phase 2.2 migration 014 — 歷史紀錄,newebpay-notify 會用 products.is_promo 覆寫為權威值
-            brand_promo_label:            bp ? (bp.label || null)                      : null,
-            brand_promo_discount_percent: bp ? (Number(bp.discount_percent) || 0)      : null,
-            brand_promo_free_shipping:    bp ? !!bp.free_shipping                      : null,
-          };
-        });
-
-        const { error: itemsError } = await supabase
-          .from('order_items')
-          .insert(orderItems);
-
-        if (itemsError) throw new Error(itemsError.message);
-
-        // Send order notification via server-side API (non-blocking)
-        try {
-          var _n = typeof name !== 'undefined' ? name : '';
-          var _p = typeof phone !== 'undefined' ? phone : '';
-          var _e = typeof email !== 'undefined' ? email : '';
-          var _a = typeof address !== 'undefined' ? address : '';
-          var _nt = typeof note !== 'undefined' ? note : '';
-          var _sh = typeof selectedShipping !== 'undefined' ? selectedShipping : '';
-          fetch('/api/notify-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderNumber: orderNumber,
-              name: _n, phone: _p, email: _e, address: _a,
-              shipping: _sh, total: total, items: items, note: _nt
-            })
-          }).catch(function(e) { console.warn('[Notify]', e); });
-        } catch(ne) { console.warn('[Notify]', ne); }
-
-        // ── 導向藍新金流 (NewebPay) — 親自帶回也走線上付款 ──
-        // shipping_method 必須一起送至 API,讓 server 端可重新驗證滿額折扣
-        // product_id 必送 → server 用此撈 is_promo (Phase 2.2 migration 014 anti-tamper)
-        //
-        // Migration 015 — 品牌週折扣:BrandPromoEngine 產生 discountResult.brand_promo.items
-        //   跟 CartState items 同 index、同順序,但 is_promo=true 的條目已把 unit_price
-        //   改成折後價。我們送折後價 + is_promo=true 給 server,server 用 brand_promos
-        //   驗證品牌週有效後就會信任 (skip tier/bulk/生日),final_subtotal 才會吻合。
-        const brandItemsCB = (discountResult.brand_promo && Array.isArray(discountResult.brand_promo.items))
-          ? discountResult.brand_promo.items : null;
-        const npItems = items.map((item, idx) => {
-          const bi = brandItemsCB ? brandItemsCB[idx] : null;
-          const effectivePrice = (bi && bi.is_promo) ? bi.unit_price : item.unit_price;
-          const effectivePromo = !!(bi && bi.is_promo);
-          return {
-            product_id: item.product_id,
-            name: item.product_name,
-            quantity: item.quantity,
-            price: effectivePrice,
-            is_promo: effectivePromo,
-            shipping_method: item.shipping_method || 'carryback',
-          };
-        });
-
-        submitBtn.textContent = '導向付款頁面...';
-
-        const npRes = await fetch('/api/newebpay-create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items:       npItems,
-            totalAmount: total,
-            shippingFee: 0,
-            discount:    totalDiscount,
-            // Phase 2.2 — 傳會員上下文讓 server 重算 + 驗證金額 (±NT$5 容差)
-            memberId:    _carryMemberId,
-            tierKey:     _cbTierKey,
-            useCredit:   _cbCredit > 0,
-            buyerName:   name,
-            buyerEmail:  email,
-            buyerPhone:  phone,
-            orderId:     orderNumber,
-          }),
-        });
-
-        const npData = await npRes.json();
-
-        if (!npData.success || !npData.formHtml) {
-          throw new Error(npData.error || '無法建立付款訂單');
-        }
-
-        CartState.clear();
-        updateCartIcon();
-        pageDiv.remove();
-        document.body.style.overflow = '';
-
-        const payDiv = document.createElement('div');
-        payDiv.id = 'newebpay-redirect';
-        payDiv.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;align-items:center;justify-content:center;color:#f5f4f0;font-size:1.1rem;';
-        payDiv.innerHTML = '<div style="text-align:center"><div style="margin-bottom:16px;font-size:2rem">🔒</div>正在導向藍新付款頁面...</div>';
-        document.body.appendChild(payDiv);
-
-        const formContainer = document.createElement('div');
-        formContainer.style.display = 'none';
-        formContainer.innerHTML = npData.formHtml;
-        document.body.appendChild(formContainer);
-
-        const payForm = formContainer.querySelector('form');
-        if (payForm) {
-          payForm.submit();
-        }
-
-      } catch (error) {
-        console.error('[CartSystem] Carryback checkout error:', error);
-        alert('訂單提交失敗: ' + error.message);
-        submitBtn.disabled = false;
-        submitBtn.textContent = '確認訂單';
-      }
-    });
-  }
-
-  // ─────────────────────────────────────────────────────────────────
-  // SHIPPING (國際配送) CHECKOUT PAGE — 完整結帳 (物流 + 金流)
+  // CHECKOUT PAGE — 結帳 (超商/宅配 + 金流,國際配送與親自運回共用)
   // ─────────────────────────────────────────────────────────────────
 
   async function showCheckoutPage() {
@@ -2212,8 +1786,13 @@
       ? Object.values(discountResult.brand_promo.brand_summary).filter(s => s.free_shipping).map(s => s.label)
       : [];
 
-    const isFreeShippingCvs  = brandPromoFreeShip || subtotal >= FREE_SHIP_THRESHOLD_CVS;
-    const isFreeShippingHome = brandPromoFreeShip || subtotal >= FREE_SHIP_THRESHOLD_HOME;
+    // 滿 2 件免運(數量合計,國際配送與親自運回都算)— 超商、宅配皆適用
+    const FREE_SHIP_MIN_QTY  = 2;
+    const totalQty           = items.reduce((n, it) => n + (Number(it.quantity) || 0), 0);
+    const qtyFreeShip        = totalQty >= FREE_SHIP_MIN_QTY;
+
+    const isFreeShippingCvs  = brandPromoFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_CVS;
+    const isFreeShippingHome = brandPromoFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_HOME;
     let currentShippingFee = isFreeShippingCvs ? 0 : SHIPPING_FEE_CVS; // 預設超商
 
     // 免運提示文案 (依目前選擇的配送方式)
@@ -2223,12 +1802,15 @@
         const brandsTxt = brandPromoLabels.length > 0 ? brandPromoLabels.join('、') : '品牌活動';
         return `<span style="color:#4ade80;">🔥 ${brandsTxt} 免運已啟用！</span>`;
       }
+      if (qtyFreeShip) {
+        return `<span style="color:#4ade80;">滿 ${FREE_SHIP_MIN_QTY} 件商品，享免運優惠！</span>`;
+      }
       const th    = method === 'home' ? FREE_SHIP_THRESHOLD_HOME : FREE_SHIP_THRESHOLD_CVS;
       const label = method === 'home' ? '宅配' : '超商取貨';
       if (subtotal >= th) {
         return `<span style="color:#4ade80;">訂單滿 NT$ ${th.toLocaleString()} 享${label}免運優惠！</span>`;
       }
-      return `再消費 NT$ ${(th - subtotal).toLocaleString()} 即享${label}免運`;
+      return `再消費 NT$ ${(th - subtotal).toLocaleString()} 或再買 ${FREE_SHIP_MIN_QTY - totalQty} 件，即享${label}免運`;
     }
 
     let itemsSummary = '';
@@ -3063,8 +2645,7 @@
         });
         page.remove();
         document.body.style.overflow = '';
-        const reopener = mode === 'carryback' ? showCarrybackCheckoutPage : showCheckoutPage;
-        await reopener();
+        await showCheckoutPage();
         // restore form values
         Object.entries(snap).forEach(([id, saved]) => {
           const el = document.getElementById(id);
