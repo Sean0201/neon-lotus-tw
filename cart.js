@@ -35,10 +35,10 @@
   // ───────────────────────────────────────────────────────────────
   // 折扣計算全部移到 window.DiscountEngine (discount-engine.js),
   // 是前端與後端共用的單一信任來源 (lib/discount.js 是同一份 Node 移植版)。
-  // 此處只留下 SHIPPING_GROUP_LABELS,給 UI 顯示「親自帶回 / 國際運費」之類的標籤用。
+  // 此處只留下 SHIPPING_GROUP_LABELS,給 UI 顯示「親自運回 / 國際運費」之類的標籤用。
   const SHIPPING_GROUP_LABELS = {
     shipping:  '國際運費',
-    carryback: '親自帶回',
+    carryback: '親自運回',
     default:   '一般出貨',
   };
 
@@ -1298,7 +1298,7 @@
             🚚 國際配送${priceShipping ? ` (NT$${priceShipping.toLocaleString()})` : ''}
           </option>
           <option value="carryback"${item.shipping_method === 'carryback' ? ' selected' : ''}>
-            🧳 親自運送${priceCarryback ? ` (NT$${priceCarryback.toLocaleString()})` : ''}
+            🧳 親自運回${priceCarryback ? ` (NT$${priceCarryback.toLocaleString()})` : ''}
           </option>
         `;
 
@@ -1677,7 +1677,7 @@
           <label class="neon-modal-label">配送方式</label>
           <div class="neon-shipping-group" id="neon-shipping-group">
             <button type="button" class="neon-shipping-btn active" data-shipping="shipping">國際配送</button>
-            <button type="button" class="neon-shipping-btn" data-shipping="carryback">親自運送</button>
+            <button type="button" class="neon-shipping-btn" data-shipping="carryback">親自運回</button>
           </div>
         </div>
         <div class="neon-modal-actions">
@@ -2385,7 +2385,7 @@
     const amount  = params.get('amount') || '';
     const msg     = params.get('msg') || '';
 
-    // 親自帶回訂單前綴是 NLC,要顯示不同的取貨說明
+    // 親自運回訂單前綴是 NLC,要顯示不同的取貨說明
     const isCarryback = orderNo.startsWith('NLC');
     const successSubtitle = isCarryback
       ? `感謝您的購買！我們已收到您的付款。<br>

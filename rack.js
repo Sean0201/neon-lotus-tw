@@ -25,7 +25,7 @@
   const TICKER = [
     ['本週精選', "This week's picks"],
     ['越南台灣直送 7–14 天到貨', 'Vietnam → Taiwan in 7–14 days'],
-    ['國際配送 · 親自帶回 兩種方式', 'International shipping · Carry-back'],
+    ['國際配送 · 親自運回 兩種方式', 'International shipping · Carry-back'],
     ['30+ 越南街頭品牌', '30+ Vietnamese street labels'],
     ['找不到的 來獵物雷達找我', "Can't find it? Try Target Radar"],
   ];
@@ -587,7 +587,7 @@
       ${(descCache[p.id] || '').split('\n').length > 5 || (descCache[p.id] || '').length > 160
         ? `<button type="button" class="rk-more" data-act="more">${descOpen ? `${t('收起', 'Less')} ↑` : `${t('看完整介紹', 'Read more')} ↓`}</button>` : ''}
       <div class="rk-lbl"><span>${t('配送方式', 'Delivery')}</span></div>
-      <div class="rk-ships">${shipBtn('shipping', t('國際配送', 'Shipping'), priceS)}${shipBtn('carryback', t('親自帶回', 'Carry-back'), priceC)}</div>
+      <div class="rk-ships">${shipBtn('shipping', t('國際配送', 'Shipping'), priceS)}${shipBtn('carryback', t('親自運回', 'Carry-back'), priceC)}</div>
       ${sibs.length > 1 ? `<div class="rk-lbl"><span>${kindOf(p) === 'ACCESSORIES' ? t('款式', 'Style') : t('配色', 'Color')} · ${esc(color || '—')}</span></div>
         <div class="rk-dots">${sibs.map((q) => {
           const c = splitName(q.name).color;

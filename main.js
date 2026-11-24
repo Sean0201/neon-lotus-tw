@@ -179,7 +179,7 @@ function psychPrice(n) {
 /**
  * 計算 TWD 報價 (新公式 — 國際運費以 NT$ 平加,不吃倍率).
  *
- *   親自帶回 NT$ = roundTo10( marginalAdjVnd(VND) ÷ 790 )                ← 四捨五入到 10
+ *   親自運回 NT$ = roundTo10( marginalAdjVnd(VND) ÷ 790 )                ← 四捨五入到 10
  *   國際運送 NT$ = psychPrice( marginalAdjVnd(VND) ÷ 790 + SHIP_NTD[品相] ) ← 50/90 結尾
  *
  * 結尾規則:
@@ -1626,7 +1626,7 @@ function updateSeoForBrand(brand) {
 function updateSeoForHome() {
   _setMetaBundle({
     title: 'NEON LOTUS | 越南街頭潮牌精選 — 台灣直送',
-    description: 'Neon Lotus 精選越南街頭潮牌 — Dirtycoins、Gamble、Hades、Blish 等 30+ 品牌。越南台灣直送、7-14 天到貨,提供國際運送與親自帶回兩種方式。',
+    description: 'Neon Lotus 精選越南街頭潮牌 — Dirtycoins、Gamble、Hades、Blish 等 30+ 品牌。越南台灣直送、7-14 天到貨,提供國際運送與親自運回兩種方式。',
     url: SITE_BASE_URL + '/',
     image: DEFAULT_OG_IMAGE,
     imageAlt: 'Neon Lotus 越南街頭潮牌精選',
