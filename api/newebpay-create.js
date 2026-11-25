@@ -67,11 +67,13 @@ async function getSupabaseAdmin() {
  */
 // 運費規則(與 cart.js 結帳頁一致):滿 2 件、滿 NT$3,000 或品牌週免運 → 可免運,
 // 否則至少要付超商運費。用來擋掉被竄改成 0 的運費。
-const SHIPPING_FEE_CVS       = 70;
-const FREE_SHIP_THRESHOLD    = 3000;   // 超商免運門檻(宅配門檻較高,但下限以超商計)
-const FREE_SHIP_MIN_QTY      = 2;
+const SHIPPING_FEE_CVS        = 70;
+const SHIPPING_FEE_HOME       = 120;
+const FREE_SHIP_THRESHOLD     = 3000;   // 超商免運門檻
+const FREE_SHIP_THRESHOLD_HOME = 5000;  // 宅配免運門檻
+const FREE_SHIP_MIN_QTY       = 2;
 
-async function recalculateOrder(items, shippingFee, memberId, useCredit) {
+async function recalculateOrder(items, shippingFee, memberId, useCredit, shippingType) {
   const supabase = await getSupabaseAdmin();
 
   // 1. 從 DB 撈最新會員資料 (server 為信任來源)
@@ -306,12 +308,15 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
       : matched;
     if (benefit.free_shipping) { brandFreeShip = true; break; }
   }
+  // 宅配:免運商品不適用、門檻 5000;未帶 shippingType 的舊請求以超商計(寬鬆)
+  const isHome = shippingType === 'home';
   const productFreeShip = items.some((it) => it.product_id != null && freeShipIds.has(String(it.product_id)));
-  const freeShipEligible = productFreeShip
+  const listTotal = Math.max(listSubtotal, result.raw_subtotal);
+  const freeShipEligible = (productFreeShip && !isHome)
     || totalQty >= FREE_SHIP_MIN_QTY
-    || Math.max(listSubtotal, result.raw_subtotal) >= FREE_SHIP_THRESHOLD
+    || listTotal >= (isHome ? FREE_SHIP_THRESHOLD_HOME : FREE_SHIP_THRESHOLD)
     || brandFreeShip;
-  const minShippingFee = freeShipEligible ? 0 : SHIPPING_FEE_CVS;
+  const minShippingFee = freeShipEligible ? 0 : (isHome ? SHIPPING_FEE_HOME : SHIPPING_FEE_CVS);
 
   const fee = Number(shippingFee) || 0;
   return {
@@ -387,6 +392,7 @@ export default async function handler(req, res) {
       items,        // [{ name, quantity, price, shipping_method? }]
       totalAmount,  // 整數 (TWD) — 前端宣告之應付總額
       shippingFee,  // 整數 (TWD) — 域內運費
+      shippingType, // 'cvs' | 'home' — 運費下限檢查用
       discount,     // 整數 (TWD) — 前端宣告的折扣 (僅供 audit)
       memberId,     // Phase 2.2 — server 用此撈會員等級 / 折抵金 / 生日
       tierKey,      // Phase 2.2 — 前端聲明的等級 (僅 audit log)
@@ -431,7 +437,7 @@ export default async function handler(req, res) {
        *   - 累積消費 / 等級會由 newebpay-notify 在「付款成功」後才升等,
        *     create 階段該以「下單前的等級」為準
        */
-    const recalc = await recalculateOrder(items, shippingFee, memberId, useCredit);
+    const recalc = await recalculateOrder(items, shippingFee, memberId, useCredit, shippingType);
     if ((Number(shippingFee) || 0) < recalc.minShippingFee) {
       console.warn('[NewebPay create] shippingFee below minimum', {
         declared: shippingFee, minimum: recalc.minShippingFee, items,

@@ -1791,14 +1791,14 @@
     const totalQty           = items.reduce((n, it) => n + (Number(it.quantity) || 0), 0);
     const qtyFreeShip        = totalQty >= FREE_SHIP_MIN_QTY;
 
-    // 免運商品(後台勾選):購物車只要有一件,整筆免運
+    // 免運商品(後台勾選):購物車只要有一件,整筆「超商取貨」免運;宅配照常收運費
     const productFreeShip = items.some(it => {
       const p = typeof window.findProductById === 'function' ? window.findProductById(it.product_id) : null;
       return !!(p && p.free_shipping);
     });
 
     const isFreeShippingCvs  = brandPromoFreeShip || productFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_CVS;
-    const isFreeShippingHome = brandPromoFreeShip || productFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_HOME;
+    const isFreeShippingHome = brandPromoFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_HOME;
     let currentShippingFee = isFreeShippingCvs ? 0 : SHIPPING_FEE_CVS; // 預設超商
 
     // 免運提示文案 (依目前選擇的配送方式)
@@ -1808,9 +1808,10 @@
         const brandsTxt = brandPromoLabels.length > 0 ? brandPromoLabels.join('、') : '品牌活動';
         return `<span style="color:#4ade80;">🔥 ${brandsTxt} 免運已啟用！</span>`;
       }
-      if (productFreeShip) {
-        return `<span style="color:#4ade80;">🚚 購物車含免運商品，本單免運！</span>`;
+      if (productFreeShip && method !== 'home') {
+        return `<span style="color:#4ade80;">🚚 購物車含免運商品，超商取貨免運！</span>`;
       }
+      const cvsOnlyHint = productFreeShip ? '免運商品僅限超商取貨免運。' : '';
       if (qtyFreeShip) {
         return `<span style="color:#4ade80;">滿 ${FREE_SHIP_MIN_QTY} 件商品，享免運優惠！</span>`;
       }
@@ -1819,7 +1820,7 @@
       if (subtotal >= th) {
         return `<span style="color:#4ade80;">訂單滿 NT$ ${th.toLocaleString()} 享${label}免運優惠！</span>`;
       }
-      return `再消費 NT$ ${(th - subtotal).toLocaleString()} 或再買 ${FREE_SHIP_MIN_QTY - totalQty} 件，即享${label}免運`;
+      return `${cvsOnlyHint}再消費 NT$ ${(th - subtotal).toLocaleString()} 或再買 ${FREE_SHIP_MIN_QTY - totalQty} 件，即享${label}免運`;
     }
 
     let itemsSummary = '';
@@ -2285,6 +2286,7 @@
             items:       npItems,
             totalAmount: grandTotal,
             shippingFee: currentShippingFee,
+            shippingType: selectedShipping,   // 'cvs' | 'home' — 後端依此檢查運費下限
             discount:    totalDiscount,
             // Phase 2.2 — 傳會員上下文讓 server 重算 + 驗證金額 (±NT$5 容差)
             memberId:    _shipMemberId,
