@@ -1814,7 +1814,9 @@
       if (qtyFreeShip && method !== 'home') {
         return `<span style="color:#4ade80;">滿 ${FREE_SHIP_MIN_QTY} 件商品，超商取貨免運！</span>`;
       }
-      const cvsOnlyHint = (productFreeShip || qtyFreeShip) ? '免運商品、滿 2 件免運僅限超商取貨。' : '';
+      const cvsOnlyHint = productFreeShip && qtyFreeShip ? '免運商品、滿 2 件免運僅限超商取貨。'
+        : productFreeShip ? '免運商品僅限超商取貨免運。'
+        : qtyFreeShip ? `滿 ${FREE_SHIP_MIN_QTY} 件免運僅限超商取貨。` : '';
       const th    = method === 'home' ? FREE_SHIP_THRESHOLD_HOME : FREE_SHIP_THRESHOLD_CVS;
       const label = method === 'home' ? '宅配' : '超商取貨';
       if (subtotal >= th) {
