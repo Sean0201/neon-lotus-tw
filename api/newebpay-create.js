@@ -308,12 +308,12 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit, shippin
       : matched;
     if (benefit.free_shipping) { brandFreeShip = true; break; }
   }
-  // 宅配:免運商品不適用、門檻 5000;未帶 shippingType 的舊請求以超商計(寬鬆)
+  // 宅配:免運商品、滿 2 件都不適用,只看 5000 門檻與品牌週;未帶 shippingType 的舊請求以超商計(寬鬆)
   const isHome = shippingType === 'home';
   const productFreeShip = items.some((it) => it.product_id != null && freeShipIds.has(String(it.product_id)));
   const listTotal = Math.max(listSubtotal, result.raw_subtotal);
   const freeShipEligible = (productFreeShip && !isHome)
-    || totalQty >= FREE_SHIP_MIN_QTY
+    || (totalQty >= FREE_SHIP_MIN_QTY && !isHome)
     || listTotal >= (isHome ? FREE_SHIP_THRESHOLD_HOME : FREE_SHIP_THRESHOLD)
     || brandFreeShip;
   const minShippingFee = freeShipEligible ? 0 : (isHome ? SHIPPING_FEE_HOME : SHIPPING_FEE_CVS);

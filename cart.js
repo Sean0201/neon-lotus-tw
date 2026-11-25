@@ -1786,7 +1786,7 @@
       ? Object.values(discountResult.brand_promo.brand_summary).filter(s => s.free_shipping).map(s => s.label)
       : [];
 
-    // 滿 2 件免運(數量合計,國際配送與親自運回都算)— 超商、宅配皆適用
+    // 滿 2 件免運(數量合計,國際配送與親自運回都算)— 只限超商取貨
     const FREE_SHIP_MIN_QTY  = 2;
     const totalQty           = items.reduce((n, it) => n + (Number(it.quantity) || 0), 0);
     const qtyFreeShip        = totalQty >= FREE_SHIP_MIN_QTY;
@@ -1798,7 +1798,7 @@
     });
 
     const isFreeShippingCvs  = brandPromoFreeShip || productFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_CVS;
-    const isFreeShippingHome = brandPromoFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_HOME;
+    const isFreeShippingHome = brandPromoFreeShip || subtotal >= FREE_SHIP_THRESHOLD_HOME;
     let currentShippingFee = isFreeShippingCvs ? 0 : SHIPPING_FEE_CVS; // 預設超商
 
     // 免運提示文案 (依目前選擇的配送方式)
@@ -1811,16 +1811,19 @@
       if (productFreeShip && method !== 'home') {
         return `<span style="color:#4ade80;">🚚 購物車含免運商品，超商取貨免運！</span>`;
       }
-      const cvsOnlyHint = productFreeShip ? '免運商品僅限超商取貨免運。' : '';
-      if (qtyFreeShip) {
-        return `<span style="color:#4ade80;">滿 ${FREE_SHIP_MIN_QTY} 件商品，享免運優惠！</span>`;
+      if (qtyFreeShip && method !== 'home') {
+        return `<span style="color:#4ade80;">滿 ${FREE_SHIP_MIN_QTY} 件商品，超商取貨免運！</span>`;
       }
+      const cvsOnlyHint = (productFreeShip || qtyFreeShip) ? '免運商品、滿 2 件免運僅限超商取貨。' : '';
       const th    = method === 'home' ? FREE_SHIP_THRESHOLD_HOME : FREE_SHIP_THRESHOLD_CVS;
       const label = method === 'home' ? '宅配' : '超商取貨';
       if (subtotal >= th) {
         return `<span style="color:#4ade80;">訂單滿 NT$ ${th.toLocaleString()} 享${label}免運優惠！</span>`;
       }
-      return `${cvsOnlyHint}再消費 NT$ ${(th - subtotal).toLocaleString()} 或再買 ${FREE_SHIP_MIN_QTY - totalQty} 件，即享${label}免運`;
+      if (method === 'home') {
+        return `${cvsOnlyHint}再消費 NT$ ${(th - subtotal).toLocaleString()} 即享宅配免運`;
+      }
+      return `再消費 NT$ ${(th - subtotal).toLocaleString()} 或再買 ${FREE_SHIP_MIN_QTY - totalQty} 件，即享${label}免運`;
     }
 
     let itemsSummary = '';
