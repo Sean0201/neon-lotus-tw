@@ -1791,8 +1791,14 @@
     const totalQty           = items.reduce((n, it) => n + (Number(it.quantity) || 0), 0);
     const qtyFreeShip        = totalQty >= FREE_SHIP_MIN_QTY;
 
-    const isFreeShippingCvs  = brandPromoFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_CVS;
-    const isFreeShippingHome = brandPromoFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_HOME;
+    // 免運商品(後台勾選):購物車只要有一件,整筆免運
+    const productFreeShip = items.some(it => {
+      const p = typeof window.findProductById === 'function' ? window.findProductById(it.product_id) : null;
+      return !!(p && p.free_shipping);
+    });
+
+    const isFreeShippingCvs  = brandPromoFreeShip || productFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_CVS;
+    const isFreeShippingHome = brandPromoFreeShip || productFreeShip || qtyFreeShip || subtotal >= FREE_SHIP_THRESHOLD_HOME;
     let currentShippingFee = isFreeShippingCvs ? 0 : SHIPPING_FEE_CVS; // 預設超商
 
     // 免運提示文案 (依目前選擇的配送方式)
@@ -1801,6 +1807,9 @@
       if (brandPromoFreeShip) {
         const brandsTxt = brandPromoLabels.length > 0 ? brandPromoLabels.join('、') : '品牌活動';
         return `<span style="color:#4ade80;">🔥 ${brandsTxt} 免運已啟用！</span>`;
+      }
+      if (productFreeShip) {
+        return `<span style="color:#4ade80;">🚚 購物車含免運商品，本單免運！</span>`;
       }
       if (qtyFreeShip) {
         return `<span style="color:#4ade80;">滿 ${FREE_SHIP_MIN_QTY} 件商品，享免運優惠！</span>`;

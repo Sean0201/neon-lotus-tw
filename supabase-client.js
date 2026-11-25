@@ -211,7 +211,7 @@ async function loadSupabaseData() {
       select: 'id, brand_id, name, tag, category, season, ' +
               'price_vnd, price_vnd_estimated, price_thb_shipping, price_thb_carryback, price_note, ' +
               'cover_image, original_cover_url, sold_out, needs_review, sort_order, is_active, ' +
-              'is_promo, promo_note',
+              'is_promo, promo_note, free_shipping',
       filter: q => q.eq('is_active', true),
       order: 'sort_order',
       tieBreak: 'id',   // sort_order 大量 ties → 一定要 stable tie-breaker

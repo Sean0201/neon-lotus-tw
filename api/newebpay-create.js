@@ -105,16 +105,18 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
   const promoMap = new Map();  // product_id (string) -> is_promo (boolean, product-level)
   const brandMap = new Map();  // product_id (string) -> brand_id (string|null)
   const priceMap = new Map();  // Migration 016 audit — product_id (string) -> base list price
+  const freeShipIds = new Set();  // Migration 023 — 免運商品
   if (productIds.length && supabase) {
     try {
       const { data: prodRows, error: prodErr } = await supabase
         .from('products')
-        .select('id, is_promo, brand_id, price_thb_shipping, price_thb_carryback')
+        .select('id, is_promo, brand_id, price_thb_shipping, price_thb_carryback, free_shipping')
         .in('id', productIds);
       if (!prodErr && Array.isArray(prodRows)) {
         prodRows.forEach(row => {
           promoMap.set(String(row.id), !!row.is_promo);
           brandMap.set(String(row.id), row.brand_id || null);
+          if (row.free_shipping) freeShipIds.add(String(row.id));
           priceMap.set(String(row.id), {
             shipping:  Number(row.price_thb_shipping)  || 0,
             carryback: Number(row.price_thb_carryback) || 0,
@@ -304,7 +306,9 @@ async function recalculateOrder(items, shippingFee, memberId, useCredit) {
       : matched;
     if (benefit.free_shipping) { brandFreeShip = true; break; }
   }
-  const freeShipEligible = totalQty >= FREE_SHIP_MIN_QTY
+  const productFreeShip = items.some((it) => it.product_id != null && freeShipIds.has(String(it.product_id)));
+  const freeShipEligible = productFreeShip
+    || totalQty >= FREE_SHIP_MIN_QTY
     || Math.max(listSubtotal, result.raw_subtotal) >= FREE_SHIP_THRESHOLD
     || brandFreeShip;
   const minShippingFee = freeShipEligible ? 0 : SHIPPING_FEE_CVS;

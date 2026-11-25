@@ -94,7 +94,7 @@ async function dumpCore() {
       select: 'id, brand_id, name, tag, category, season, ' +
               'price_vnd, price_vnd_estimated, price_thb_shipping, price_thb_carryback, price_note, ' +
               'cover_image, original_cover_url, sold_out, needs_review, sort_order, is_active, ' +
-              'is_promo, promo_note',
+              'is_promo, promo_note, free_shipping',
       filter: q => q.eq('is_active', true),
       order: 'sort_order',
       tieBreak: 'id',
@@ -172,6 +172,7 @@ async function dumpCore() {
     original_cover_url: p.original_cover_url || p.cover_image || '',
     is_promo:           p.is_promo || false,
     promo_note:         p.promo_note || '',
+    free_shipping:      p.free_shipping || false,
   }));
 
   const bannersData = banners.map(bn => ({

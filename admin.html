@@ -1130,6 +1130,8 @@
                                             <option value="clear-sold">取消已售完</option>
                                             <option value="shopee-enable">加入蝦皮上架清單</option>
                                             <option value="shopee-disable">移出蝦皮上架清單</option>
+                                            <option value="free-ship-on">設為免運商品</option>
+                                            <option value="free-ship-off">取消免運商品</option>
                                             <option value="delete">刪除所選</option>
                                         </select>
                                         <button id="batchApplyBtn" class="btn-small">套用</button>
@@ -1984,6 +1986,13 @@
                                 ⚡ 品牌方特價
                             </label>
                         </div>
+                        <div class="form-group">
+                            <label class="toggle-switch" title="購物車只要有這件商品,整筆訂單免運(超商、宅配皆適用)">
+                                <input type="checkbox" id="productFreeShipping">
+                                <span class="slider"></span>
+                                🚚 免運商品
+                            </label>
+                        </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
@@ -2745,10 +2754,13 @@
                 const promoBadge = product.is_promo
                     ? `<span class="status-badge promo" title="${(product.promo_note || '品牌方特價').replace(/"/g,'&quot;')}">⚡特價</span>`
                     : '';
+                const freeShipBadge = product.free_shipping
+                    ? `<span class="status-badge" style="background:#16a34a;color:#fff;" title="購物車有此商品即整筆免運">免運</span>`
+                    : '';
                 const shopeeBadge = product.shopee_enabled
                     ? `<span class="status-badge" style="background:#ee4d2d;color:#fff;" title="已列入蝦皮上架清單">蝦皮</span>`
                     : '';
-                const badge = `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">${mainBadge}${promoBadge}${shopeeBadge}</div>`;
+                const badge = `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">${mainBadge}${promoBadge}${freeShipBadge}${shopeeBadge}</div>`;
 
                 const safeId = (product.id || '').replace(/'/g, "\\'");
 
@@ -2832,6 +2844,12 @@
                         await sb.from('products').update({ shopee_enabled: true }).eq('id', id);
                     }
                     showToast(`${selectedProductIds.size} 筆已加入蝦皮上架清單`, 'success');
+                } else if (action === 'free-ship-on' || action === 'free-ship-off') {
+                    const on = action === 'free-ship-on';
+                    for (const id of selectedProductIds) {
+                        await sb.from('products').update({ free_shipping: on }).eq('id', id);
+                    }
+                    showToast(`${selectedProductIds.size} 筆已${on ? '設為' : '取消'}免運商品,記得重建快照`, 'success');
                 } else if (action === 'shopee-disable') {
                     for (const id of selectedProductIds) {
                         await sb.from('products').update({ shopee_enabled: false }).eq('id', id);
@@ -3048,6 +3066,7 @@
             document.getElementById('productSoldOut').checked = product.sold_out || false;
             document.getElementById('productNeedsReview').checked = product.needs_review || false;
             document.getElementById('productIsPromo').checked = product.is_promo || false;
+            document.getElementById('productFreeShipping').checked = product.free_shipping || false;
             document.getElementById('productPromoNote').value = product.promo_note || '';
             document.getElementById('productSortOrder').value = product.sort_order || 0;
             // 多語描述 (中文 + 英文)
@@ -3164,6 +3183,7 @@
                 sold_out: document.getElementById('productSoldOut').checked,
                 needs_review: document.getElementById('productNeedsReview').checked,
                 is_promo: document.getElementById('productIsPromo').checked,
+                free_shipping: document.getElementById('productFreeShipping').checked,
                 promo_note: (document.getElementById('productPromoNote').value || '').trim() || null,
                 sort_order: parseInt(document.getElementById('productSortOrder').value) || 0,
                 // 多語描述 (Migration 20260501 後新增) — 此站只寫中文 + 英文
