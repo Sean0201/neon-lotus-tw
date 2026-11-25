@@ -4791,12 +4791,51 @@
                                     <span style="font-variant-numeric:tabular-nums;">NT$ ${orderTotal.toLocaleString()}</span>
                                 </div>
                                 ${warn}
+                                ${shippingFee > 0 ? `
+                                    <button class="btn btn-secondary" style="margin-top:12px;width:100%;" onclick="waiveOrderShipping('${o.id}')">🚚 此筆免運費(扣除 NT$ ${shippingFee.toLocaleString()})</button>
+                                ` : ''}
                             </div>
                         `;
                     })()}
                 `;
             } catch (err) {
                 body.innerHTML = `<p style="color:#ef5350;">Error loading order: ${err.message}</p>`;
+            }
+        }
+
+        // 單筆訂單免運:運費歸零、總額扣掉運費,並在備註留下紀錄
+        async function waiveOrderShipping(orderId) {
+            try {
+                const { data: o, error } = await sb.from('orders')
+                    .select('id, order_number, status, shipping_fee, total, note').eq('id', orderId).single();
+                if (error) throw error;
+                const fee = Math.max(0, Number(o.shipping_fee) || 0);
+                if (fee <= 0) { showToast('此筆訂單已經是免運', 'error'); return; }
+                const paidWarn = o.status === 'paid'
+                    ? '\n\n⚠️ 這筆訂單已付款:這裡只會修改訂單金額,實際退還運費請到藍新後台處理。'
+                    : '';
+                if (!confirm(`確定訂單 ${o.order_number || o.id} 免運?\n\n運費 NT$ ${fee.toLocaleString()} → NT$ 0\n總額 NT$ ${(Number(o.total) || 0).toLocaleString()} → NT$ ${((Number(o.total) || 0) - fee).toLocaleString()}${paidWarn}`)) return;
+
+                const stamp = new Date().toLocaleDateString('zh-TW');
+                const log = `[${stamp} 後台免運 -NT$${fee}]`;
+                const { data: updated, error: upErr } = await sb.from('orders')
+                    .update({
+                        shipping_fee: 0,
+                        total: (Number(o.total) || 0) - fee,
+                        note: o.note ? `${o.note}\n${log}` : log,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('id', orderId)
+                    .eq('shipping_fee', fee)   // 避免重複按兩次扣兩次
+                    .select('id');
+                if (upErr) throw upErr;
+                if (!updated || updated.length === 0) { showToast('訂單已被修改,請重新整理', 'error'); return; }
+                showToast('已套用免運');
+                viewOrderDetail(orderId);
+                loadOrders();
+            } catch (err) {
+                console.error('waiveOrderShipping failed:', err);
+                showToast('套用免運失敗: ' + err.message, 'error');
             }
         }
 
